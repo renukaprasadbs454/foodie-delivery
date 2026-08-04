@@ -1,0 +1,32 @@
+name: foodie-admin CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop, foundation, 'phase-1/**']
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install shared-web
+        working-directory: ../foodie-shared-web
+        run: npm ci || npm install
+      - name: Build shared-web
+        working-directory: ../foodie-shared-web
+        run: npm run build
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test -- --ci
+      - name: Build
+        run: npm run build

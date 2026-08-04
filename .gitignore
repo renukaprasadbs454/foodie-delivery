@@ -1,0 +1,32 @@
+# foodie-frontend monorepo
+node_modules/
+.turbo/
+.expo/
+dist/
+web-build/
+build/
+coverage/
+*.tsbuildinfo
+expo-env.d.ts
+
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# native
+ios/
+android/
+.kotlin/
+
+# logs / OS / IDE
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# packages build output
+packages/*/dist/
+apps/*/dist/

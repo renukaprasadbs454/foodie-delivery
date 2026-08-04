@@ -1,0 +1,67 @@
+{
+  "expo": {
+    "name": "Foodie Delivery",
+    "slug": "foodie-delivery",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "foodie-delivery",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.foodie.delivery"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./src/assets/android-icon-foreground.png",
+        "backgroundImage": "./src/assets/android-icon-background.png",
+        "monochromeImage": "./src/assets/android-icon-monochrome.png"
+      },
+      "package": "com.foodie.delivery",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.foodie.example",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Foodie Delivery to upload your profile photo for KYC."
+        }
+      ],
+      "expo-document-picker",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Foodie Delivery to use your location while online for delivery offers and assignment tracking.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080",
+      "wsUrl": "http://localhost:8080/ws"
+    }
+  }
+}

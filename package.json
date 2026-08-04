@@ -1,0 +1,19 @@
+{
+  "name": "foodie-frontend",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev:customer": "pnpm --filter foodie-customer start",
+    "dev:restaurant": "pnpm --filter foodie-restaurant start",
+    "dev:delivery": "pnpm --filter foodie-delivery start",
+    "dev:admin": "pnpm --filter foodie-admin dev",
+    "web:customer": "pnpm --filter foodie-customer exec expo start --web",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
+}

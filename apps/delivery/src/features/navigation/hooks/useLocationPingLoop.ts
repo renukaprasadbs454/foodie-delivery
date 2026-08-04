@@ -1,0 +1,119 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import * as Location from 'expo-location';
+import { trackAnalyticsEvent, useConnectivity } from 'foodie-shared-rn';
+import { useLocationPingMutation } from '../../../api/endpoints/deliveryApi';
+import { toUnwrappedApiError } from '../../auth/apiError';
+import {
+  LOCATION_PING_INTERVAL_MS,
+  LocationPingBuffer,
+} from '../pingBuffer';
+import { validatePingCoords, type LocationPingPayload } from '../types';
+
+type Options = {
+  /** When false, timer does not publish (e.g. wrong order status). */
+  enabled: boolean;
+};
+
+/**
+ * Focus-scoped location ping loop — 1/3s elevated tier.
+ * Offline: buffer last 2–3; reconnect flushes most-recent only (SD §12.4).
+ */
+export function useLocationPingLoop({ enabled }: Options) {
+  const { isConnected } = useConnectivity();
+  const [pingMutation] = useLocationPingMutation();
+  const [lastPing, setLastPing] = useState<LocationPingPayload | null>(null);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+  const bufferRef = useRef(new LocationPingBuffer());
+  const focusedRef = useRef(false);
+  const wasConnectedRef = useRef(isConnected);
+
+  const publish = useCallback(
+    async (sample: LocationPingPayload) => {
+      try {
+        await pingMutation(sample).unwrap();
+        setLastPing(sample);
+        trackAnalyticsEvent('location_ping_sent');
+        trackAnalyticsEvent('location_ping_published');
+      } catch (error) {
+        const mapped = toUnwrappedApiError(error);
+        if (mapped.code === 'RATE_LIMITED') {
+          /* elevated throttle — soft ignore */
+          return;
+        }
+        if (mapped.code === 'NETWORK_ERROR') {
+          bufferRef.current.push(sample);
+          setLastPing(sample);
+          return;
+        }
+        /* other errors: keep last known UI coords, do not crash loop */
+        setLastPing(sample);
+      }
+    },
+    [pingMutation],
+  );
+
+  const tick = useCallback(async () => {
+    if (!focusedRef.current || !enabled) return;
+
+    const permission = await Location.getForegroundPermissionsAsync();
+    if (!permission.granted) {
+      const requested = await Location.requestForegroundPermissionsAsync();
+      if (!requested.granted) {
+        setPermissionDenied(true);
+        return;
+      }
+    }
+    setPermissionDenied(false);
+
+    let position: Location.LocationObject;
+    try {
+      position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+    } catch {
+      return;
+    }
+
+    const validated = validatePingCoords(
+      position.coords.latitude,
+      position.coords.longitude,
+    );
+    if (!validated.ok) return;
+
+    if (!isConnected) {
+      bufferRef.current.push(validated.value);
+      setLastPing(validated.value);
+      return;
+    }
+
+    await publish(validated.value);
+  }, [enabled, isConnected, publish]);
+
+  useFocusEffect(
+    useCallback(() => {
+      focusedRef.current = true;
+      void tick();
+      const id = setInterval(() => {
+        void tick();
+      }, LOCATION_PING_INTERVAL_MS);
+      return () => {
+        focusedRef.current = false;
+        clearInterval(id);
+      };
+    }, [tick]),
+  );
+
+  useEffect(() => {
+    const wasConnected = wasConnectedRef.current;
+    wasConnectedRef.current = isConnected;
+    if (!wasConnected && isConnected && focusedRef.current && enabled) {
+      const latest = bufferRef.current.takeMostRecentAndClear();
+      if (latest) {
+        void publish(latest);
+      }
+    }
+  }, [enabled, isConnected, publish]);
+
+  return { lastPing, permissionDenied };
+}

@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "Foodie Customer",
+    "slug": "foodie-customer",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "foodie",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.foodie.customer"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./src/assets/android-icon-foreground.png",
+        "backgroundImage": "./src/assets/android-icon-background.png",
+        "monochromeImage": "./src/assets/android-icon-monochrome.png"
+      },
+      "package": "com.foodie.customer",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.foodie.example",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Foodie to access your photos for a profile picture."
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080",
+      "wsUrl": "http://localhost:8080/ws"
+    }
+  }
+}

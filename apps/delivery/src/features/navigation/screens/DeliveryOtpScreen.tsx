@@ -1,0 +1,143 @@
+import React, { useEffect, useState } from 'react';
+import { ScrollView, View } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import {
+  Button,
+  Text,
+  TextInput,
+  Toast,
+  trackAnalyticsEvent,
+  useApiErrorHandler,
+  useConnectivity,
+  useTheme,
+} from 'foodie-shared-rn';
+import { useVerifyDeliveryOtpMutation } from '../../../api/endpoints/deliveryApi';
+import { toUnwrappedApiError } from '../../auth/apiError';
+import { useAppDispatch } from '../../../store/hooks';
+import { setActiveAssignment } from '../../home/availabilitySlice';
+import { validateOtp } from '../types';
+import type { MainStackParamList } from '../../../navigation/types';
+
+type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryOtp'>;
+
+/**
+ * P2-DEL-03 — POST /delivery/assignments/{id}/verify-delivery.
+ * Offline OTP blocked. Invalidates Order + Delivery + Wallet.
+ */
+export function DeliveryOtpScreen({ navigation, route }: Props) {
+  const { tokens } = useTheme();
+  const { isConnected } = useConnectivity();
+  const dispatch = useAppDispatch();
+  const { assignmentId, orderId } = route.params;
+  const [otp, setOtp] = useState('');
+  const [fieldError, setFieldError] = useState<string | undefined>();
+  const [verify, verifyState] = useVerifyDeliveryOtpMutation();
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: 'info' | 'success' | 'error' | 'warning';
+  } | null>(null);
+
+  const handleError = useApiErrorHandler({
+    onToast: (error) => setToast({ message: error.message, variant: 'error' }),
+    onModalBlocking: (error) =>
+      setToast({ message: error.message, variant: 'error' }),
+    onInlineField: (error) => {
+      setFieldError(error.message);
+      setToast({ message: error.message, variant: 'error' });
+    },
+    onFullScreen: (error) =>
+      setToast({ message: error.message, variant: 'error' }),
+    onGeneric: (error) => setToast({ message: error.message, variant: 'error' }),
+  });
+
+  useEffect(() => {
+    trackAnalyticsEvent('delivery_delivery_otp_viewed');
+  }, []);
+
+  const onSubmit = async () => {
+    if (!isConnected) {
+      setToast({
+        message: 'Connect to the internet to verify delivery OTP.',
+        variant: 'warning',
+      });
+      return;
+    }
+    const validated = validateOtp(otp);
+    if (!validated.ok) {
+      setFieldError(validated.message);
+      return;
+    }
+    setFieldError(undefined);
+    trackAnalyticsEvent('delivery_otp_submitted');
+    try {
+      await verify({ assignmentId, orderId, otp: validated.otp }).unwrap();
+      trackAnalyticsEvent('delivery_completed', { orderId });
+      dispatch(setActiveAssignment(null));
+      setToast({ message: 'Delivery completed.', variant: 'success' });
+      navigation.navigate('DeliveryHome');
+    } catch (error) {
+      setOtp('');
+      handleError(toUnwrappedApiError(error));
+    }
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
+      <ScrollView
+        contentContainerStyle={{
+          padding: tokens.spacing.md,
+          gap: tokens.spacing.md,
+          paddingBottom: 48,
+        }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text variant="heading1" accessibilityRole="header">
+          Delivery OTP
+        </Text>
+        <Text variant="body" color={tokens.color.textSecondary}>
+          Enter the 6-digit code from the customer. Completing delivery credits
+          your wallet on the server.
+        </Text>
+        {!isConnected ? (
+          <Text variant="caption" color={tokens.color.warning}>
+            Offline — delivery OTP verification is blocked.
+          </Text>
+        ) : null}
+        <TextInput
+          label="OTP"
+          accessibilityLabel="Delivery OTP"
+          value={otp}
+          onChangeText={setOtp}
+          keyboardType="number-pad"
+          maxLength={6}
+          errorText={fieldError}
+          editable={isConnected && !verifyState.isLoading}
+        />
+        <Button
+          label="Verify delivery"
+          accessibilityLabel="Verify delivery OTP"
+          loading={verifyState.isLoading}
+          disabled={!isConnected}
+          onPress={() => {
+            void onSubmit();
+          }}
+          style={{ minHeight: 48 }}
+        />
+        <Button
+          label="Wallet"
+          accessibilityLabel="Open wallet"
+          variant="secondary"
+          onPress={() => navigation.navigate('Wallet')}
+          style={{ minHeight: 48 }}
+        />
+      </ScrollView>
+      <Toast
+        visible={Boolean(toast)}
+        message={toast?.message ?? ''}
+        variant={toast?.variant ?? 'info'}
+        accessibilityLabel={toast?.message ?? 'Toast'}
+        onDismiss={() => setToast(null)}
+      />
+    </View>
+  );
+}

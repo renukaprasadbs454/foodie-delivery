@@ -1,0 +1,38 @@
+{
+  "name": "foodie-admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "next lint",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.12.0",
+    "@stomp/stompjs": "^7.3.0",
+    "foodie-shared-web": "file:../../packages/shared-web",
+    "next": "15.5.22",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-redux": "^9.3.0",
+    "recharts": "^2.15.4",
+    "sockjs-client": "^1.6.1"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/sockjs-client": "^1.5.4",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.22",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "ts-jest": "^29.4.12",
+    "typescript": "^5"
+  }
+}

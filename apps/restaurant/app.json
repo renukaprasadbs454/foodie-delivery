@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Foodie Restaurant",
+    "slug": "foodie-restaurant",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "foodie-restaurant",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.foodie.restaurant"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./src/assets/android-icon-foreground.png",
+        "backgroundImage": "./src/assets/android-icon-background.png",
+        "monochromeImage": "./src/assets/android-icon-monochrome.png"
+      },
+      "package": "com.foodie.restaurant",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.foodie.example",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./src/assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Foodie Restaurant to upload logo and cover images."
+        }
+      ],
+      "expo-document-picker"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8080",
+      "wsUrl": "http://localhost:8080/ws"
+    }
+  }
+}
