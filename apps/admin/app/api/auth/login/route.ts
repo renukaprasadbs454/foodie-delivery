@@ -2,28 +2,31 @@ import { NextResponse } from 'next/server';
 import {
   buildAuthSetCookieHeaders,
   buildClearAuthSetCookieHeaders,
-  readRefreshTokenFromCookieHeader,
 } from 'foodie-shared-web/auth';
 import { ENV } from '@/constants/env';
 
+type LoginBody = {
+  email?: string;
+  password?: string;
+  deviceInfo?: string;
+};
+
 /**
- * BFF refresh — Blueprint §7.4 / System Design §9.4.
- * Reads httpOnly refresh cookie, calls backend refresh, rotates Set-Cookie.
- * TD-012: never return access/refresh token strings in JSON body.
- * GAP-API-13: returns session identity (userId / role / userType) for Redux.
+ * BFF Admin login — GAP-API-13.
+ * Proxies POST /api/v1/auth/login, sets httpOnly cookies, returns identity only (TD-012).
  */
 export async function POST(request: Request) {
-  const cookieHeader = request.headers.get('cookie');
-  const refreshToken = readRefreshTokenFromCookieHeader(cookieHeader);
-
-  if (!refreshToken) {
-    const response = NextResponse.json(
+  let body: LoginBody;
+  try {
+    body = (await request.json()) as LoginBody;
+  } catch {
+    return NextResponse.json(
       {
         success: false,
         data: null,
         error: {
-          code: 'UNAUTHORIZED',
-          message: 'Missing refresh token',
+          code: 'VALIDATION_FAILED',
+          message: 'Request body must be JSON',
           fields: null,
         },
         meta: {
@@ -32,26 +35,49 @@ export async function POST(request: Request) {
           pagination: null,
         },
       },
-      { status: 401 },
+      { status: 400 },
     );
-    for (const header of buildClearAuthSetCookieHeaders({
-      secure: ENV.cookieSecure,
-    })) {
-      response.headers.append('Set-Cookie', header);
-    }
-    return response;
+  }
+
+  const email = typeof body.email === 'string' ? body.email.trim() : '';
+  const password = typeof body.password === 'string' ? body.password : '';
+  if (!email || !password) {
+    return NextResponse.json(
+      {
+        success: false,
+        data: null,
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'email and password are required',
+          fields: {
+            ...(email ? {} : { email: 'required' }),
+            ...(password ? {} : { password: 'required' }),
+          },
+        },
+        meta: {
+          timestamp: new Date().toISOString(),
+          requestId: crypto.randomUUID(),
+          pagination: null,
+        },
+      },
+      { status: 400 },
+    );
   }
 
   try {
     const upstream = await fetch(
-      `${ENV.apiBaseUrl.replace(/\/$/, '')}/api/v1/auth/refresh`,
+      `${ENV.apiBaseUrl.replace(/\/$/, '')}/api/v1/auth/login`,
       {
         method: 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ refreshToken }),
+        body: JSON.stringify({
+          email,
+          password,
+          deviceInfo: body.deviceInfo ?? 'Admin Panel',
+        }),
       },
     );
 
@@ -81,23 +107,19 @@ export async function POST(request: Request) {
     if (
       envelope?.success &&
       envelope.data?.accessToken &&
-      envelope.data?.refreshToken
+      envelope.data?.refreshToken &&
+      envelope.data.userId &&
+      envelope.data.userType === 'ADMIN' &&
+      envelope.data.role
     ) {
-      const identity =
-        envelope.data.userType === 'ADMIN' &&
-        envelope.data.userId &&
-        envelope.data.role
-          ? {
-              userId: envelope.data.userId,
-              userType: 'ADMIN' as const,
-              role: envelope.data.role,
-            }
-          : null;
-
       const response = NextResponse.json(
         {
           success: true,
-          data: identity,
+          data: {
+            userId: envelope.data.userId,
+            userType: 'ADMIN',
+            role: envelope.data.role,
+          },
           error: null,
           meta,
         },
@@ -124,12 +146,12 @@ export async function POST(request: Request) {
         data: null,
         error: envelope?.error ?? {
           code: 'UNAUTHORIZED',
-          message: 'Refresh failed',
+          message: 'Login failed',
           fields: null,
         },
         meta,
       },
-      { status: upstream.status },
+      { status: upstream.status >= 400 ? upstream.status : 401 },
     );
     for (const header of buildClearAuthSetCookieHeaders({
       secure: ENV.cookieSecure,
@@ -138,13 +160,13 @@ export async function POST(request: Request) {
     }
     return response;
   } catch {
-    const response = NextResponse.json(
+    return NextResponse.json(
       {
         success: false,
         data: null,
         error: {
           code: 'INTERNAL_ERROR',
-          message: 'Refresh proxy failure',
+          message: 'Login proxy failure',
           fields: null,
         },
         meta: {
@@ -155,6 +177,5 @@ export async function POST(request: Request) {
       },
       { status: 502 },
     );
-    return response;
   }
 }

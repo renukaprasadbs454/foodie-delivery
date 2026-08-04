@@ -6,8 +6,8 @@ import {
 
 /**
  * Middleware route protection — Blueprint §15.2 / System Design §5.3.
- * Cookie presence gate for (dashboard). Role claim enforcement for audit-log
- * is completed when Admin session/login contract provides role (API Gap).
+ * Cookie presence gate for (dashboard). Role claims are restored via login /
+ * refresh identity (GAP-API-13).
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

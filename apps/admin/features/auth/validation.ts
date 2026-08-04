@@ -1,4 +1,4 @@
-/** Client UX validation for Admin Login — UI-API Admin Login (no server contract yet). */
+/** Client UX validation for Admin Login — UI-API Admin Login. */
 
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

@@ -5,7 +5,7 @@ import { AdminLoginForm } from '@/features/auth/AdminLoginForm';
 
 /**
  * P2-AUTH-04 — AdminLogin route `/login` (UI-API).
- * Fail-closed Gap shell with local form UX; no invented login API.
+ * Connected to BFF login (GAP-API-13 resolved).
  */
 export default function LoginPage() {
   const { tokens } = useTheme();
