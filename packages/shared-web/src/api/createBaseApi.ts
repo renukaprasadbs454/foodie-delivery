@@ -77,7 +77,10 @@ export function createBaseApi<TagTypes extends string = string>(
 
   const refreshPath = config.refreshPath ?? '/api/auth/refresh';
   const defaultIsRefreshEndpoint = (url: string) =>
-    url.includes('/api/auth/refresh') || url.includes('/auth/refresh');
+    url.includes('/api/auth/refresh') ||
+    url.includes('/auth/refresh') ||
+    url.includes('/api/auth/login') ||
+    url.includes('/auth/login');
   const isRefreshEndpoint =
     config.isRefreshEndpoint ?? defaultIsRefreshEndpoint;
 

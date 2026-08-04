@@ -12,13 +12,13 @@ import {
   clearSession,
   markCookieSessionValid,
   setAuthStatus,
+  setSession,
 } from '../features/auth/authSlice';
 import type { AppDispatch } from '../store/store';
 
 /**
  * Cold-start sequence — Blueprint §11.3 adapted for Admin cookies.
- * Attempts BFF refresh; does not invent Admin login API (API Gap).
- * Role/userId remain unset until an approved session/login contract exists.
+ * Attempts BFF refresh; restores userId/role when the refresh contract returns them.
  */
 export async function runBootstrap(dispatch: AppDispatch): Promise<void> {
   dispatch(setAuthStatus('authenticating'));
@@ -39,8 +39,18 @@ export async function runBootstrap(dispatch: AppDispatch): Promise<void> {
     const ok = await performAdminTokenRefresh({
       refreshPath: '/api/auth/refresh',
       callbacks: {
-        onRefreshed: async () => {
-          dispatch(markCookieSessionValid());
+        onRefreshed: async (session) => {
+          if (session) {
+            dispatch(
+              setSession({
+                userId: session.userId,
+                role: session.role,
+                userType: session.userType,
+              }),
+            );
+          } else {
+            dispatch(markCookieSessionValid());
+          }
         },
         onTokenReuseDetected: async () => {
           dispatch(clearSession());

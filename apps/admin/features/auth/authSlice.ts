@@ -35,10 +35,10 @@ const authSlice = createSlice({
       state.role = action.payload.role;
       state.authStatus = 'authenticated';
     },
-    /**
-     * Cookie session proven via BFF refresh — Blueprint §11.3 / §12.1.
-     * Does not invent role/userId (Admin login/session API is a documented Gap).
-     */
+/**
+ * Cookie session proven via BFF refresh — Blueprint §11.3 / §12.1.
+ * Fallback when refresh succeeds without identity payload.
+ */
     markCookieSessionValid(state) {
       state.userType = 'ADMIN';
       state.authStatus = 'authenticated';

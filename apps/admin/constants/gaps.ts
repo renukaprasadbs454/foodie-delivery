@@ -1,14 +1,10 @@
 /** Documented API Gaps — never invent these endpoints. */
-export const GAP_API_13_ADMIN_LOGIN = 'GAP-API-13' as const;
 export const GAP_API_14_RESTAURANT_LIST = 'GAP-API-14' as const;
 export const GAP_API_15_PARTNER_LIST = 'GAP-API-15' as const;
 export const GAP_API_16_ORDER_LIST = 'GAP-API-16' as const;
 export const GAP_API_17_PAYMENT_LIST = 'GAP-API-17' as const;
 export const GAP_API_19_COUPON_LIST = 'GAP-API-19' as const;
 export const GAP_API_20_GLOBAL_REVIEWS = 'GAP-API-20' as const;
-
-export const ADMIN_LOGIN_GAP_MESSAGE =
-  'Admin login API is not available (GAP-API-13). Sign-in is blocked until the backend login contract is amended. Do not invent a login endpoint.';
 
 export const RESTAURANT_LIST_GAP_MESSAGE =
   'Admin restaurant list/search GET is not available (GAP-API-14). Open a restaurant by UUID deep-link. Do not invent a list endpoint or reuse public APPROVED-only listing.';

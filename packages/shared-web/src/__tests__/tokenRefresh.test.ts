@@ -80,4 +80,39 @@ describe('admin token refresh', () => {
     expect(callbacks.onTokenReuseDetected).toHaveBeenCalledTimes(1);
     expect(callbacks.onRefreshed).not.toHaveBeenCalled();
   });
+
+  it('passes session identity from BFF refresh data', async () => {
+    const fetchImpl: typeof fetch = async () =>
+      ({
+        ok: true,
+        json: async () => ({
+          success: true,
+          data: {
+            userId: '33333333-3333-3333-3333-333333333001',
+            userType: 'ADMIN',
+            role: 'SUPER_ADMIN',
+          },
+          error: null,
+          meta: {
+            timestamp: '2026-08-01T10:15:00Z',
+            requestId: 'req-3',
+            pagination: null,
+          },
+        }),
+      }) as Response;
+
+    const callbacks = {
+      onRefreshed: jest.fn(),
+      onTokenReuseDetected: jest.fn(),
+      onRefreshFailed: jest.fn(),
+    };
+
+    const result = await performAdminTokenRefresh({ callbacks, fetchImpl });
+    expect(result).toBe(true);
+    expect(callbacks.onRefreshed).toHaveBeenCalledWith({
+      userId: '33333333-3333-3333-3333-333333333001',
+      userType: 'ADMIN',
+      role: 'SUPER_ADMIN',
+    });
+  });
 });

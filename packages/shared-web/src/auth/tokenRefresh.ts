@@ -1,4 +1,5 @@
 import type { ApiEnvelope } from '../types/api';
+import type { AdminRole } from '../types/auth';
 import { logger } from '../utils/logger';
 
 /**
@@ -8,8 +9,14 @@ import { logger } from '../utils/logger';
  * BFF route, which reads the httpOnly refresh cookie and rotates cookies.
  */
 
+export type AdminCookieSession = {
+  userId: string;
+  role: AdminRole;
+  userType: 'ADMIN';
+};
+
 export type AdminTokenRefreshCallbacks = {
-  onRefreshed: () => void | Promise<void>;
+  onRefreshed: (session?: AdminCookieSession | null) => void | Promise<void>;
   onTokenReuseDetected: () => void | Promise<void>;
   onRefreshFailed: (code: string) => void | Promise<void>;
 };
@@ -25,6 +32,26 @@ let inFlightRefresh: Promise<boolean> | null = null;
 
 export function resetAdminTokenRefreshMutex(): void {
   inFlightRefresh = null;
+}
+
+function parseSession(data: unknown): AdminCookieSession | null {
+  if (!data || typeof data !== 'object') return null;
+  const record = data as Record<string, unknown>;
+  const userId = record.userId;
+  const role = record.role;
+  const userType = record.userType;
+  if (
+    typeof userId === 'string' &&
+    userId.length > 0 &&
+    userType === 'ADMIN' &&
+    (role === 'SUPER_ADMIN' ||
+      role === 'OPS' ||
+      role === 'FINANCE' ||
+      role === 'SUPPORT')
+  ) {
+    return { userId, role, userType: 'ADMIN' };
+  }
+  return null;
 }
 
 async function executeRefresh({
@@ -70,7 +97,8 @@ async function executeRefresh({
       return false;
     }
 
-    await callbacks.onRefreshed();
+    const session = parseSession(envelope?.data ?? null);
+    await callbacks.onRefreshed(session);
     logger.info('Admin token refresh succeeded', {
       requestId: envelope?.meta?.requestId,
     });
