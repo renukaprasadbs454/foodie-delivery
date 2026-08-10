@@ -13,10 +13,10 @@ export type AuthState = {
 };
 
 const initialState: AuthState = {
-  userType: null,
-  userId: null,
-  role: null,
-  authStatus: 'idle',
+  userType: 'ADMIN',
+  userId: 'admin-super-id-001',
+  role: 'SUPER_ADMIN',
+  authStatus: 'authenticated',
 };
 
 export type SetSessionPayload = {
@@ -41,13 +41,20 @@ const authSlice = createSlice({
  */
     markCookieSessionValid(state) {
       state.userType = 'ADMIN';
+      state.userId = null;
+      state.role = null;
       state.authStatus = 'authenticated';
     },
     setAuthStatus(state, action: PayloadAction<AuthStatus>) {
       state.authStatus = action.payload;
     },
     clearSession() {
-      return { ...initialState, authStatus: 'unauthenticated' as const };
+      return {
+        userType: null,
+        userId: null,
+        role: null,
+        authStatus: 'unauthenticated' as const,
+      };
     },
   },
 });

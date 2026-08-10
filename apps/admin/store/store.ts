@@ -7,6 +7,7 @@ import '../api/endpoints/deliveryPartnersApi';
 import '../api/endpoints/ordersApi';
 import '../api/endpoints/paymentsApi';
 import '../api/endpoints/restaurantsApi';
+import '../api/endpoints/auditLogsApi';
 import { rootReducer } from './rootReducer';
 import { websocketMiddleware } from './websocketMiddleware';
 

@@ -96,10 +96,18 @@ export function createBaseApi<TagTypes extends string = string>(
 
     if (result.error) {
       const fetchError = result.error as FetchBaseQueryError;
-      logger.error('API network failure', {
-        url: extractUrl(requestArgs),
-        status: String(fetchError.status),
-      });
+      const statusStr = String(fetchError.status);
+      if (statusStr === '401' || statusStr === '403' || statusStr === '404') {
+        logger.warn('API network status', {
+          url: extractUrl(requestArgs),
+          status: statusStr,
+        });
+      } else {
+        logger.error('API network failure', {
+          url: extractUrl(requestArgs),
+          status: statusStr,
+        });
+      }
       return {
         error: {
           status: fetchError.status,

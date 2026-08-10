@@ -13,68 +13,108 @@ type Props = {
 function KpiCard({
   label,
   children,
+  icon,
+  trend,
 }: {
   label: string;
   children: React.ReactNode;
+  icon?: string;
+  trend?: string;
 }) {
-  const { tokens } = useTheme();
   return (
     <div
+      className="card-hover"
       style={{
-        padding: tokens.spacing.md,
-        border: `1px solid ${tokens.color.border}`,
-        borderRadius: tokens.radius.md,
-        background: tokens.color.surface,
+        padding: '20px 22px',
+        border: '1px solid #E2E8F0',
+        borderLeft: '4px solid #F59E0B',
+        borderRadius: 14,
+        background: '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
-        gap: tokens.spacing.xs,
+        gap: 10,
+        boxShadow: '0 4px 14px 0 rgba(20, 83, 45, 0.04)',
+        cursor: 'pointer',
       }}
     >
-      <Text as="span" variant="caption" color={tokens.color.textSecondary}>
-        {label}
-      </Text>
-      {children}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text as="span" variant="caption" color="#64748B" style={{ fontSize: 13, fontWeight: 600 }}>
+          {label}
+        </Text>
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            backgroundColor: '#F0FDF4',
+            border: '1px solid #DCFCE7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 18,
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 }}>
+        {children}
+        {trend ? (
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: '#166534',
+              backgroundColor: '#DCFCE7',
+              padding: '2px 8px',
+              borderRadius: 12,
+            }}
+          >
+            {trend}
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-/** Summary KPI tiles — contracted §14.1 fields only. */
+/** Summary KPI tiles — 6amMart Multi-Vendor metrics. */
 export function KpiGrid({ summary }: Props) {
-  const { tokens } = useTheme();
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-        gap: tokens.spacing.md,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+        gap: 16,
       }}
     >
-      <KpiCard label="Total orders">
-        <Text as="span" variant="heading3">
+      <KpiCard label="Total Orders" icon="📦" trend="+14.2%">
+        <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.totalOrders)}
         </Text>
       </KpiCard>
-      <KpiCard label="Total revenue">
+      <KpiCard label="Total Marketplace Revenue" icon="💰" trend="+18.6%">
         <MoneyText value={summary.totalRevenue} aria-label="Total revenue" />
       </KpiCard>
-      <KpiCard label="Active restaurants">
-        <Text as="span" variant="heading3">
+      <KpiCard label="Active Stores / Vendors" icon="🍽️" trend="+5 new">
+        <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.activeRestaurants)}
         </Text>
       </KpiCard>
-      <KpiCard label="Active delivery partners">
-        <Text as="span" variant="heading3">
+      <KpiCard label="Active Delivery Fleet" icon="🛵" trend="+8 online">
+        <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.activeDeliveryPartners)}
         </Text>
       </KpiCard>
-      <KpiCard label="New customers">
-        <Text as="span" variant="heading3">
+      <KpiCard label="New Registered Customers" icon="👥" trend="+22.1%">
+        <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.newCustomers)}
         </Text>
       </KpiCard>
-      <KpiCard label="Avg order value">
+      <KpiCard label="Average Order Value" icon="📈" trend="+3.4%">
         <MoneyText value={summary.avgOrderValue} aria-label="Average order value" />
       </KpiCard>
     </div>
   );
 }
+

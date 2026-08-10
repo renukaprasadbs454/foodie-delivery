@@ -12,8 +12,9 @@ type Props = {
 /** INR money display — UI-API MoneyText (feature-local). */
 export function MoneyText({ value, 'aria-label': ariaLabel }: Props) {
   return (
-    <Text as="span" variant="heading3" aria-label={ariaLabel}>
+    <Text as="span" variant="heading2" color="#14532D" aria-label={ariaLabel}>
       {formatMoneyInr(value)}
     </Text>
   );
 }
+

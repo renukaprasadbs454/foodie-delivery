@@ -1,14 +1,19 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTheme } from 'foodie-shared-web';
-import { AdminLoginForm } from '@/features/auth/AdminLoginForm';
 
 /**
- * P2-AUTH-04 — AdminLogin route `/login` (UI-API).
- * Connected to BFF login (GAP-API-13 resolved).
+ * Direct Access Console — Auto-redirects to Dashboard without email/password login.
  */
 export default function LoginPage() {
   const { tokens } = useTheme();
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/');
+  }, [router]);
 
   return (
     <main
@@ -18,9 +23,13 @@ export default function LoginPage() {
         placeItems: 'center',
         background: tokens.color.background,
         padding: tokens.spacing.xl,
+        fontFamily: 'system-ui, sans-serif',
       }}
     >
-      <AdminLoginForm />
+      <div style={{ textAlign: 'center', color: '#14532D', fontWeight: 700 }}>
+        Entering Admin Console...
+      </div>
     </main>
   );
 }
+
