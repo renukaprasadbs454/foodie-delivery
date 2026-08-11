@@ -12,10 +12,21 @@ import {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Direct access: Redirect any request to /login straight to the Admin Dashboard /
-  if (pathname.startsWith('/login')) {
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+  const hasAuth = Boolean(accessToken || refreshToken);
+
+  // If visiting /login while authenticated, redirect to Dashboard /
+  if (hasAuth && pathname === '/login') {
     const url = request.nextUrl.clone();
     url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
+
+  // If visiting protected routes while unauthenticated, redirect to /login
+  if (!hasAuth && pathname !== '/login') {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 

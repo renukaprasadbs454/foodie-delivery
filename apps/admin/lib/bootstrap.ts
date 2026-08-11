@@ -64,24 +64,14 @@ export async function runBootstrap(dispatch: AppDispatch): Promise<void> {
     });
 
     if (!ok) {
-      dispatch(
-        setSession({
-          userId: 'admin-super-id-001',
-          role: 'SUPER_ADMIN',
-          userType: 'ADMIN',
-        }),
-      );
+      dispatch(clearSession());
+      dispatch(baseApi.util.resetApiState());
     }
   } catch (error) {
-    logger.error('Admin bootstrap fallback to active session', {
+    logger.error('Admin bootstrap refresh failed', {
       message: error instanceof Error ? error.message : 'unknown',
     });
-    dispatch(
-      setSession({
-        userId: 'admin-super-id-001',
-        role: 'SUPER_ADMIN',
-        userType: 'ADMIN',
-      }),
-    );
+    dispatch(clearSession());
+    dispatch(baseApi.util.resetApiState());
   }
 }

@@ -1,16 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ModuleSwitcher } from '@/components/ModuleSwitcher';
 import { GlobalSearchModal } from '@/components/GlobalSearchModal';
 
 interface AdminHeaderBarProps {
   role: string | null;
   onLogout: () => void;
   loggingOut: boolean;
+  isCompact?: boolean;
+  onToggleCompact?: () => void;
 }
 
-export function AdminHeaderBar({ role, onLogout, loggingOut }: AdminHeaderBarProps) {
+export function AdminHeaderBar({
+  role,
+  onLogout,
+  loggingOut,
+  isCompact = false,
+  onToggleCompact,
+}: AdminHeaderBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -31,8 +38,35 @@ export function AdminHeaderBar({ role, onLogout, loggingOut }: AdminHeaderBarPro
           zIndex: 40,
         }}
       >
-        {/* Left Side: Search & Module Switcher */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        {/* Left Side: Sidebar Toggle & Search */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {/* Hamburger Icon Toggle Button */}
+          {onToggleCompact ? (
+            <button
+              type="button"
+              onClick={onToggleCompact}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 38,
+                height: 38,
+                borderRadius: 10,
+                border: isCompact ? '1px solid #F59E0B' : '1px solid #E2E8F0',
+                backgroundColor: isCompact ? '#FEF3C7' : '#F8FAFC',
+                color: isCompact ? '#D97706' : '#334155',
+                fontSize: 18,
+                fontWeight: 700,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+              aria-label="Toggle sidebar compact mode"
+              title={isCompact ? 'Expand sidebar (Pin)' : 'Collapse sidebar (Hover to peek panel)'}
+            >
+              ☰
+            </button>
+          ) : null}
+
           {/* Global Search Quick Launcher */}
           <button
             type="button"
@@ -59,12 +93,9 @@ export function AdminHeaderBar({ role, onLogout, loggingOut }: AdminHeaderBarPro
               ⌘K
             </kbd>
           </button>
-
-          {/* Module Switcher */}
-          <ModuleSwitcher />
         </div>
 
-        {/* Right Side: Status, Alerts & Admin Profile */}
+        {/* Right Side: Status & Admin Profile */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           {/* API Health Status indicator */}
           <div
@@ -84,28 +115,6 @@ export function AdminHeaderBar({ role, onLogout, loggingOut }: AdminHeaderBarPro
             <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#22C55E' }} className="pulse-live" />
             <span>API Online</span>
           </div>
-
-          {/* Sound Alert Toggle */}
-          <button
-            type="button"
-            onClick={() => setSoundEnabled(!soundEnabled)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 12px',
-              borderRadius: 8,
-              border: soundEnabled ? '1px solid #FEF3C7' : '1px solid #E2E8F0',
-              backgroundColor: soundEnabled ? '#FEF3C7' : '#F8FAFC',
-              color: soundEnabled ? '#D97706' : '#64748B',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-            title={soundEnabled ? 'Live Order Sound Alerts Enabled' : 'Sound Alerts Muted'}
-          >
-            <span>{soundEnabled ? '🔔 Sound ON' : '🔕 Muted'}</span>
-          </button>
 
           {/* Profile Dropdown Area */}
           <div style={{ position: 'relative' }}>
@@ -185,26 +194,29 @@ export function AdminHeaderBar({ role, onLogout, loggingOut }: AdminHeaderBarPro
                     🛡️ System Audit Logs
                   </a>
                 </div>
-                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 4 }}>
+                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 8, paddingBottom: 4, paddingLeft: 16, paddingRight: 16 }}>
+                  {/* Sound Alert Toggle inside Profile Menu */}
                   <button
                     type="button"
-                    disabled={loggingOut}
-                    onClick={onLogout}
+                    onClick={() => setSoundEnabled(!soundEnabled)}
                     style={{
                       width: '100%',
-                      textAlign: 'left',
-                      padding: '8px 16px',
-                      fontSize: 13,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      border: soundEnabled ? '1px solid #FEF3C7' : '1px solid #E2E8F0',
+                      backgroundColor: soundEnabled ? '#FEF3C7' : '#F8FAFC',
+                      color: soundEnabled ? '#D97706' : '#64748B',
+                      fontSize: 12,
                       fontWeight: 700,
-                      color: '#DC2626',
-                      backgroundColor: 'transparent',
-                      border: 'none',
                       cursor: 'pointer',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FEF2F2')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                    title={soundEnabled ? 'Live Order Sound Alerts Enabled' : 'Sound Alerts Muted'}
                   >
-                    {loggingOut ? 'Logging out...' : '🚪 Log out'}
+                    <span>{soundEnabled ? '🔔 Sound ON' : '🔕 Muted'}</span>
+                    <span style={{ fontSize: 10 }}>Toggle</span>
                   </button>
                 </div>
               </div>

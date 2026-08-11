@@ -23,6 +23,10 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = React.useState(false);
 
+  // Compact Hover-to-Peek Panel state
+  const [isCompact, setIsCompact] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
+
   const onLogout = async () => {
     setLoggingOut(true);
     await logoutAdmin(dispatch);
@@ -30,12 +34,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     setLoggingOut(false);
   };
 
-  // Group navigation items by category
-  const categories: NavCategory[] = ['MAIN', 'BUSINESS MANAGERS', 'ORDER HUB', 'FINANCE & MARKETING', 'SYSTEM'];
-  const groupedNav = categories.reduce<Record<string, NavItem[]>>((acc, cat) => {
-    acc[cat] = nav.filter((item) => item.category === cat);
-    return acc;
-  }, {});
+  const isExpanded = !isCompact || isHovered;
 
   return (
     <div
@@ -50,33 +49,48 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '270px 1fr',
+          gridTemplateColumns: isCompact ? '72px 1fr' : '270px 1fr',
+          transition: 'grid-template-columns 0.25s ease',
           flex: 1,
+          position: 'relative',
         }}
       >
         {/* Sidebar Navigation */}
         <aside
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           style={{
+            position: isCompact && isHovered ? 'absolute' : 'relative',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            zIndex: isCompact && isHovered ? 50 : 10,
+            width: isExpanded ? 270 : 72,
             backgroundColor: '#0F3D21',
             color: '#FFFFFF',
-            padding: '24px 16px',
+            padding: isExpanded ? '24px 16px' : '24px 10px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: '4px 0 16px rgba(0,0,0,0.1)',
+            boxShadow: isCompact && isHovered ? '8px 0 24px rgba(0,0,0,0.3)' : '4px 0 16px rgba(0,0,0,0.1)',
             borderRight: '1px solid rgba(255,255,255,0.05)',
+            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease, box-shadow 0.25s ease',
+            overflowX: 'hidden',
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Brand Header */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.5px' }}>
-                  Admin <span style={{ color: '#F59E0B' }}>Panel</span>
-                </div>
-                <span style={{ fontSize: 22 }} title="Admin Console">
-                  👑
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: isExpanded ? 'space-between' : 'center' }}>
+                {isExpanded ? (
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
+                    Admin <span style={{ color: '#F59E0B' }}>Panel</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 22 }} title="Admin Console">
+                    🍔
+                  </span>
+                )}
               </div>
             </div>
 
@@ -87,18 +101,23 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   backgroundColor: '#14532D',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
                   borderRadius: 10,
-                  padding: '10px 14px',
+                  padding: isExpanded ? '10px 14px' : '10px 6px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'space-between',
+                  justifyContent: isExpanded ? 'space-between' : 'center',
                 }}
+                title={`Active Role: ${role}`}
               >
-                <div>
-                  <div style={{ fontSize: 10, color: '#A7F3D0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
-                    Active Role
+                {isExpanded ? (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#A7F3D0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+                      Active Role
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>{role}</div>
                   </div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF' }}>{role}</div>
-                </div>
+                ) : (
+                  <span style={{ fontSize: 14 }}>🛡️</span>
+                )}
                 <span style={{ height: 8, width: 8, borderRadius: '50%', backgroundColor: '#F59E0B' }} className="pulse-live" />
               </div>
             ) : null}
@@ -125,26 +144,27 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     <li key={item.href}>
                       <Link
                         href={item.href}
+                        title={!isExpanded ? item.label : undefined}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '9px 12px',
+                          justifyContent: isExpanded ? 'space-between' : 'center',
+                          padding: isExpanded ? '9px 12px' : '10px 0',
                           borderRadius: 8,
                           fontSize: 13,
                           fontWeight: isActive ? 700 : 500,
                           color: isActive ? '#0F3D21' : '#E6F4EA',
                           backgroundColor: isActive ? '#FEF3C7' : 'transparent',
-                          borderLeft: isActive ? '4px solid #F59E0B' : '4px solid transparent',
+                          borderLeft: isExpanded ? (isActive ? '4px solid #F59E0B' : '4px solid transparent') : 'none',
                           textDecoration: 'none',
                           transition: 'all 0.15s ease-in-out',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ fontSize: 16 }}>{item.icon ?? '📌'}</span>
-                          <span>{item.label}</span>
+                          {isExpanded ? <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span> : null}
                         </div>
-                        {item.badge ? (
+                        {isExpanded && item.badge ? (
                           <span
                             style={{
                               fontSize: 10,
@@ -165,60 +185,18 @@ export function DashboardShell({ children }: { children: ReactNode }) {
               </ul>
             </nav>
           </div>
-
-          {/* Bottom User Profile & Logout */}
-          <div
-            style={{
-              paddingTop: 16,
-              borderTop: '1px solid rgba(255,255,255,0.1)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-            }}
-          >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: '#14532D',
-                color: '#F59E0B',
-                border: '2px solid #F59E0B',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 800,
-                fontSize: 14,
-              }}
-            >
-              👑
-            </div>
-            <button
-              type="button"
-              aria-label="Log out"
-              disabled={loggingOut}
-              onClick={() => {
-                void onLogout();
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#F59E0B',
-                fontSize: 13,
-                fontWeight: 800,
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              {loggingOut ? 'Logging out...' : 'Log out'}
-            </button>
-          </div>
         </aside>
 
         {/* Main Content Area */}
         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowX: 'hidden' }}>
           {/* Top Header Bar */}
-          <AdminHeaderBar role={role} onLogout={() => void onLogout()} loggingOut={loggingOut} />
+          <AdminHeaderBar
+            role={role}
+            onLogout={() => void onLogout()}
+            loggingOut={loggingOut}
+            isCompact={isCompact}
+            onToggleCompact={() => setIsCompact((prev) => !prev)}
+          />
 
           {/* Page Content Container */}
           <main style={{ padding: '28px 32px', flex: 1, backgroundColor: '#F8FAFC' }}>{children}</main>

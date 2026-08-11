@@ -61,6 +61,7 @@ export type NavItem = {
 export const DASHBOARD_NAV: readonly NavItem[] = [
   { href: '/', label: 'Dashboard', category: 'MAIN', icon: '📊' },
   { href: '/analytics', label: 'Analytics', category: 'MAIN', icon: '📈' },
+  { href: '/customers', label: 'Customers', category: 'BUSINESS MANAGERS', icon: '👥' },
   { href: '/restaurants', label: 'Restaurants', category: 'BUSINESS MANAGERS', icon: '🍽️' },
   { href: '/delivery-partners', label: 'Delivery Partners', category: 'BUSINESS MANAGERS', icon: '🛵' },
   {

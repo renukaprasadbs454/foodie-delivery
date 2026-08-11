@@ -43,7 +43,7 @@ export function AdminFooter() {
         {/* Brand Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingRight: 16 }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: 10, letterSpacing: '-0.5px' }}>
-            <span style={{ backgroundColor: '#10B981', color: '#FFFFFF', borderRadius: 8, padding: '4px 8px', fontSize: 18 }}>🛍️</span>
+            <span style={{ backgroundColor: '#10B981', color: '#FFFFFF', borderRadius: 8, padding: '4px 8px', fontSize: 18 }}>🍔</span>
             <span>Foodie Admin</span>
           </div>
           <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
