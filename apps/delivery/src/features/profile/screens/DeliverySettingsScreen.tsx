@@ -4,7 +4,6 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Button,
   ListItem,
-  Modal,
   Text,
   Toast,
   trackAnalyticsEvent,
@@ -114,105 +113,136 @@ export function DeliverySettingsScreen(_props: Props) {
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: tokens.color.background,
-        paddingVertical: tokens.spacing.md,
-        gap: tokens.spacing.md,
-      }}
-    >
-      <View style={{ paddingHorizontal: tokens.spacing.md }}>
-        <Text variant="heading1" accessibilityRole="header">
-          Settings
-        </Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <View style={[styles.topArch, { height: 180 }]} />
 
-      <ListItem
-        title="Notifications"
-        subtitle="Local preference + OS permission only (device-token Gap)"
-        accessibilityLabel="Notifications preference"
-        trailing={
-          <Switch
-            value={settings.notificationsEnabled}
-            onValueChange={(v) => {
-              void onToggleNotifications(v);
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={styles.headerSubtitle}>App preferences and access management</Text>
+        </View>
+
+        <View style={styles.settingsGroupList}>
+
+          <View style={styles.settingCard}>
+            <View style={styles.settingCardHeader}>
+              <View style={[styles.settingIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
+                <Feather name="bell" size={20} color="#38bdf8" />
+              </View>
+              <View style={styles.settingTextContent}>
+                <Text style={styles.settingTitle}>Notifications</Text>
+                <Text style={styles.settingSubtitle}>Local preference + OS permission</Text>
+              </View>
+              <Switch
+                value={settings.notificationsEnabled}
+                onValueChange={(v) => { void onToggleNotifications(v); }}
+                trackColor={{ false: '#CBD5E0', true: '#F59E0B' }}
+                thumbColor="#FFF"
+              />
+            </View>
+          </View>
+
+          <View style={styles.settingCard}>
+            <View style={styles.settingCardHeader}>
+              <View style={[styles.settingIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
+                <Feather name="radio" size={20} color="#14532D" />
+              </View>
+              <View style={styles.settingTextContent}>
+                <Text style={styles.settingTitle}>Push Registration</Text>
+                <Text style={styles.settingSubtitle}>
+                  {pushRegistration.permissionStatus === 'granted'
+                    ? pushRegistration.deviceToken
+                      ? `Granted · Token: ${pushRegistration.deviceToken.slice(0, 10)}...`
+                      : 'Granted · Token pending'
+                    : pushRegistration.permissionStatus === 'denied'
+                      ? 'Denied · Backend registration blocked'
+                      : 'Permission not requested'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <Pressable
+            style={styles.settingCard}
+            onPress={() => void Linking.openSettings()}
+          >
+            <View style={styles.settingCardHeader}>
+              <View style={[styles.settingIconCircle, { backgroundColor: 'rgba(236, 72, 153, 0.1)' }]}>
+                <Feather name="map-pin" size={20} color="#ec4899" />
+              </View>
+              <View style={styles.settingTextContent}>
+                <Text style={styles.settingTitle}>Location Services</Text>
+                <Text style={styles.settingSubtitle}>Background tracking for availability</Text>
+              </View>
+              <Feather name="external-link" size={18} color="#A0AEC0" />
+            </View>
+          </Pressable>
+
+          <Pressable
+            style={styles.settingCard}
+            onPress={() => {
+              trackAnalyticsEvent('notification_permission_tapped', { action: 'os_settings' });
+              void Linking.openSettings();
             }}
-            accessibilityLabel="Notifications"
-            accessibilityRole="switch"
-            accessibilityState={{ checked: settings.notificationsEnabled }}
-          />
-        }
-      />
+          >
+            <View style={styles.settingCardHeader}>
+              <View style={[styles.settingIconCircle, { backgroundColor: 'rgba(139, 92, 246, 0.1)' }]}>
+                <Feather name="sliders" size={20} color="#8b5cf6" />
+              </View>
+              <View style={styles.settingTextContent}>
+                <Text style={styles.settingTitle}>System Settings</Text>
+                <Text style={styles.settingSubtitle}>Manage OS-level permissions</Text>
+              </View>
+              <Feather name="external-link" size={18} color="#A0AEC0" />
+            </View>
+          </Pressable>
 
-      <ListItem
-        title="Push registration"
-        subtitle={
-          pushRegistration.permissionStatus === 'granted'
-            ? pushRegistration.deviceToken
-              ? `Permission granted · token captured locally (${pushRegistration.deviceToken.slice(0, 10)}...)`
-              : 'Permission granted · token capture pending locally'
-            : pushRegistration.permissionStatus === 'denied'
-              ? 'Permission denied · backend registration still blocked'
-              : 'Permission not requested yet'
-        }
-        accessibilityLabel="Push registration status"
-      />
-
-      <ListItem
-        title="Location for availability"
-        subtitle="Background location is required to go online. Manage permission in system settings."
-        accessibilityLabel="Location permission explainer"
-        onPress={() => {
-          void Linking.openSettings();
-        }}
-      />
-
-      <ListItem
-        title="Open system settings"
-        subtitle="Manage OS notification and location permission"
-        accessibilityLabel="Open system settings"
-        onPress={() => {
-          trackAnalyticsEvent('notification_permission_tapped', {
-            action: 'os_settings',
-          });
-          void Linking.openSettings();
-        }}
-      />
-
-      <View style={{ paddingHorizontal: tokens.spacing.md, marginTop: tokens.spacing.lg }}>
-        <Button
-          label="Log out"
-          accessibilityLabel="Log out"
-          variant="secondary"
-          onPress={() => setLogoutVisible(true)}
-        />
-      </View>
+          <Pressable
+            style={styles.logoutButton}
+            onPress={() => setLogoutVisible(true)}
+          >
+            <Feather name="log-out" size={20} color="#E23744" />
+            <Text style={styles.logoutButtonText}>Sign Out Securely</Text>
+          </Pressable>
+        </View>
+      </ScrollView>
 
       <Modal
         visible={logoutVisible}
         onRequestClose={() => setLogoutVisible(false)}
-        title="Log out?"
         accessibilityLabel="Confirm logout"
+        transparent
+        animationType="fade"
       >
-        <View style={{ gap: tokens.spacing.md }}>
-          <Text variant="body">
-            You will need to sign in again to accept deliveries.
-          </Text>
-          <Button
-            label="Log out"
-            accessibilityLabel="Confirm log out"
-            loading={loggingOut}
-            onPress={() => {
-              void onLogout();
-            }}
-          />
-          <Button
-            label="Cancel"
-            accessibilityLabel="Cancel log out"
-            variant="secondary"
-            onPress={() => setLogoutVisible(false)}
-          />
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalIconBox}>
+              <Feather name="log-out" size={32} color="#E23744" />
+            </View>
+            <Text style={styles.modalTitle}>Ready to leave?</Text>
+            <Text style={styles.modalBody}>
+              You will need to sign in again to accept incoming deliveries.
+            </Text>
+            <View style={styles.modalButtonGroup}>
+              <Pressable
+                style={styles.modalCancelBtn}
+                onPress={() => setLogoutVisible(false)}
+                disabled={loggingOut}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.modalConfirmBtn}
+                onPress={() => void onLogout()}
+                disabled={loggingOut}
+              >
+                <Text style={styles.modalConfirmText}>{loggingOut ? 'Signing out...' : 'Log Out'}</Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
       </Modal>
 
@@ -223,6 +253,174 @@ export function DeliverySettingsScreen(_props: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
+
+import { StyleSheet, Pressable, ScrollView, Modal } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  topArch: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    backgroundColor: '#14532D',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 60,
+  },
+  header: {
+    marginBottom: 32,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: '#A0AEC0',
+    fontWeight: '500',
+  },
+  settingsGroupList: {
+    gap: 12,
+  },
+  settingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#1A202C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  settingCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  settingTextContent: {
+    flex: 1,
+  },
+  settingTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A202C',
+    marginBottom: 2,
+  },
+  settingSubtitle: {
+    fontSize: 13,
+    color: '#718096',
+    fontWeight: '500',
+    paddingRight: 8,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(226, 55, 68, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(226, 55, 68, 0.2)',
+    borderRadius: 20,
+    height: 56,
+    marginTop: 16,
+    gap: 12,
+  },
+  logoutButtonText: {
+    color: '#E23744',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(26, 32, 44, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    padding: 32,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.25,
+    shadowRadius: 32,
+    elevation: 10,
+  },
+  modalIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(226, 55, 68, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1A202C',
+    marginBottom: 12,
+  },
+  modalBody: {
+    fontSize: 15,
+    color: '#718096',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
+  modalButtonGroup: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F7FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  modalCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#4A5568',
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#E23744',
+  },
+  modalConfirmText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+});

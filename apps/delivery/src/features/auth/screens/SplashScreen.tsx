@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, Platform } from 'react-native';
 import { LoadingSpinner, Text, trackAnalyticsEvent, useTheme } from 'foodie-shared-rn';
 
 /**
@@ -16,6 +16,8 @@ export function SplashScreen() {
     <View
       style={{
         flex: 1,
+        height: '100%',
+        width: '100%',
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: tokens.color.background,

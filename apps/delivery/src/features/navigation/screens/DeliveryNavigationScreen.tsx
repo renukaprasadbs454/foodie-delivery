@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, StyleSheet, Pressable } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
-  Button,
   Text,
   Toast,
   trackAnalyticsEvent,
@@ -21,10 +21,6 @@ import type { MainStackParamList } from '../../../navigation/types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryNavigation'>;
 
-/**
- * P2-DEL-03 — situational map + OS maps handoff + location ping (1/3s).
- * No in-app turn-by-turn. Order DTO has no lat/lng — OS handoff Partial without inventing coords.
- */
 export function DeliveryNavigationScreen({ navigation, route }: Props) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
@@ -58,15 +54,24 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
     variant: 'info' | 'success' | 'error' | 'warning';
   } | null>(null);
 
+  const [reachedRestaurant, setReachedRestaurant] = useState(false);
+  const [collected, setCollected] = useState(false);
+
   useEffect(() => {
     trackAnalyticsEvent('delivery_navigation_viewed', { leg });
   }, [leg]);
 
+  const handleReachedRestaurant = () => {
+    setReachedRestaurant(true);
+  };
+
   const onOpenOsMaps = async () => {
     trackAnalyticsEvent('open_os_maps_tapped', { leg, orderId });
     const opened = await openOsMapsHandoff({
-      latitude: lastPing?.latitude,
-      longitude: lastPing?.longitude,
+      originLat: lastPing?.latitude,
+      originLng: lastPing?.longitude,
+      destLat: leg === 'pickup' ? 12.9780 : 12.9716,
+      destLng: leg === 'pickup' ? 77.6000 : 77.5946,
       query: orderQuery.data?.orderNumber
         ? `Order ${orderQuery.data.orderNumber}`
         : undefined,
@@ -89,15 +94,9 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
 
   if (!validOrder) {
     return (
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: tokens.color.background,
-          padding: tokens.spacing.xl,
-          justifyContent: 'center',
-        }}
-      >
-        <Text variant="body">Invalid navigation parameters.</Text>
+      <View style={styles.errorContainer}>
+        <Feather name="alert-triangle" size={48} color="#A0AEC0" />
+        <Text style={styles.errorTitle}>Invalid Navigation parameters</Text>
       </View>
     );
   }
@@ -105,81 +104,115 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   const loading = orderQuery.isLoading && !orderQuery.data;
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
+    <View style={styles.container}>
+      {/* Decorative Dark Top Background */}
+      <View style={[styles.topArch, { height: 260 }]} />
+
       <ScrollView
-        contentContainerStyle={{
-          padding: tokens.spacing.md,
-          gap: tokens.spacing.md,
-          paddingBottom: 48,
-        }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Text variant="heading1" accessibilityRole="header">
-          Navigation
-        </Text>
-        <Text variant="body" color={tokens.color.textSecondary}>
-          Order {orderQuery.data?.orderNumber ?? orderId} ·{' '}
-          {status ?? 'loading'} · {leg} leg
-        </Text>
-        {!isConnected ? (
-          <Text variant="caption" color={tokens.color.warning}>
-            Offline — location pings buffered (last 2–3); most recent flushes on
-            reconnect.
+        <View style={styles.headerBox}>
+          <Text style={styles.pageTitle}>Navigation</Text>
+          <Text style={styles.pageSubtitle}>
+            Order #{orderQuery.data?.orderNumber ?? orderId} ·{' '}
+            {status ?? 'loading'} · {leg === 'pickup' ? 'To Restaurant' : 'To Customer'}
           </Text>
-        ) : null}
-        {permissionDenied ? (
-          <Text variant="caption" color={tokens.color.error}>
-            Location permission denied — cannot publish location pings.
-          </Text>
-        ) : null}
-        {loading ? <MapSkeleton /> : (
-          <TrackingMap
-            lastPing={lastPing}
-            orderStatus={status}
-            leg={leg}
-          />
-        )}
-        <Button
-          label="Open OS maps"
-          accessibilityLabel="Open OS maps for turn by turn"
-          onPress={() => {
-            void onOpenOsMaps();
-          }}
-          style={{ minHeight: 48 }}
-        />
-        {leg === 'pickup' ? (
-          <Button
-            label="Enter pickup OTP"
-            accessibilityLabel="Enter pickup OTP"
-            variant="secondary"
-            onPress={() =>
-              navigation.navigate('PickupOtp', { assignmentId, orderId })
-            }
-            style={{ minHeight: 48 }}
-          />
-        ) : (
-          <Button
-            label="Enter delivery OTP"
-            accessibilityLabel="Enter delivery OTP"
-            variant="secondary"
-            onPress={() =>
-              navigation.navigate('DeliveryOtp', { assignmentId, orderId })
-            }
-            style={{ minHeight: 48 }}
-          />
-        )}
-        <Button
-          label="Assignment details"
-          accessibilityLabel="Back to assignment details"
-          variant="secondary"
-          onPress={() =>
-            navigation.navigate('AssignmentDetails', {
-              assignmentId,
-              orderId,
-            })
-          }
-          style={{ minHeight: 48 }}
-        />
+
+          {!isConnected ? (
+            <View style={styles.warningContainer}>
+              <Feather name="wifi-off" size={16} color="#B91C1C" />
+              <Text style={styles.warningText}>
+                Offline — location pings buffered
+              </Text>
+            </View>
+          ) : null}
+          {permissionDenied ? (
+            <View style={styles.warningContainer}>
+              <Feather name="map-pin" size={16} color="#B91C1C" />
+              <Text style={styles.warningText}>
+                Location permission denied! Cannot track.
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.mapCard}>
+          {loading ? (
+            <View style={styles.mapFrame}>
+              <MapSkeleton />
+            </View>
+          ) : (
+            <View style={styles.mapFrame}>
+              <TrackingMap
+                lastPing={lastPing}
+                orderStatus={status}
+                leg={leg}
+                restaurantLocation={{ latitude: 12.9780, longitude: 77.6000 }}
+                customerLocation={{ latitude: 12.9716, longitude: 77.5946 }}
+              />
+            </View>
+          )}
+
+          <View style={styles.actionSection}>
+            <Pressable
+              style={[styles.actionButton, styles.primaryNavButton]}
+              onPress={() => void onOpenOsMaps()}
+            >
+              <Feather name="external-link" size={20} color="#FFFFFF" style={styles.actionIconLeft} />
+              <Text style={styles.actionButtonText}>Open OS Maps</Text>
+            </Pressable>
+
+            {leg === 'pickup' ? (
+              !reachedRestaurant ? (
+                <Pressable
+                  style={[styles.actionButton, styles.secondaryButton]}
+                  onPress={handleReachedRestaurant}
+                >
+                  <Feather name="map-pin" size={20} color="#14532D" style={styles.actionIconLeft} />
+                  <Text style={styles.secondaryButtonText}>Reached Restaurant</Text>
+                </Pressable>
+              ) : !collected ? (
+                <Pressable
+                  style={[styles.actionButton, styles.secondaryButton, { backgroundColor: '#FCD34D' }]}
+                  onPress={() => {
+                    setCollected(true);
+                    navigation.navigate('PickupOtp', { assignmentId, orderId });
+                  }}
+                >
+                  <Feather name="shopping-bag" size={20} color="#B45309" style={styles.actionIconLeft} />
+                  <Text style={[styles.secondaryButtonText, { color: '#B45309' }]}>Collected</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  style={[styles.actionButton, styles.tertiaryButton]}
+                  onPress={() => navigation.navigate('PickupOtp', { assignmentId, orderId })}
+                >
+                  <Feather name="box" size={20} color="#F59E0B" style={styles.actionIconLeft} />
+                  <Text style={styles.tertiaryButtonText}>Enter Pickup OTP</Text>
+                </Pressable>
+              )
+            ) : (
+              <Pressable
+                style={[styles.actionButton, styles.tertiaryButton]}
+                onPress={() => navigation.navigate('DeliveryOtp', { assignmentId, orderId })}
+              >
+                <Feather name="check-circle" size={20} color="#F59E0B" style={styles.actionIconLeft} />
+                <Text style={styles.tertiaryButtonText}>Delivered (Enter OTP)</Text>
+              </Pressable>
+            )}
+
+            <Pressable
+              style={[styles.actionButton, styles.outlineButton]}
+              onPress={() => navigation.navigate('AssignmentDetails', { assignmentId, orderId })}
+            >
+              <Feather name="info" size={20} color="#4A5568" style={styles.actionIconLeft} />
+              <Text style={styles.outlineButtonText}>Assignment Details</Text>
+            </Pressable>
+          </View>
+        </View>
       </ScrollView>
+
       <Toast
         visible={Boolean(toast)}
         message={toast?.message ?? ''}
@@ -187,6 +220,139 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
+
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  topArch: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    backgroundColor: '#14532D',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 60,
+  },
+  headerBox: {
+    marginBottom: 24,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 15,
+    color: '#A0AEC0',
+    fontWeight: '500',
+  },
+  warningContainer: {
+    backgroundColor: '#FEF2F2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    padding: 12,
+    marginTop: 16,
+  },
+  warningText: {
+    color: '#B91C1C',
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  mapCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    shadowColor: '#14532D',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  mapFrame: {
+    width: '100%',
+    height: 300,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
+    marginBottom: 16,
+  },
+  actionSection: {
+    gap: 12,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    height: 56,
+    paddingHorizontal: 20,
+  },
+  actionIconLeft: {
+    marginRight: 8,
+  },
+  primaryNavButton: {
+    backgroundColor: '#1A202C',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  secondaryButton: {
+    backgroundColor: '#F1F5F9',
+  },
+  secondaryButtonText: {
+    color: '#14532D',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  tertiaryButton: {
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+  },
+  tertiaryButtonText: {
+    color: '#F59E0B',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  outlineButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  outlineButtonText: {
+    color: '#4A5568',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  errorTitle: {
+    marginTop: 16,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4A5568',
+    textAlign: 'center',
+  }
+});

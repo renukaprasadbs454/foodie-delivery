@@ -19,8 +19,7 @@ function normalizeNotificationList(data: unknown): InboxNotification[] {
 }
 
 /**
- * Notifications RTK — P2-DEL-05 (list + mark read). No client send API.
- * Device-token registration is an API Gap — not called here.
+ * Notifications RTK — P2-DEL-05 (list + mark read + device token).
  */
 export const notificationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -42,12 +41,12 @@ export const notificationsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ notificationLogId }) => ({
-                type: 'Notification' as const,
-                id: notificationLogId,
-              })),
-              { type: 'Notification', id: 'LIST' },
-            ]
+            ...result.map(({ notificationLogId }) => ({
+              type: 'Notification' as const,
+              id: notificationLogId,
+            })),
+            { type: 'Notification', id: 'LIST' },
+          ]
           : [{ type: 'Notification', id: 'LIST' }],
       keepUnusedDataFor: 60,
     }),
@@ -98,10 +97,19 @@ export const notificationsApi = baseApi.injectEndpoints({
         { type: 'Notification', id: 'LIST' },
       ],
     }),
+    setDeviceToken: builder.mutation<null, { token: string; os: string }>({
+      query: (body) => ({
+        url: '/api/v1/notification/device-token',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+    }),
   }),
 });
 
 export const {
   useGetNotificationsQuery,
   useMarkNotificationReadMutation,
+  useSetDeviceTokenMutation,
 } = notificationsApi;

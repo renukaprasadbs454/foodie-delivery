@@ -50,6 +50,10 @@ export type PayoutRequestResult = {
 
 export type RequestPayoutArg = {
   amount: number;
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  bankName: string;
   idempotencyKey: string;
 };
 

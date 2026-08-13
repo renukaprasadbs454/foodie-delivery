@@ -44,24 +44,24 @@ export const walletApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ ledgerEntryId }) => ({
-                type: 'Wallet' as const,
-                id: `LEDGER-${ledgerEntryId}`,
-              })),
-              { type: 'Wallet', id: 'LIST' },
-            ]
+            ...result.map(({ ledgerEntryId }) => ({
+              type: 'Wallet' as const,
+              id: `LEDGER-${ledgerEntryId}`,
+            })),
+            { type: 'Wallet', id: 'LIST' },
+          ]
           : [{ type: 'Wallet', id: 'LIST' }],
       keepUnusedDataFor: 60,
     }),
     requestPayout: builder.mutation<PayoutRequestResult, RequestPayoutArg>({
-      query: ({ amount, idempotencyKey }) => ({
+      query: ({ amount, accountHolderName, accountNumber, ifscCode, bankName, idempotencyKey }) => ({
         url: '/api/v1/wallet/payout-requests',
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
-        body: { amount },
+        body: { amount, accountHolderName, accountNumber, ifscCode, bankName },
       }),
       invalidatesTags: [
         { type: 'Wallet', id: 'BALANCE' },

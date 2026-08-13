@@ -18,5 +18,6 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
   path.resolve(sharedRnRoot, 'node_modules'),
 ];
+config.resolver.disableHierarchicalLookup = true;
 
 module.exports = config;

@@ -9,11 +9,13 @@ import type { ActiveAssignmentRef } from './types';
 export type AvailabilityUiState = {
   isOnline: boolean;
   activeAssignment: ActiveAssignmentRef | null;
+  rejectedOffers: string[];
 };
 
 const initialState: AvailabilityUiState = {
   isOnline: false,
   activeAssignment: null,
+  rejectedOffers: [],
 };
 
 const availabilitySlice = createSlice({
@@ -29,6 +31,11 @@ const availabilitySlice = createSlice({
     ) {
       state.activeAssignment = action.payload;
     },
+    addRejectedOffer(state, action: PayloadAction<string>) {
+      if (!state.rejectedOffers.includes(action.payload)) {
+        state.rejectedOffers.push(action.payload);
+      }
+    },
     clearAvailability() {
       return initialState;
     },
@@ -38,7 +45,7 @@ const availabilitySlice = createSlice({
   },
 });
 
-export const { setIsOnline, setActiveAssignment, clearAvailability } =
+export const { setIsOnline, setActiveAssignment, addRejectedOffer, clearAvailability } =
   availabilitySlice.actions;
 
 export const selectIsOnline = (state: { availability: AvailabilityUiState }) =>
@@ -47,5 +54,9 @@ export const selectIsOnline = (state: { availability: AvailabilityUiState }) =>
 export const selectActiveAssignment = (state: {
   availability: AvailabilityUiState;
 }) => state.availability.activeAssignment;
+
+export const selectRejectedOffers = (state: {
+  availability: AvailabilityUiState;
+}) => state.availability.rejectedOffers;
 
 export default availabilitySlice.reducer;

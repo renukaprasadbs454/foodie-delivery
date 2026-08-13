@@ -33,5 +33,18 @@ export type UploadedDocumentMeta = {
 };
 
 export function isDeliveryDocType(value: string): value is DeliveryDocType {
-  return (DOC_TYPES as readonly string[]).includes(value);
+  return (DOC_TYPES as readonly string[]).indexOf(value) !== -1;
 }
+
+export type DeliveryProfile = {
+  deliveryPartnerId: string;
+  phone: string;
+  name: string;
+  fullName?: string;
+  vehicleType?: string;
+  vehicleNumber?: string;
+  kycStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | string;
+  isOnline: boolean;
+  profileImageUrl?: string;
+  documents?: DeliveryDocumentUploadResult[];
+};

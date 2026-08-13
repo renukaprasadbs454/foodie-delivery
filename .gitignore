@@ -1,32 +1,45 @@
-# foodie-frontend monorepo
+# Dependencies
 node_modules/
-.turbo/
-.expo/
+.pnp
+.pnp.js
+
+# Build outputs
 dist/
-web-build/
 build/
-coverage/
+.expo/
+.expo-shared/
+web-build/
 *.tsbuildinfo
-expo-env.d.ts
 
-# env / secrets
-.env
-.env.*
-!.env.example
-
-# native
-ios/
-android/
-.kotlin/
-
-# logs / OS / IDE
+# Logs & temp files
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.txt
+ip.txt
+lint.txt
+tsc-errors.txt
+tsc_errors*.txt
+manifest_test.json
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.local.yml
+*.local.yaml
+application-local.*
+
+# OS
 .DS_Store
 Thumbs.db
-.idea/
+
+# Editor
 .vscode/
+.idea/
 *.swp
 
-# packages build output
-packages/*/dist/
-apps/*/dist/
+# Lock files (keep pnpm-lock.yaml if used, but exclude npm/yarn)
+package-lock.json
+yarn.lock

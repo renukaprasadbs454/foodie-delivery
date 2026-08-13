@@ -13,6 +13,9 @@ import { PayoutRequestsScreen } from '../features/wallet/screens/PayoutRequestsS
 import { DeliveryNotificationsScreen } from '../features/notifications/screens/DeliveryNotificationsScreen';
 import { DeliveryProfileScreen } from '../features/profile/screens/DeliveryProfileScreen';
 import { DeliverySettingsScreen } from '../features/profile/screens/DeliverySettingsScreen';
+import { KycScreen } from '../features/kyc/screens/KycScreen';
+import { PendingVerificationScreen } from '../features/kyc/screens/PendingVerificationScreen';
+import { IncentivesScreen } from '../features/home/screens/IncentivesScreen';
 import type { MainStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -21,9 +24,9 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
  * Main navigator — System Design §5.1 Delivery / P2-DEL-02…05:
  * single primary Home with modal stacks (no bottom tabs).
  */
-export function MainNavigator() {
+export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof MainStackParamList }) {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
       <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreen} />
       <Stack.Screen
         name="Availability"
@@ -84,6 +87,21 @@ export function MainNavigator() {
         name="DeliverySettings"
         component={DeliverySettingsScreen}
         options={{ presentation: 'modal', headerShown: true, title: 'Settings' }}
+      />
+      <Stack.Screen
+        name="Kyc"
+        component={KycScreen}
+        options={{ presentation: 'fullScreenModal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="PendingVerification"
+        component={PendingVerificationScreen}
+        options={{ presentation: 'fullScreenModal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="Incentives"
+        component={IncentivesScreen}
+        options={{ presentation: 'modal', headerShown: false }}
       />
     </Stack.Navigator>
   );

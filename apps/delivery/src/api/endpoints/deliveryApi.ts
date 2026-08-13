@@ -2,6 +2,7 @@ import { baseApi } from '../baseApi';
 import type {
   DeliveryDocType,
   DeliveryDocumentUploadResult,
+  DeliveryProfile,
 } from '../../features/kyc/types';
 import type {
   AvailabilityState,
@@ -17,6 +18,19 @@ import type { LocationPingPayload } from '../../features/navigation/types';
  */
 export const deliveryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getDeliveryProfile: builder.query<DeliveryProfile, void>({
+      query: () => '/api/v1/delivery/me',
+      providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
+    upsertDeliveryProfile: builder.mutation<DeliveryProfile, { fullName: string; vehicleType: string; vehicleNumber?: string }>({
+      query: (body) => ({
+        url: '/api/v1/delivery/me',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+      invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
     uploadDeliveryDocument: builder.mutation<
       DeliveryDocumentUploadResult,
       {
@@ -24,16 +38,23 @@ export const deliveryApi = baseApi.injectEndpoints({
         uri: string;
         mimeType: string;
         fileName: string;
+        webFile?: any;
       }
     >({
-      query: ({ docType, uri, mimeType, fileName }) => {
+      query: ({ docType, uri, mimeType, fileName, webFile }) => {
         const formData = new FormData();
         formData.append('docType', docType);
-        formData.append('file', {
-          uri,
-          type: mimeType,
-          name: fileName,
-        } as unknown as Blob);
+
+        if (webFile) {
+          formData.append('file', webFile);
+        } else {
+          formData.append('file', {
+            uri,
+            type: mimeType,
+            name: fileName,
+          } as unknown as Blob);
+        }
+
         return {
           url: '/api/v1/delivery/me/documents',
           method: 'POST',
@@ -59,12 +80,12 @@ export const deliveryApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ assignmentId }) => ({
-                type: 'Delivery' as const,
-                id: `OFFER-${assignmentId}`,
-              })),
-              { type: 'Delivery', id: 'OFFERS' },
-            ]
+            ...result.map(({ assignmentId }) => ({
+              type: 'Delivery' as const,
+              id: `OFFER-${assignmentId}`,
+            })),
+            { type: 'Delivery', id: 'OFFERS' },
+          ]
           : [{ type: 'Delivery', id: 'OFFERS' }],
       keepUnusedDataFor: 15,
     }),
@@ -131,10 +152,67 @@ export const deliveryApi = baseApi.injectEndpoints({
         { type: 'Wallet', id: 'BALANCE' },
       ],
     }),
+    uploadDeliveryProfileImage: builder.mutation<
+      { profileImageKey: string; uploadedAt: string },
+      { uri: string; mimeType: string; fileName: string }
+    >({
+      query: ({ uri, mimeType, fileName }) => {
+        const formData = new FormData();
+        formData.append('file', {
+          uri,
+          type: mimeType,
+          name: fileName,
+        } as unknown as Blob);
+        return {
+          url: '/api/v1/delivery/me/profile-image',
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
+    verifyFace: builder.mutation<
+      boolean,
+      { assignmentId: string; uri: string; mimeType: string; fileName: string }
+    >({
+      query: ({ assignmentId, uri, mimeType, fileName }) => {
+        const formData = new FormData();
+        formData.append('file', {
+          uri,
+          type: mimeType,
+          name: fileName,
+        } as unknown as Blob);
+        return {
+          url: `/api/v1/delivery/assignments/${assignmentId}/verify-face`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
+    verifyFaceForOnline: builder.mutation<
+      boolean,
+      { uri: string; mimeType: string; fileName: string }
+    >({
+      query: ({ uri, mimeType, fileName }) => {
+        const formData = new FormData();
+        formData.append('file', {
+          uri,
+          type: mimeType,
+          name: fileName,
+        } as unknown as Blob);
+        return {
+          url: '/api/v1/delivery/me/verify-face',
+          method: 'POST',
+          body: formData,
+        };
+      },
+    }),
   }),
 });
 
 export const {
+  useGetDeliveryProfileQuery,
+  useUpsertDeliveryProfileMutation,
   useUploadDeliveryDocumentMutation,
   useSetAvailabilityMutation,
   useGetDeliveryOffersQuery,
@@ -142,4 +220,7 @@ export const {
   useLocationPingMutation,
   useVerifyPickupOtpMutation,
   useVerifyDeliveryOtpMutation,
+  useUploadDeliveryProfileImageMutation,
+  useVerifyFaceMutation,
+  useVerifyFaceForOnlineMutation,
 } = deliveryApi;

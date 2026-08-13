@@ -43,6 +43,9 @@ export type MainStackParamList = {
   DeliveryNotifications: undefined;
   DeliveryProfile: undefined;
   DeliverySettings: undefined;
+  Kyc: undefined;
+  PendingVerification: undefined;
+  Incentives: undefined;
 };
 
 export type RootStackParamList = {

@@ -71,8 +71,12 @@ export default function App() {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    height: '100%',
+    width: '100%',
   },
   content: {
     flex: 1,
+    height: '100%',
+    width: '100%',
   },
 });

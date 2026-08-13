@@ -50,7 +50,7 @@ describe('location ping buffer (P2-DEL-03)', () => {
 describe('os maps handoff (P2-DEL-03)', () => {
   it('builds destination URL when coords present', () => {
     const url = buildOsMapsUrl(
-      { latitude: 12.9, longitude: 77.6 },
+      { destLat: 12.9, destLng: 77.6, originLat: 1.0, originLng: 1.0 },
       'android',
     );
     expect(url.includes('12.9')).toBe(true);

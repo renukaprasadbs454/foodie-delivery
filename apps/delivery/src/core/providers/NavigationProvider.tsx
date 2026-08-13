@@ -1,10 +1,11 @@
-import React, { type ReactNode } from 'react';
+import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 /**
  * Navigation-adjacent providers — SafeArea for React Navigation.
  * NavigationContainer lives in RootNavigator (auth-gated).
  */
-export function NavigationProvider({ children }: { children: ReactNode }) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function NavigationProvider({ children }: { children: any }) {
   return <SafeAreaProvider>{children}</SafeAreaProvider>;
 }

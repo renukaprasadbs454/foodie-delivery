@@ -26,7 +26,7 @@ const initialState: AuthState = {
   userType: null,
   userId: null,
   isNewUser: false,
-  authStatus: 'idle',
+  authStatus: 'unauthenticated',
 };
 
 export type SetCredentialsPayload = {
@@ -56,7 +56,7 @@ const authSlice = createSlice({
       state.isNewUser = false;
     },
     clearCredentials() {
-      return { ...initialState, authStatus: 'unauthenticated' as const };
+      return initialState;
     },
   },
 });

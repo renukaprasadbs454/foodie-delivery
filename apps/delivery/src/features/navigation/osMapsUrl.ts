@@ -4,8 +4,10 @@
  */
 
 export type OsMapsHandoffArgs = {
-  latitude?: number;
-  longitude?: number;
+  originLat?: number;
+  originLng?: number;
+  destLat?: number;
+  destLng?: number;
   query?: string;
 };
 
@@ -13,17 +15,19 @@ export function buildOsMapsUrl(
   args: OsMapsHandoffArgs,
   platform: 'ios' | 'android' | 'web' | string = 'android',
 ): string {
-  const { latitude, longitude, query } = args;
+  const { originLat, originLng, destLat, destLng, query } = args;
   if (
-    typeof latitude === 'number' &&
-    typeof longitude === 'number' &&
-    Number.isFinite(latitude) &&
-    Number.isFinite(longitude)
+    typeof destLat === 'number' &&
+    typeof destLng === 'number' &&
+    Number.isFinite(destLat) &&
+    Number.isFinite(destLng)
   ) {
     if (platform === 'ios') {
-      return `http://maps.apple.com/?daddr=${latitude},${longitude}&dirflg=d`;
+      const originParam = (typeof originLat === 'number') ? `&saddr=${originLat},${originLng}` : '';
+      return `http://maps.apple.com/?daddr=${destLat},${destLng}${originParam}&dirflg=d`;
     }
-    return `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+    const originParam = (typeof originLat === 'number') ? `&origin=${originLat},${originLng}` : '';
+    return `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}${originParam}&travelmode=two-wheeler`;
   }
 
   const q = (query ?? '').trim();

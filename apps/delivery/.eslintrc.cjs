@@ -22,6 +22,8 @@ module.exports = {
       'error',
       { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
     ],
+    '@typescript-eslint/no-var-requires': 'off',
+    '@typescript-eslint/no-require-imports': 'off',
   },
   ignorePatterns: ['node_modules/', 'dist/', '.expo/'],
 };

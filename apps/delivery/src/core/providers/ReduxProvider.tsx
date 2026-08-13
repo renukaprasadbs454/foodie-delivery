@@ -15,7 +15,8 @@ export function ReduxProvider({ children }: { children: ReactNode }) {
         }
         persistor={persistor}
       >
-        {children}
+        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+        {children as any}
       </PersistGate>
     </Provider>
   );

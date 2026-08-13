@@ -43,7 +43,7 @@ const stripAuthTokensTransform = createTransform<AuthState, AuthState>(
 );
 
 const persistConfig = {
-  key: 'foodie-delivery',
+  key: 'foodie-delivery-v3',
   storage: AsyncStorage,
   whitelist: ['auth'],
   transforms: [stripAuthTokensTransform],

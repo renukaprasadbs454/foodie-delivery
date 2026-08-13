@@ -18,7 +18,7 @@ export const usersApi = baseApi.injectEndpoints({
           name: fileName,
         } as unknown as Blob);
         return {
-          url: '/api/v1/users/me/profile-image',
+          url: '/api/v1/delivery/me/profile-image',
           method: 'POST',
           body: formData,
         };

@@ -3,6 +3,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   View,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -42,42 +43,41 @@ export function LedgerScreen(_props: Props) {
   }, []);
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
+    <SafeAreaView style={styles.container}>
+      <View style={[styles.topArch, { height: 160 }]} />
+
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Ledger</Text>
+        <Text style={styles.headerSubtitle}>View all your transaction history</Text>
+      </View>
+
+      {!isConnected && (
+        <View style={styles.warningContainer}>
+          <Text style={styles.warningText}>
+            Offline — showing cached ledger pages.
+          </Text>
+        </View>
+      )}
+
       <FlatList
         data={feed.items}
         keyExtractor={(item) => item.ledgerEntryId}
-        contentContainerStyle={{
-          padding: tokens.spacing.md,
-          gap: tokens.spacing.md,
-          paddingBottom: 48,
-          flexGrow: 1,
-        }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={feed.isFetching && feed.items.length > 0}
             onRefresh={() => {
               void feed.refetch();
             }}
+            tintColor="#FFF"
+            colors={['#F59E0B']}
           />
         }
         ListHeaderComponent={
-          <View style={{ gap: tokens.spacing.md, marginBottom: tokens.spacing.sm }}>
-            <Text variant="heading1" accessibilityRole="header">
-              Ledger
-            </Text>
-            {!isConnected ? (
-              <Text variant="caption" color={tokens.color.warning}>
-                Offline — showing cached ledger pages.
-              </Text>
-            ) : null}
-            <Text variant="label">Sort</Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: tokens.spacing.sm,
-              }}
-            >
+          <View style={styles.sortContainer}>
+            <Text style={styles.sortLabel}>Sort By</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortChips}>
               {SORT_OPTIONS.map((option) => {
                 const selected = sort === option.value;
                 return (
@@ -85,55 +85,39 @@ export function LedgerScreen(_props: Props) {
                     key={option.value}
                     onPress={() => {
                       setSort(option.value);
-                      trackAnalyticsEvent('filter_changed', {
-                        sort: option.value,
-                      });
+                      trackAnalyticsEvent('filter_changed', { sort: option.value });
                     }}
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
                     accessibilityLabel={option.label}
-                    style={{
-                      paddingHorizontal: tokens.spacing.md,
-                      paddingVertical: tokens.spacing.sm,
-                      minHeight: 48,
-                      justifyContent: 'center',
-                      borderRadius: tokens.radius.sm,
-                      borderWidth: 1,
-                      borderColor: tokens.color.border,
-                      backgroundColor: selected
-                        ? tokens.color.accent
-                        : tokens.color.surface,
-                    }}
+                    style={[styles.sortChip, selected && styles.sortChipActive]}
                   >
-                    <Text
-                      variant="body"
-                      color={
-                        selected
-                          ? tokens.color.textInverse
-                          : tokens.color.textPrimary
-                      }
-                    >
-                      {option.value}
+                    <Text style={[styles.sortChipText, selected && styles.sortChipTextActive]}>
+                      {option.label}
                     </Text>
                   </Pressable>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         }
         ListEmptyComponent={
           feed.isLoading ? (
             <LedgerSkeleton />
           ) : (
-            <EmptyState
-              title="No ledger entries"
-              description={
-                feed.isError
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Feather name={feed.isError ? 'alert-triangle' : 'file-text'} size={32} color="#A0AEC0" />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {feed.isError ? 'Load Failed' : 'No Transactions'}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {feed.isError
                   ? 'Could not load ledger. Pull to retry.'
-                  : 'Credits and debits will appear here after deliveries and payouts.'
-              }
-              accessibilityLabel="Empty ledger"
-            />
+                  : 'Credits and debits will appear here after deliveries.'}
+              </Text>
+            </View>
           )
         }
         ListFooterComponent={
@@ -142,21 +126,150 @@ export function LedgerScreen(_props: Props) {
               onPress={feed.onLoadMore}
               accessibilityRole="button"
               accessibilityLabel="Load more ledger entries"
-              style={{
-                minHeight: 48,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginTop: tokens.spacing.sm,
-              }}
+              style={styles.loadMoreButton}
             >
-              <Text variant="body" color={tokens.color.accent}>
-                {feed.isFetching ? 'Loading…' : 'Load more'}
+              <Text style={styles.loadMoreText}>
+                {feed.isFetching ? 'Loading...' : 'Load older entries'}
               </Text>
             </Pressable>
           ) : null
         }
         renderItem={({ item }) => <LedgerRow entry={item} />}
       />
-    </View>
+    </SafeAreaView>
   );
 }
+
+import { StyleSheet } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  topArch: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    backgroundColor: '#14532D',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 24,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#FFF',
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 15,
+    color: '#A0AEC0',
+    fontWeight: '500',
+  },
+  warningContainer: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#F87171',
+    borderRadius: 12,
+    padding: 16,
+    marginHorizontal: 20,
+    marginBottom: 16,
+  },
+  warningText: {
+    color: '#B91C1C',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  sortContainer: {
+    marginBottom: 24,
+  },
+  sortLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A202C',
+    marginBottom: 12,
+  },
+  sortChips: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingRight: 32,
+  },
+  sortChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  sortChipActive: {
+    backgroundColor: '#14532D',
+    borderColor: '#14532D',
+  },
+  sortChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#718096',
+  },
+  sortChipTextActive: {
+    color: '#FFF',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    shadowColor: '#1A202C',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#1A202C',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#718096',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  loadMoreButton: {
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 53, 0.2)',
+    marginTop: 8,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F59E0B',
+  },
+});
