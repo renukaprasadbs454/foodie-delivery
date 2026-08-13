@@ -140,7 +140,7 @@ export function AiAssistantWidget() {
         }}
       >
         <span style={{ fontSize: 18 }}>🤖</span>
-        <span>Ask FoodieBot</span>
+        <span>FoodieBot</span>
       </button>
 
       {/* Floating AI Chat Window Drawer */}
@@ -179,7 +179,7 @@ export function AiAssistantWidget() {
               <span style={{ fontSize: 22 }}>🤖</span>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#FFFFFF' }}>
-                  Ask FoodieBot
+                  FoodieBot
                 </div>
                 <div style={{ fontSize: 11, color: '#FEF3C7', display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span
@@ -351,7 +351,7 @@ export function AiAssistantWidget() {
           >
             <input
               type="text"
-              placeholder="Ask FoodieBot... How can I help you today?"
+              placeholder="Message FoodieBot..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {

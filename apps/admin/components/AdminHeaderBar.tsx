@@ -1,45 +1,127 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { GlobalSearchModal } from '@/components/GlobalSearchModal';
 
 interface AdminHeaderBarProps {
-  role: string | null;
-  onLogout: () => void;
-  loggingOut: boolean;
+  role?: string | null;
+  onLogout?: () => void;
+  loggingOut?: boolean;
   isCompact?: boolean;
   onToggleCompact?: () => void;
 }
 
+type PolicyTab = 'ABOUT' | 'PRIVACY' | 'TERMS' | 'CONTACT' | null;
+
 export function AdminHeaderBar({
-  role,
-  onLogout,
-  loggingOut,
   isCompact = false,
   onToggleCompact,
 }: AdminHeaderBarProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+
+  // Active Policy / Info Modal State
+  const [activeModalTab, setActiveModalTab] = useState<PolicyTab>(null);
+
+  const renderModalContent = () => {
+    switch (activeModalTab) {
+      case 'ABOUT':
+        return {
+          title: 'ℹ️ About us',
+          subtitle: 'Enterprise Hyperlocal Multi-Vendor Platform',
+          body: (
+            <div style={{ fontSize: '0.875rem', lineHeight: '1.6', color: '#334155' }}>
+              <p style={{ margin: '0 0 12px 0' }}>
+                Foodie Admin is the centralized operational console for managing hyperlocal food delivery networks, cloud kitchens, bakeries, cafes, and courier logistics.
+              </p>
+              <p style={{ margin: 0 }}>
+                Powered by a robust Spring Boot microservice backend and Next.js frontend, Foodie connects customers, restaurants, and delivery dispatchers with real-time order tracking and automated payout management.
+              </p>
+            </div>
+          ),
+        };
+      case 'PRIVACY':
+        return {
+          title: '🔒 Privacy policy',
+          subtitle: 'Enterprise Data Security & Privacy Guidelines',
+          body: (
+            <div style={{ fontSize: '0.875rem', lineHeight: '1.6', color: '#334155' }}>
+              <p style={{ margin: '0 0 10px 0' }}>
+                We prioritize user and merchant privacy with strict compliance standards:
+              </p>
+              <ul style={{ paddingLeft: '20px', margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <li>All network communications are secured with 256-bit SSL encryption.</li>
+                <li>Delivery driver KYC documents are stored securely with temporary signed URLs.</li>
+                <li>Payment transaction data complies with strict PCI-DSS guidelines.</li>
+              </ul>
+            </div>
+          ),
+        };
+      case 'TERMS':
+        return {
+          title: '📜 Terms and condition',
+          subtitle: 'Operational Rules & Platform Terms of Service',
+          body: (
+            <div style={{ fontSize: '0.875rem', lineHeight: '1.6', color: '#334155' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <strong>Merchant Terms:</strong> Restaurants agree to keep menu items and availability updated in real-time.
+                </div>
+                <div style={{ padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <strong>Delivery Partner Agreement:</strong> Delivery partners earn minimum guaranteed payouts per assignment or per-kilometer rates (whichever is greater).
+                </div>
+                <div style={{ padding: '10px', backgroundColor: '#F8FAFC', borderRadius: '8px', border: '1px solid #E2E8F0' }}>
+                  <strong>Order Fulfillment:</strong> Order cancellations and refund policies follow standard platform SLAs.
+                </div>
+              </div>
+            </div>
+          ),
+        };
+      case 'CONTACT':
+        return {
+          title: '📞 Contact us',
+          subtitle: 'Operations & Technical Support Desk',
+          body: (
+            <div style={{ fontSize: '0.875rem', lineHeight: '1.6', color: '#334155' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div><strong>Phone Support:</strong> +91 98765 43210</div>
+                <div><strong>Email:</strong> support@foodie.com</div>
+                <div><strong>Headquarters:</strong> Foodie HQ, Level 2, Avenue 11, Bangalore 560103, India</div>
+                <div style={{ backgroundColor: '#ECFDF5', padding: '12px', borderRadius: '8px', border: '1px solid #A7F3D0', color: '#065F46', fontWeight: 600 }}>
+                  Need operational assistance? Click Support Ticket in the footer to submit an instant ticket to our dispatch desk.
+                </div>
+              </div>
+            </div>
+          ),
+        };
+      default:
+        return null;
+    }
+  };
+
+  const modalDetails = renderModalContent();
 
   return (
     <>
       <header
+        className="admin-header-responsive"
         style={{
           backgroundColor: '#FFFFFF',
           borderBottom: '1px solid #E2E8F0',
-          padding: '14px 28px',
+          padding: '12px 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+          flexWrap: 'wrap',
+          gap: 12,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
           position: 'sticky',
           top: 0,
-          zIndex: 40,
+          zIndex: 50,
         }}
       >
         {/* Left Side: Sidebar Toggle & Search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           {/* Hamburger Icon Toggle Button */}
           {onToggleCompact ? (
             <button
@@ -74,8 +156,8 @@ export function AdminHeaderBar({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
-              padding: '8px 14px',
+              gap: 8,
+              padding: '8px 12px',
               backgroundColor: '#F8FAFC',
               border: '1px solid #E2E8F0',
               borderRadius: 10,
@@ -83,150 +165,223 @@ export function AdminHeaderBar({
               fontSize: 13,
               fontWeight: 500,
               cursor: 'pointer',
-              minWidth: 260,
+              maxWidth: '100%',
               transition: 'border-color 0.15s ease',
             }}
           >
             <span>🔍</span>
-            <span style={{ flex: 1, textAlign: 'left' }}>Search console...</span>
-            <kbd style={{ fontSize: 10, fontWeight: 700, backgroundColor: '#E2E8F0', color: '#475569', padding: '2px 6px', borderRadius: 4 }}>
+            <span style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>Search console...</span>
+            <kbd className="hide-mobile-kbd" style={{ fontSize: 10, fontWeight: 700, backgroundColor: '#E2E8F0', color: '#475569', padding: '2px 6px', borderRadius: 4 }}>
               ⌘K
             </kbd>
           </button>
         </div>
 
-        {/* Right Side: Status & Admin Profile */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* API Health Status indicator */}
-          <div
+        {/* Center/Right: Top Navbar Features (Home | About us | Privacy policy | Terms and condition | Contact us) */}
+        <nav
+          className="top-navbar-scroll"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 24,
+            fontSize: 14,
+            fontWeight: 600,
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            padding: '4px 0',
+            maxWidth: '100%',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          <Link
+            href="/"
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              color: '#166534',
-              backgroundColor: '#DCFCE7',
-              padding: '4px 10px',
-              borderRadius: 20,
+              color: '#10B981',
+              fontWeight: 700,
+              textDecoration: 'none',
+              fontSize: 14,
+              transition: 'color 0.15s ease',
             }}
-            title="System Services Operational"
           >
-            <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#22C55E' }} className="pulse-live" />
-            <span>API Online</span>
-          </div>
+            Home
+          </Link>
 
-          {/* Profile Dropdown Area */}
-          <div style={{ position: 'relative' }}>
-            <button
-              type="button"
-              onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '4px 8px',
-                borderRadius: 20,
-                border: '1px solid #E2E8F0',
-                backgroundColor: '#FFFFFF',
-                cursor: 'pointer',
-              }}
-            >
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: '50%',
-                  backgroundColor: '#14532D',
-                  color: '#F59E0B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 800,
-                  fontSize: 13,
-                  border: '2px solid #F59E0B',
-                }}
-              >
-                {role ? role.substring(0, 2) : 'AD'}
-              </div>
-              <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#14532D' }}>{role ?? 'Admin'}</div>
-                <div style={{ fontSize: 10, color: '#64748B' }}>Super Console</div>
-              </div>
-              <span style={{ fontSize: 10, color: '#64748B' }}>▼</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => setActiveModalTab('ABOUT')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeModalTab === 'ABOUT' ? '#10B981' : '#475569',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'color 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#10B981')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = activeModalTab === 'ABOUT' ? '#10B981' : '#475569')}
+          >
+            About us
+          </button>
 
-            {/* Profile Dropdown Menu */}
-            {isProfileMenuOpen ? (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: '110%',
-                  width: 220,
-                  backgroundColor: '#FFFFFF',
-                  borderRadius: 12,
-                  boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1)',
-                  border: '1px solid #E2E8F0',
-                  padding: '8px 0',
-                  zIndex: 50,
-                }}
-              >
-                <div style={{ padding: '8px 16px', borderBottom: '1px solid #F1F5F9' }}>
-                  <div style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', fontWeight: 700 }}>Logged in as</div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: '#14532D' }}>{role ?? 'Admin'}</div>
-                </div>
-                <div style={{ padding: '4px 0' }}>
-                  <a
-                    href="/analytics"
-                    style={{ display: 'block', padding: '8px 16px', fontSize: 13, color: '#334155' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    📊 Executive Analytics
-                  </a>
-                  <a
-                    href="/audit-log"
-                    style={{ display: 'block', padding: '8px 16px', fontSize: 13, color: '#334155' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                  >
-                    🛡️ System Audit Logs
-                  </a>
-                </div>
-                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 8, paddingBottom: 4, paddingLeft: 16, paddingRight: 16 }}>
-                  {/* Sound Alert Toggle inside Profile Menu */}
-                  <button
-                    type="button"
-                    onClick={() => setSoundEnabled(!soundEnabled)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      border: soundEnabled ? '1px solid #FEF3C7' : '1px solid #E2E8F0',
-                      backgroundColor: soundEnabled ? '#FEF3C7' : '#F8FAFC',
-                      color: soundEnabled ? '#D97706' : '#64748B',
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                    title={soundEnabled ? 'Live Order Sound Alerts Enabled' : 'Sound Alerts Muted'}
-                  >
-                    <span>{soundEnabled ? '🔔 Sound ON' : '🔕 Muted'}</span>
-                    <span style={{ fontSize: 10 }}>Toggle</span>
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
+          <button
+            type="button"
+            onClick={() => setActiveModalTab('PRIVACY')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeModalTab === 'PRIVACY' ? '#10B981' : '#475569',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'color 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#10B981')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = activeModalTab === 'PRIVACY' ? '#10B981' : '#475569')}
+          >
+            Privacy policy
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveModalTab('TERMS')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeModalTab === 'TERMS' ? '#10B981' : '#475569',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'color 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#10B981')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = activeModalTab === 'TERMS' ? '#10B981' : '#475569')}
+          >
+            Terms and condition
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveModalTab('CONTACT')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: activeModalTab === 'CONTACT' ? '#10B981' : '#475569',
+              fontWeight: 600,
+              fontSize: 14,
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'color 0.15s ease',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#10B981')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = activeModalTab === 'CONTACT' ? '#10B981' : '#475569')}
+          >
+            Contact us
+          </button>
+        </nav>
       </header>
 
       {/* Global Search Dialog Modal */}
       <GlobalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* Policy & Information Modal */}
+      {activeModalTab && modalDetails ? (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16,
+          }}
+          onClick={() => setActiveModalTab(null)}
+        >
+          <div
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 16,
+              maxWidth: 520,
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: 24,
+              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+              color: '#1E293B',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', margin: 0 }}>
+                  {modalDetails.title}
+                </h3>
+                <p style={{ fontSize: 12, color: '#64748B', margin: '4px 0 0 0' }}>
+                  {modalDetails.subtitle}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveModalTab(null)}
+                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              {modalDetails.body}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setActiveModalTab(null)}
+                style={{
+                  padding: '8px 20px',
+                  backgroundColor: '#10B981',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <style jsx global>{`
+        @media (max-width: 640px) {
+          .admin-header-responsive {
+            padding: 10px 14px !important;
+          }
+          .hide-mobile-kbd {
+            display: none !important;
+          }
+          .top-navbar-scroll {
+            order: 3;
+            width: 100%;
+            border-top: 1px solid #F1F5F9;
+            padding-top: 8px !important;
+            margin-top: 4px;
+          }
+        }
+      `}</style>
     </>
   );
 }

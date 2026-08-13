@@ -90,6 +90,13 @@ async function proxy(request: Request, pathSegments: string[]) {
         },
       ];
     }
+    if (path.includes('delivery-pricing')) {
+      return {
+        minPricePerDelivery: 200.0,
+        moneyPerKm: 25.0,
+        updatedAt: new Date().toISOString(),
+      };
+    }
     if (path.includes('delivery-partners')) {
       return [
         {
@@ -294,7 +301,7 @@ async function proxy(request: Request, pathSegments: string[]) {
           upstream.headers.get('Content-Type') ?? 'application/json',
       },
     });
-  } catch (_err) {
+  } catch {
     const mock = getMockData(targetPath);
     if (mock !== null) {
       return NextResponse.json(mock, { status: 200 });

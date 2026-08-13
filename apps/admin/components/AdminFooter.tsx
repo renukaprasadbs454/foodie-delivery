@@ -24,8 +24,8 @@ export function AdminFooter() {
       style={{
         width: '100%',
         boxSizing: 'border-box',
-        backgroundColor: '#0E1712',
-        color: '#94A3B8',
+        backgroundColor: '#1C2A22',
+        color: '#CBD5E1',
         padding: '56px 48px 36px 48px',
         marginTop: 0,
         borderRadius: 0,
@@ -75,52 +75,52 @@ export function AdminFooter() {
 
         {/* Product Column */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#F1F5F9', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
             PRODUCT
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none', transition: 'color 0.15s' }}>Features</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none', transition: 'color 0.15s' }}>Pricing</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none', transition: 'color 0.15s' }}>Changelog</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none', transition: 'color 0.15s' }}>Features</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none', transition: 'color 0.15s' }}>Pricing</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none', transition: 'color 0.15s' }}>Changelog</a></li>
           </ul>
         </div>
 
         {/* Company Column */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#F1F5F9', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
             COMPANY
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>About Us</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Services</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Privacy Policy</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Services & Support Policy</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Cookies Policy</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>About Us</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Services</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Privacy Policy</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Services & Support Policy</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Cookies Policy</a></li>
           </ul>
         </div>
 
         {/* Resources Column */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#F1F5F9', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
             RESOURCES
           </div>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
-            <li><a href="#" onClick={() => setIsTicketModalOpen(true)} style={{ color: '#94A3B8', textDecoration: 'none', cursor: 'pointer' }}>Support ticket</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Documentation</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>FAQs</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Tutorials</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Blog</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Community</a></li>
-            <li><a href="#" style={{ color: '#94A3B8', textDecoration: 'none' }}>Demo</a></li>
+            <li><a href="#" onClick={() => setIsTicketModalOpen(true)} style={{ color: '#CBD5E1', textDecoration: 'none', cursor: 'pointer' }}>Support ticket</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Documentation</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>FAQs</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Tutorials</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Blog</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Community</a></li>
+            <li><a href="#" style={{ color: '#CBD5E1', textDecoration: 'none' }}>Demo</a></li>
           </ul>
         </div>
 
         {/* Contact Us Column */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 800, color: '#CBD5E1', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#F1F5F9', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 18 }}>
             CONTACT US
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: '#94A3B8', lineHeight: 1.6 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, color: '#CBD5E1', lineHeight: 1.6 }}>
             <div>+91 98765 43210</div>
             <div>support@foodie.com</div>
             <div style={{ fontSize: 13, marginTop: 2, color: '#64748B' }}>
@@ -130,27 +130,7 @@ export function AdminFooter() {
         </div>
       </div>
 
-      {/* Bottom Bar Copyright */}
-      <div
-        style={{
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-          paddingTop: 24,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-          fontSize: 13,
-          color: '#64748B',
-        }}
-      >
-        <div>© {new Date().getFullYear()} Foodie Admin Marketplace. All rights reserved.</div>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <span>SSL 256-bit Encrypted</span>
-          <span>•</span>
-          <span>PCI-DSS Compliant</span>
-        </div>
-      </div>
+
 
       {/* Support Ticket Modal */}
       {isTicketModalOpen ? (

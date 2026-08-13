@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Text, trackAnalyticsEvent, useTheme } from 'foodie-shared-web';
 import { GAP_API_15_PARTNER_LIST } from '@/constants/gaps';
+import { DeliveryPricingSettingsCard } from '../components/DeliveryPricingSettingsCard';
 
 export interface DeliverymanRecord {
   id: string;
@@ -152,6 +153,9 @@ export function DeliveryPartnersPage() {
           ➕ Register Deliveryman
         </button>
       </div>
+
+      {/* Delivery Partner Pricing Rules Card */}
+      <DeliveryPricingSettingsCard />
 
       {/* Overview Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
