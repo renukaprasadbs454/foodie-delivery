@@ -32,6 +32,8 @@ export type ReviewsStackParamList = {
 export type ProfileStackParamList = {
   RestaurantProfile: undefined;
   RestaurantSettings: undefined;
+  BankAndBusinessDetails: undefined;
+  RestaurantLocation: undefined;
   RestaurantDocuments: undefined;
   RestaurantImages: undefined;
   PendingApproval: undefined;
@@ -43,6 +45,7 @@ export type ProfileStackParamList = {
 };
 
 export type MainTabParamList = {
+  DashboardTab: undefined;
   OrdersTab: undefined;
   MenuTab: undefined;
   ReviewsTab: undefined;

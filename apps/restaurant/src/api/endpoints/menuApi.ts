@@ -7,11 +7,12 @@ import type {
   MenuCategory,
   MenuItem,
   MenuVariant,
+  UpdateMenuItemRequest,
 } from '../../features/menu/types';
 
 /**
  * Restaurant menu RTK — P2-RES-03.
- * Create/availability/image/variant only; update/delete are Gaps (GAP-API-05…07).
+ * Create, update, delete, availability, image, variant operations.
  */
 export const menuApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -53,6 +54,31 @@ export const menuApi = baseApi.injectEndpoints({
           basePrice: body.basePrice,
           isVeg: body.isVeg,
         },
+      }),
+      invalidatesTags: [{ type: 'Menu', id: 'LIST' }],
+    }),
+    updateMenuItem: builder.mutation<
+      Omit<MenuItem, 'variants'> & { categoryId: string },
+      UpdateMenuItemRequest
+    >({
+      query: ({ menuItemId, categoryId, name, description, basePrice, isVeg }) => ({
+        url: `/api/v1/menu/items/${menuItemId}`,
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          categoryId,
+          name,
+          description: description ?? null,
+          basePrice,
+          isVeg,
+        },
+      }),
+      invalidatesTags: [{ type: 'Menu', id: 'LIST' }],
+    }),
+    deleteMenuItem: builder.mutation<void, string>({
+      query: (menuItemId) => ({
+        url: `/api/v1/menu/items/${menuItemId}`,
+        method: 'DELETE',
       }),
       invalidatesTags: [{ type: 'Menu', id: 'LIST' }],
     }),
@@ -134,6 +160,8 @@ export const {
   useGetMenuQuery,
   useCreateCategoryMutation,
   useCreateMenuItemMutation,
+  useUpdateMenuItemMutation,
+  useDeleteMenuItemMutation,
   useUpdateItemAvailabilityMutation,
   useUploadMenuItemImageMutation,
   useAddVariantMutation,

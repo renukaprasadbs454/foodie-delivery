@@ -3,33 +3,34 @@ import type { RestaurantStatus } from '../features/onboarding/types';
 
 /**
  * Structural auth + onboarding gating — Blueprint §15.1 / P2-AUTH-02 / P2-RES-01.
- * Main mounts only when authenticated and restaurant status is APPROVED.
+ * DEV BYPASS: Directly open MainNavigator (Dashboard) as the primary screen.
  */
 export function shouldShowMainNavigator(
-  authStatus: AuthStatus,
-  restaurantStatus: RestaurantStatus | null = null,
+  _authStatus?: AuthStatus,
+  _restaurantStatus?: RestaurantStatus | null,
+  _isNewUser = false,
 ): boolean {
-  return authStatus === 'authenticated' && restaurantStatus === 'APPROVED';
+  return true;
 }
 
 /** Authenticated but not yet APPROVED → onboarding stack. */
 export function shouldShowOnboardingNavigator(
-  authStatus: AuthStatus,
-  restaurantStatus: RestaurantStatus | null = null,
+  _authStatus?: AuthStatus,
+  _restaurantStatus?: RestaurantStatus | null,
+  _isNewUser = false,
 ): boolean {
-  return (
-    authStatus === 'authenticated' && restaurantStatus !== 'APPROVED'
-  );
+  return false;
 }
 
 /** @deprecated Prefer shouldShowOnboardingNavigator — kept for AUTH-02 naming. */
 export function shouldShowRegistrationGate(
-  authStatus: AuthStatus,
-  restaurantStatus: RestaurantStatus | null = null,
+  _authStatus?: AuthStatus,
+  _restaurantStatus?: RestaurantStatus | null,
+  _isNewUser = false,
 ): boolean {
-  return shouldShowOnboardingNavigator(authStatus, restaurantStatus);
+  return false;
 }
 
-export function shouldShowAuthNavigator(authStatus: AuthStatus): boolean {
-  return authStatus === 'unauthenticated' || authStatus === 'idle';
+export function shouldShowAuthNavigator(_authStatus?: AuthStatus): boolean {
+  return false;
 }

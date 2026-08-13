@@ -8,6 +8,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Button,
+  Card,
   EmptyState,
   Text,
   TextInput,
@@ -30,10 +31,9 @@ import type { MenuStackParamList } from '../../../navigation/types';
 
 type Props = NativeStackScreenProps<MenuStackParamList, 'Categories'>;
 
-/**
- * P2-RES-03 Categories — create + list via full menu.
- * Update/delete = GAP-API-05 (not invented).
- */
+const BRAND_PRIMARY = '#14532D'; // Dark Green
+const BRAND_ACCENT = '#F59E0B';  // Gold
+
 export function CategoriesScreen({ navigation }: Props) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
@@ -110,8 +110,8 @@ export function CategoriesScreen({ navigation }: Props) {
         }}
       >
         <EmptyState
-          title="Restaurant id unavailable"
-          description="Menu requires a stored restaurant id (GAP-API-03)."
+          title="Restaurant ID Unavailable"
+          description="Menu requires a stored restaurant id."
           accessibilityLabel="Restaurant id gap"
         />
       </View>
@@ -127,39 +127,49 @@ export function CategoriesScreen({ navigation }: Props) {
         gap: tokens.spacing.md,
       }}
     >
-      <Text variant="heading1" accessibilityRole="header">
-        Categories
-      </Text>
-      <Text variant="caption" color={tokens.color.textSecondary}>
-        Update/delete category is not available (API Gap).
-      </Text>
+      <View style={{ gap: 4 }}>
+        <Text variant="heading1" style={{ color: BRAND_PRIMARY }} accessibilityRole="header">
+          Menu Categories
+        </Text>
+        <Text variant="caption" color={tokens.color.textSecondary}>
+          Organize your dishes into Biryani, Starters, Main Course, etc.
+        </Text>
+      </View>
+
       {!isConnected ? (
         <Text variant="caption" color={tokens.color.warning}>
           Offline — showing cached menu; create blocked.
         </Text>
       ) : null}
 
-      <TextInput
-        label="Category name"
-        value={name}
-        onChangeText={setName}
-        accessibilityLabel="Category name"
-      />
-      <TextInput
-        label="Display order"
-        value={displayOrder}
-        onChangeText={setDisplayOrder}
-        accessibilityLabel="Display order"
-        keyboardType="number-pad"
-      />
-      <Button
-        label="Create category"
-        accessibilityLabel="Create category"
-        loading={createState.isLoading}
-        onPress={() => {
-          void onCreate();
-        }}
-      />
+      <Card style={{ padding: tokens.spacing.md, gap: tokens.spacing.sm, borderRadius: 14 }}>
+        <Text variant="label" style={{ color: BRAND_PRIMARY, fontSize: 16 }}>
+          Add New Category
+        </Text>
+        <TextInput
+          label="Category Name *"
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Biryani, Starters, Beverages"
+          accessibilityLabel="Category name"
+        />
+        <TextInput
+          label="Display Order (Priority)"
+          value={displayOrder}
+          onChangeText={setDisplayOrder}
+          accessibilityLabel="Display order"
+          keyboardType="number-pad"
+        />
+        <Button
+          label="+ Create Category"
+          accessibilityLabel="Create category"
+          loading={createState.isLoading}
+          style={{ backgroundColor: BRAND_PRIMARY }}
+          onPress={() => {
+            void onCreate();
+          }}
+        />
+      </Card>
 
       {menuQuery.isLoading && !menuQuery.data ? (
         <CategoryListSkeleton />
@@ -168,7 +178,7 @@ export function CategoriesScreen({ navigation }: Props) {
           style={{ flex: 1 }}
           data={categories}
           keyExtractor={(item) => item.categoryId}
-          contentContainerStyle={{ gap: tokens.spacing.sm, paddingBottom: 48 }}
+          contentContainerStyle={{ gap: tokens.spacing.sm, paddingBottom: 80 }}
           refreshControl={
             <RefreshControl
               refreshing={menuQuery.isFetching}
@@ -179,8 +189,8 @@ export function CategoriesScreen({ navigation }: Props) {
           }
           ListEmptyComponent={
             <EmptyState
-              title="No categories yet"
-              description="Create your first category to start building the menu."
+              title="No Categories Yet"
+              description="Create your first category above (e.g. Biryani, Starters)."
               accessibilityLabel="Categories empty"
             />
           }
@@ -195,17 +205,37 @@ export function CategoriesScreen({ navigation }: Props) {
               accessibilityLabel={`Category ${item.name}`}
               style={{
                 padding: tokens.spacing.md,
-                borderRadius: tokens.radius.md,
+                borderRadius: 12,
                 borderWidth: 1,
                 borderColor: tokens.color.border,
+                borderLeftWidth: 4,
+                borderLeftColor: BRAND_PRIMARY,
                 backgroundColor: tokens.color.surface,
-                gap: tokens.spacing.xs,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
               }}
             >
-              <Text variant="label">{item.name}</Text>
-              <Text variant="caption" color={tokens.color.textSecondary}>
-                Order {item.displayOrder} · {item.items.length} items
-              </Text>
+              <View style={{ gap: 2 }}>
+                <Text variant="label" style={{ color: BRAND_PRIMARY, fontSize: 16, fontWeight: 'bold' }}>
+                  {item.name}
+                </Text>
+                <Text variant="caption" color={tokens.color.textSecondary}>
+                  Display Priority: {item.displayOrder}
+                </Text>
+              </View>
+              <View
+                style={{
+                  backgroundColor: BRAND_ACCENT,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                }}
+              >
+                <Text variant="caption" style={{ color: '#000000', fontWeight: 'bold' }}>
+                  {item.items.length} items
+                </Text>
+              </View>
             </Pressable>
           )}
         />
@@ -220,3 +250,4 @@ export function CategoriesScreen({ navigation }: Props) {
     </View>
   );
 }
+

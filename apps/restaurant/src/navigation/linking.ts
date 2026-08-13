@@ -2,25 +2,25 @@ import type { LinkingOptions } from '@react-navigation/native';
 import type { RootStackParamList } from './types';
 
 /**
- * Deep-link config — Blueprint §16 / System Design §15.2 (Restaurant paths).
- * Login: no deep link per UI-API.
+ * Deep-link config — Direct Dashboard mapping for development flow.
  */
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: ['https://app.foodie.example', 'foodie-restaurant://'],
   config: {
+    initialRouteName: 'Main',
     screens: {
-      Auth: {
-        screens: {
-          Login: 'auth',
-        },
-      },
-      Registration: 'registration',
       Main: {
+        path: '',
         screens: {
+          DashboardTab: {
+            path: '',
+            screens: {
+              Dashboard: 'dashboard',
+            },
+          },
           OrdersTab: {
             screens: {
-              Dashboard: 'orders',
-              IncomingOrders: 'orders/queue',
+              IncomingOrders: 'orders',
               RestaurantOrderDetails: 'orders/:orderId',
             },
           },
@@ -45,6 +45,12 @@ export const linking: LinkingOptions<RootStackParamList> = {
           },
         },
       },
+      Auth: {
+        screens: {
+          Login: 'auth',
+        },
+      },
+      Registration: 'registration',
     },
   },
 };

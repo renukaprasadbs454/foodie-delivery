@@ -8,6 +8,12 @@ import type { AuthTokenData } from '../../api/endpoints/authApi';
 import { authApi } from '../../api/endpoints/authApi';
 import { clearCredentials, setCredentials } from './authSlice';
 import type { AppDispatch, RootState } from '../../store/store';
+import {
+  setRestaurantCreated,
+  clearOnboarding,
+} from '../onboarding/restaurantOnboardingSlice';
+import type { RestaurantStatus } from '../onboarding/types';
+import { websocketDisconnect } from '../../store/websocketMiddleware';
 
 /** Apply contracted token data to SecureStore + authSlice (P2-AUTH-02). */
 export async function applyAuthSession(
@@ -24,6 +30,23 @@ export async function applyAuthSession(
       isNewUser: data.isNewUser,
     }),
   );
+
+  const restaurantId =
+    data.restaurantId ??
+    data.restaurant?.restaurantId ??
+    data.restaurant?.id;
+
+  if (restaurantId) {
+    console.log('[AUTH] Login successful, stored restaurantId:', restaurantId);
+    dispatch(
+      setRestaurantCreated({
+        restaurantId,
+        status: (data.restaurant?.status as RestaurantStatus) ?? 'APPROVED',
+      }),
+    );
+  } else {
+    console.log('[AUTH] Login successful — restaurantId not in auth token response');
+  }
 }
 
 /**
@@ -44,7 +67,9 @@ export async function logoutRestaurant(
       // Still clear local session.
     }
   }
+  dispatch(websocketDisconnect());
   await clearRefreshToken();
+  dispatch(clearOnboarding());
   dispatch(clearCredentials());
   dispatch(baseApi.util.resetApiState());
 }

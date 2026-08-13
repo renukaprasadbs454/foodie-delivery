@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import {
   Button,
   OTP_REGEX,
@@ -35,6 +35,9 @@ export function LoginScreen() {
   const { tokens } = useTheme();
   const dispatch = useAppDispatch();
   const { isConnected } = useConnectivity();
+  const { width } = useWindowDimensions();
+  const isWide = width >= 768;
+
   const [step, setStep] = useState<Step>('phone');
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -153,91 +156,141 @@ export function LoginScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: tokens.color.background,
+        backgroundColor: '#FAFAF7',
         padding: tokens.spacing.xl,
         justifyContent: 'center',
-        gap: tokens.spacing.lg,
+        alignItems: 'center',
       }}
     >
-      <Text variant="heading1" accessibilityRole="header">
-        Restaurant sign in
-      </Text>
-      {step === 'phone' ? (
-        <>
-          <Text variant="body" color={tokens.color.textSecondary}>
-            Enter your mobile number to receive a one-time code. OTP only — no
-            Google or password login.
+      <View
+        style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 20,
+          padding: tokens.spacing.lg,
+          gap: tokens.spacing.md,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          elevation: 4,
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
+          width: '100%',
+          maxWidth: 460,
+        }}
+      >
+        {/* BRAND HEADER */}
+        <View style={{ alignItems: 'center', gap: 6, marginBottom: 4 }}>
+          <View
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 34,
+              backgroundColor: '#14532D',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 4,
+              borderWidth: 2,
+              borderColor: '#F59E0B',
+            }}
+          >
+            <Text style={{ fontSize: 34 }}>🍳</Text>
+          </View>
+          <Text
+            variant="heading1"
+            style={{ color: '#14532D', fontWeight: 'bold' }}
+            accessibilityRole="header"
+          >
+            Foodie Partner
           </Text>
-          <TextInput
-            label="Mobile number"
-            accessibilityLabel="Mobile number"
-            value={phoneInput}
-            onChangeText={setPhoneInput}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            placeholder="+9198XXXXXXXX"
-            errorText={phoneError}
-            editable={!busy}
-          />
-          <Button
-            label="Send OTP"
-            accessibilityLabel="Send OTP"
-            loading={requestState.isLoading}
-            disabled={busy}
-            onPress={() => {
-              void onRequestOtp();
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <Text variant="body" color={tokens.color.textSecondary}>
-            Enter the 6-digit code sent to your phone.
+          <Text variant="caption" color={tokens.color.textSecondary}>
+            Restaurant Partner Portal Sign In
           </Text>
-          <TextInput
-            label="One-time code"
-            accessibilityLabel="One-time code"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            maxLength={6}
-            errorText={otpError}
-            editable={!busy}
-          />
-          <Button
-            label="Verify"
-            accessibilityLabel="Verify OTP"
-            loading={verifyState.isLoading}
-            disabled={busy}
-            onPress={() => {
-              void onVerify();
-            }}
-          />
-          <Button
-            label={
-              cooldown > 0 ? `Resend code in ${cooldown}s` : 'Resend code'
-            }
-            accessibilityLabel="Resend OTP"
-            variant="secondary"
-            loading={requestState.isLoading}
-            disabled={busy || cooldown > 0}
-            onPress={() => {
-              void onResend();
-            }}
-          />
-          <Button
-            label="Change number"
-            accessibilityLabel="Change phone number"
-            variant="secondary"
-            disabled={busy}
-            onPress={() => {
-              setStep('phone');
-              setOtp('');
-              setOtpError(undefined);
-            }}
-          />
-        </>
-      )}
+        </View>
+
+        {step === 'phone' ? (
+          <>
+            <Text variant="body" color={tokens.color.textSecondary}>
+              Enter your registered mobile number to receive a one-time verification code (OTP).
+            </Text>
+            <TextInput
+              label="Mobile number"
+              accessibilityLabel="Mobile number"
+              value={phoneInput}
+              onChangeText={setPhoneInput}
+              keyboardType="phone-pad"
+              autoComplete="tel"
+              placeholder="+9198XXXXXXXX"
+              errorText={phoneError}
+              editable={!busy}
+            />
+            <Button
+              label="Send OTP Code"
+              accessibilityLabel="Send OTP"
+              loading={requestState.isLoading}
+              disabled={busy}
+              style={{ backgroundColor: '#14532D', height: 48 }}
+              onPress={() => {
+                void onRequestOtp();
+              }}
+            />
+          </>
+        ) : (
+          <>
+            <Text variant="body" color={tokens.color.textSecondary}>
+              Enter the 6-digit verification code sent to <Text variant="label">{phoneNumber}</Text>.
+            </Text>
+            <TextInput
+              label="One-time code"
+              accessibilityLabel="One-time code"
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="number-pad"
+              maxLength={6}
+              errorText={otpError}
+              editable={!busy}
+            />
+            <Button
+              label="Verify & Login"
+              accessibilityLabel="Verify OTP"
+              loading={verifyState.isLoading}
+              disabled={busy}
+              style={{ backgroundColor: '#14532D', height: 48 }}
+              onPress={() => {
+                void onVerify();
+              }}
+            />
+            <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
+              <Button
+                label={
+                  cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend code'
+                }
+                accessibilityLabel="Resend OTP"
+                variant="secondary"
+                loading={requestState.isLoading}
+                disabled={busy || cooldown > 0}
+                style={{ flex: 1 }}
+                onPress={() => {
+                  void onResend();
+                }}
+              />
+              <Button
+                label="Change number"
+                accessibilityLabel="Change phone number"
+                variant="secondary"
+                disabled={busy}
+                style={{ flex: 1 }}
+                onPress={() => {
+                  setStep('phone');
+                  setOtp('');
+                  setOtpError(undefined);
+                }}
+              />
+            </View>
+          </>
+        )}
+      </View>
+
       <Toast
         visible={Boolean(toast)}
         message={toast?.message ?? ''}
@@ -248,3 +301,4 @@ export function LoginScreen() {
     </View>
   );
 }
+

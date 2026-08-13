@@ -9,6 +9,8 @@ export type MenuVariant = {
   priceDelta: number | string;
 };
 
+export type FoodType = 'VEG' | 'NON_VEG';
+
 export type MenuItem = {
   menuItemId: string;
   name: string;
@@ -18,7 +20,71 @@ export type MenuItem = {
   isAvailable: boolean;
   imageUrl?: string | null;
   variants: MenuVariant[];
+  foodType?: FoodType;
+  category?: string;
+  categoryId?: string;
+  categoryName?: string;
+  rating?: number;
+  preparationTime?: string;
+  createdAt?: number;
 };
+
+export type NormalizedMenuItem = {
+  menuItemId: string;
+  name: string;
+  description: string;
+  categoryId: string;
+  categoryName: string;
+  basePrice: number;
+  imageUrl?: string | null;
+  foodType: FoodType;
+  isVeg: boolean;
+  isAvailable: boolean;
+  rating: number;
+  preparationTime: string;
+  variants: MenuVariant[];
+  createdAt: number;
+};
+
+export function determineFoodType(
+  rawFoodType?: string | null,
+  isVeg?: boolean | null,
+  _name?: string | null,
+  _description?: string | null,
+): FoodType {
+  if (rawFoodType === 'VEG' || rawFoodType === 'NON_VEG') {
+    return rawFoodType;
+  }
+  if (isVeg === true) {
+    return 'VEG';
+  }
+  return 'NON_VEG';
+}
+
+export function normalizeMenuItem(
+  raw: Partial<MenuItem> & Record<string, any>,
+  categoryNameFallback = 'Main Course',
+  categoryIdFallback = 'c3333333-3333-4333-8333-333333333333',
+): NormalizedMenuItem {
+  const foodType = determineFoodType(raw.foodType, raw.isVeg, raw.name, raw.description);
+  const isVeg = foodType === 'VEG';
+  return {
+    menuItemId: raw.menuItemId || raw.id || `m-${Math.random().toString(36).substring(2, 9)}`,
+    name: raw.name || 'Unnamed Item',
+    description: raw.description ?? '',
+    categoryId: raw.categoryId || categoryIdFallback,
+    categoryName: raw.categoryName || raw.category || categoryNameFallback,
+    basePrice: parseMoney(raw.basePrice ?? raw.price),
+    imageUrl: raw.imageUrl ?? null,
+    foodType,
+    isVeg,
+    isAvailable: typeof raw.isAvailable === 'boolean' ? raw.isAvailable : true,
+    rating: typeof raw.rating === 'number' && Number.isFinite(raw.rating) ? raw.rating : 4.5,
+    preparationTime: raw.preparationTime || '15 min',
+    variants: Array.isArray(raw.variants) ? raw.variants : [],
+    createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now(),
+  };
+}
 
 export type MenuCategory = {
   categoryId: string;
@@ -38,6 +104,15 @@ export type CreateCategoryRequest = {
 };
 
 export type CreateMenuItemRequest = {
+  categoryId: string;
+  name: string;
+  description?: string | null;
+  basePrice: number;
+  isVeg: boolean;
+};
+
+export type UpdateMenuItemRequest = {
+  menuItemId: string;
   categoryId: string;
   name: string;
   description?: string | null;

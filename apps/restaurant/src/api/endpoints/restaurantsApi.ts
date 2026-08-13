@@ -52,6 +52,14 @@ export const restaurantsApi = baseApi.injectEndpoints({
         invalidatesTags: [{ type: 'Restaurant', id: 'LIST' }],
       },
     ),
+    getRestaurantProfile: builder.query<RestaurantDetail, void>({
+      query: () => '/api/v1/restaurants/me',
+      providesTags: (result) =>
+        result?.restaurantId
+          ? [{ type: 'Restaurant', id: result.restaurantId }]
+          : [{ type: 'Restaurant', id: 'LIST' }],
+      keepUnusedDataFor: 120,
+    }),
     getRestaurant: builder.query<RestaurantDetail, string>({
       query: (restaurantId) => `/api/v1/restaurants/${restaurantId}`,
       providesTags: (_result, _error, id) => [{ type: 'Restaurant', id }],
@@ -154,6 +162,7 @@ export const restaurantsApi = baseApi.injectEndpoints({
 
 export const {
   useRegisterRestaurantMutation,
+  useGetRestaurantProfileQuery,
   useGetRestaurantQuery,
   useUpdateRestaurantProfileMutation,
   useGetRestaurantReviewsQuery,

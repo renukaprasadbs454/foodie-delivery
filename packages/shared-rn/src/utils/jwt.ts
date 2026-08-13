@@ -2,6 +2,8 @@
  * Client-side JWT exp decode for proactive refresh timing only.
  * Blueprint §13.4 — never trusted as an authorization decision.
  */
+declare var Buffer: any;
+
 export function getJwtExpiryMs(token: string): number | null {
   try {
     const parts = token.split('.');

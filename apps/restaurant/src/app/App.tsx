@@ -48,9 +48,9 @@ class RootErrorBoundary extends Component<
  */
 export default function App() {
   return (
-    <RootErrorBoundary>
-      <ReduxProvider>
-        <ThemeProvider>
+    <ReduxProvider>
+      <ThemeProvider>
+        <RootErrorBoundary>
           <NavigationProvider>
             <BootstrapGate>
               <View style={styles.shell}>
@@ -62,9 +62,9 @@ export default function App() {
               </View>
             </BootstrapGate>
           </NavigationProvider>
-        </ThemeProvider>
-      </ReduxProvider>
-    </RootErrorBoundary>
+        </RootErrorBoundary>
+      </ThemeProvider>
+    </ReduxProvider>
   );
 }
 

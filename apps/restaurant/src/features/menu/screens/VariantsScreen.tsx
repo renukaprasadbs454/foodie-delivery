@@ -154,39 +154,42 @@ export function VariantsScreen({ route }: Props) {
         gap: tokens.spacing.md,
       }}
     >
-      <Text variant="heading1" accessibilityRole="header">
-        Variants
-      </Text>
-      {found ? (
-        <Text variant="body" color={tokens.color.textSecondary}>
-          {found.item.name} · base {formatMoney(found.item.basePrice)}
+      <View style={{ gap: 4 }}>
+        <Text variant="heading1" style={{ color: '#14532D' }} accessibilityRole="header">
+          Dish Variants
         </Text>
-      ) : null}
-      <Text variant="caption" color={tokens.color.textSecondary}>
-        Update/delete variant is not available (API Gap).
-      </Text>
+        {found ? (
+          <Text variant="body" color={tokens.color.textSecondary}>
+            {found.item.name} · Base Price {formatMoney(found.item.basePrice)}
+          </Text>
+        ) : null}
+      </View>
 
-      <TextInput
-        label="Variant name"
-        value={name}
-        onChangeText={setName}
-        accessibilityLabel="Variant name"
-      />
-      <TextInput
-        label="Price delta"
-        value={priceDelta}
-        onChangeText={setPriceDelta}
-        accessibilityLabel="Price delta"
-        keyboardType="decimal-pad"
-      />
-      <Button
-        label="Add variant"
-        accessibilityLabel="Add variant"
-        loading={addState.isLoading}
-        onPress={() => {
-          void onAdd();
-        }}
-      />
+      <View style={{ gap: tokens.spacing.sm }}>
+        <TextInput
+          label="Variant name"
+          value={name}
+          onChangeText={setName}
+          placeholder="e.g. Half Portion, Large Size"
+          accessibilityLabel="Variant name"
+        />
+        <TextInput
+          label="Price delta (₹)"
+          value={priceDelta}
+          onChangeText={setPriceDelta}
+          accessibilityLabel="Price delta"
+          keyboardType="decimal-pad"
+        />
+        <Button
+          label="+ Add Variant"
+          accessibilityLabel="Add variant"
+          loading={addState.isLoading}
+          style={{ backgroundColor: '#14532D' }}
+          onPress={() => {
+            void onAdd();
+          }}
+        />
+      </View>
 
       {menuQuery.isLoading && !menuQuery.data ? (
         <VariantListSkeleton />
@@ -195,7 +198,7 @@ export function VariantsScreen({ route }: Props) {
           style={{ flex: 1 }}
           data={found?.item.variants ?? []}
           keyExtractor={(item) => item.variantId}
-          contentContainerStyle={{ gap: tokens.spacing.sm, paddingBottom: 48 }}
+          contentContainerStyle={{ gap: tokens.spacing.sm, paddingBottom: 80 }}
           refreshControl={
             <RefreshControl
               refreshing={menuQuery.isFetching}

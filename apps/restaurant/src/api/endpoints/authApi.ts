@@ -11,6 +11,13 @@ export type AuthTokenData = {
   userType: string;
   userId: string;
   isNewUser?: boolean;
+  restaurantId?: string;
+  restaurant?: {
+    restaurantId?: string;
+    id?: string;
+    name?: string;
+    status?: string;
+  };
 };
 
 export type RequestOtpBody = {

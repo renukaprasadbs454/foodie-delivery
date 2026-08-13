@@ -102,9 +102,11 @@ export function RestaurantRegistrationScreen({ navigation }: Props) {
       });
       return;
     }
+    console.log('[REGISTRATION] Submitting payload:', JSON.stringify(validated.value));
     trackAnalyticsEvent('registration_submitted');
     try {
       const result = await register(validated.value).unwrap();
+      console.log('[REGISTRATION] Success response:', JSON.stringify(result));
       const restaurantId = result.restaurantId;
       if (!restaurantId) {
         setToast({
@@ -123,7 +125,9 @@ export function RestaurantRegistrationScreen({ navigation }: Props) {
       trackAnalyticsEvent('restaurant_created', { restaurantId });
       navigation.replace('RestaurantDocuments');
     } catch (error) {
-      handleError(toUnwrappedApiError(error));
+      console.error('[REGISTRATION] Request failed error:', error);
+      const unwrapped = toUnwrappedApiError(error);
+      handleError(unwrapped);
     }
   };
 

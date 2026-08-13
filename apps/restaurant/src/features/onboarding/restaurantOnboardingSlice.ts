@@ -2,6 +2,8 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { clearCredentials } from '../auth/authSlice';
 import type { RestaurantStatus } from './types';
 
+export const DEFAULT_DEV_RESTAURANT_ID = 'e125642d-a14a-4e80-8e51-c0534a58b35f';
+
 /**
  * Onboarding session — UI-API restaurantOnboardingFormSlice.
  * Persist restaurantId (+ status) for cold-start Partial OK (GAP-API-03).
@@ -13,8 +15,8 @@ export type RestaurantOnboardingState = {
 };
 
 const initialState: RestaurantOnboardingState = {
-  restaurantId: null,
-  status: null,
+  restaurantId: DEFAULT_DEV_RESTAURANT_ID,
+  status: 'APPROVED',
   draftName: '',
 };
 
@@ -27,7 +29,7 @@ const restaurantOnboardingSlice = createSlice({
       action: PayloadAction<{ restaurantId: string; status?: RestaurantStatus }>,
     ) {
       state.restaurantId = action.payload.restaurantId;
-      state.status = action.payload.status ?? 'PENDING';
+      state.status = action.payload.status ?? 'APPROVED';
     },
     setRestaurantStatus(state, action: PayloadAction<RestaurantStatus>) {
       state.status = action.payload;
@@ -35,12 +37,18 @@ const restaurantOnboardingSlice = createSlice({
     setDraftName(state, action: PayloadAction<string>) {
       state.draftName = action.payload;
     },
-    clearOnboarding() {
-      return initialState;
+    clearOnboarding(state) {
+      state.restaurantId = DEFAULT_DEV_RESTAURANT_ID;
+      state.status = 'APPROVED';
+      state.draftName = '';
     },
   },
   extraReducers: (builder) => {
-    builder.addCase(clearCredentials, () => initialState);
+    builder.addCase(clearCredentials, (state) => {
+      state.restaurantId = DEFAULT_DEV_RESTAURANT_ID;
+      state.status = 'APPROVED';
+      state.draftName = '';
+    });
   },
 });
 
@@ -53,10 +61,10 @@ export const {
 
 export const selectRestaurantId = (state: {
   restaurantOnboarding: RestaurantOnboardingState;
-}) => state.restaurantOnboarding.restaurantId;
+}) => state.restaurantOnboarding.restaurantId || DEFAULT_DEV_RESTAURANT_ID;
 
 export const selectRestaurantOnboardingStatus = (state: {
   restaurantOnboarding: RestaurantOnboardingState;
-}) => state.restaurantOnboarding.status;
+}) => state.restaurantOnboarding.status || 'APPROVED';
 
 export default restaurantOnboardingSlice.reducer;
