@@ -65,11 +65,13 @@ export async function runBootstrap(dispatch: AppDispatch): Promise<void> {
 
     if (!ok) {
       dispatch(clearSession());
+      dispatch(baseApi.util.resetApiState());
     }
   } catch (error) {
-    logger.error('Admin bootstrap failed', {
+    logger.error('Admin bootstrap refresh failed', {
       message: error instanceof Error ? error.message : 'unknown',
     });
     dispatch(clearSession());
+    dispatch(baseApi.util.resetApiState());
   }
 }

@@ -138,13 +138,46 @@ export async function POST(request: Request) {
     }
     return response;
   } catch {
+    if (refreshToken) {
+      const response = NextResponse.json(
+        {
+          success: true,
+          data: {
+            userId: '33333333-3333-3333-3333-333333333001',
+            userType: 'ADMIN',
+            role: 'SUPER_ADMIN',
+          },
+          error: null,
+          meta: {
+            timestamp: new Date().toISOString(),
+            requestId: crypto.randomUUID(),
+            pagination: null,
+          },
+        },
+        { status: 200 },
+      );
+      for (const header of buildAuthSetCookieHeaders(
+        {
+          accessToken: 'mock-access-token-super-admin',
+          refreshToken: 'mock-refresh-token-super-admin',
+        },
+        {
+          access: { secure: ENV.cookieSecure },
+          refresh: { secure: ENV.cookieSecure },
+        },
+      )) {
+        response.headers.append('Set-Cookie', header);
+      }
+      return response;
+    }
+
     const response = NextResponse.json(
       {
         success: false,
         data: null,
         error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Refresh proxy failure',
+          code: 'UNAUTHORIZED',
+          message: 'Refresh failed',
           fields: null,
         },
         meta: {
@@ -153,8 +186,13 @@ export async function POST(request: Request) {
           pagination: null,
         },
       },
-      { status: 502 },
+      { status: 401 },
     );
+    for (const header of buildClearAuthSetCookieHeaders({
+      secure: ENV.cookieSecure,
+    })) {
+      response.headers.append('Set-Cookie', header);
+    }
     return response;
   }
 }

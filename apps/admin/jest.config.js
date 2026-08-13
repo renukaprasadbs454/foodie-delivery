@@ -5,8 +5,8 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
-    '^foodie-shared-web$': '<rootDir>/../foodie-shared-web/src/index.ts',
-    '^foodie-shared-web/auth$': '<rootDir>/../foodie-shared-web/src/auth/index.ts',
+    '^foodie-shared-web$': '<rootDir>/../../packages/shared-web/src/index.ts',
+    '^foodie-shared-web/auth$': '<rootDir>/../../packages/shared-web/src/auth/index.ts',
   },
   clearMocks: true,
 };

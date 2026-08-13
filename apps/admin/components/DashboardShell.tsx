@@ -2,22 +2,30 @@
 
 import React, { type ReactNode } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Button, EmptyState } from 'foodie-shared-web';
+import { usePathname, useRouter } from 'next/navigation';
+import { EmptyState } from 'foodie-shared-web';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectAdminRole } from '@/features/auth/authSlice';
 import { logoutAdmin } from '@/features/auth/session';
-import { filterNavForRole } from '@/lib/routeGuards';
+import { filterNavForRole, type NavCategory, type NavItem } from '@/lib/routeGuards';
+import { AdminHeaderBar } from '@/components/AdminHeaderBar';
+import { AiAssistantWidget } from '@/components/AiAssistantWidget';
+import { AdminFooter } from '@/components/AdminFooter';
 
 /**
- * Dashboard chrome — System Design §5.3 / P2-AUTH-04 logout + P2-ADM-02 nav.
+ * Dashboard chrome — 6amMart Multi-Vendor Executive Design.
  */
 export function DashboardShell({ children }: { children: ReactNode }) {
   const role = useAppSelector(selectAdminRole);
   const nav = filterNavForRole(role);
   const dispatch = useAppDispatch();
   const router = useRouter();
+  const pathname = usePathname();
   const [loggingOut, setLoggingOut] = React.useState(false);
+
+  // Compact Hover-to-Peek Panel state
+  const [isCompact, setIsCompact] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   const onLogout = async () => {
     setLoggingOut(true);
@@ -26,47 +34,180 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     setLoggingOut(false);
   };
 
+  const isExpanded = !isCompact || isHovered;
+
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '240px 1fr',
+        display: 'flex',
+        flexDirection: 'column',
         minHeight: '100vh',
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        backgroundColor: '#F8FAFC',
       }}
     >
-      <aside
+      <div
         style={{
-          borderRight: '1px solid var(--color-border, #e5e5e5)',
-          padding: 16,
-          background: 'var(--color-surface, #fafafa)',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
+          display: 'grid',
+          gridTemplateColumns: isCompact ? '72px 1fr' : '270px 1fr',
+          transition: 'grid-template-columns 0.25s ease',
+          flex: 1,
+          position: 'relative',
         }}
       >
-        <div style={{ fontWeight: 700 }}>Foodie Admin</div>
-        <nav aria-label="Admin" style={{ flex: 1 }}>
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {nav.map((item) => (
-              <li key={item.href} style={{ marginBottom: 8 }}>
-                <Link href={item.href}>{item.label}</Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <Button
-          label="Log out"
-          aria-label="Log out"
-          variant="secondary"
-          loading={loggingOut}
-          disabled={loggingOut}
-          onClick={() => {
-            void onLogout();
+        {/* Sidebar Navigation */}
+        <aside
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          style={{
+            position: isCompact && isHovered ? 'absolute' : 'relative',
+            top: 0,
+            bottom: 0,
+            left: 0,
+            zIndex: isCompact && isHovered ? 50 : 10,
+            width: isExpanded ? 270 : 72,
+            backgroundColor: '#0F3D21',
+            color: '#FFFFFF',
+            padding: isExpanded ? '24px 16px' : '24px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: isCompact && isHovered ? '8px 0 24px rgba(0,0,0,0.3)' : '4px 0 16px rgba(0,0,0,0.1)',
+            borderRight: '1px solid rgba(255,255,255,0.05)',
+            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease, box-shadow 0.25s ease',
+            overflowX: 'hidden',
           }}
-        />
-      </aside>
-      <main style={{ padding: 24 }}>{children}</main>
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Brand Header */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: isExpanded ? 'space-between' : 'center' }}>
+                {isExpanded ? (
+                  <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
+                    Admin <span style={{ color: '#F59E0B' }}>Panel</span>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 22 }} title="Admin Console">
+                    🍔
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Role Badge */}
+            {role ? (
+              <div
+                style={{
+                  backgroundColor: '#14532D',
+                  border: '1px solid rgba(245, 158, 11, 0.35)',
+                  borderRadius: 10,
+                  padding: isExpanded ? '10px 14px' : '10px 6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: isExpanded ? 'space-between' : 'center',
+                }}
+                title={`Active Role: ${role}`}
+              >
+                {isExpanded ? (
+                  <div>
+                    <div style={{ fontSize: 10, color: '#A7F3D0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+                      Active Role
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>{role}</div>
+                  </div>
+                ) : (
+                  <span style={{ fontSize: 14 }}>🛡️</span>
+                )}
+                <span style={{ height: 8, width: 8, borderRadius: '50%', backgroundColor: '#F59E0B' }} className="pulse-live" />
+              </div>
+            ) : null}
+
+            {/* Navigation Links */}
+            <nav aria-label="Admin" style={{ flex: 1, overflowY: 'auto' }}>
+              <ul
+                style={{
+                  listStyle: 'none',
+                  padding: 0,
+                  margin: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 4,
+                }}
+              >
+                {nav.map((item) => {
+                  const isActive =
+                    item.href === '/'
+                      ? pathname === '/'
+                      : pathname.startsWith(item.href);
+
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        title={!isExpanded ? item.label : undefined}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: isExpanded ? 'space-between' : 'center',
+                          padding: isExpanded ? '9px 12px' : '10px 0',
+                          borderRadius: 8,
+                          fontSize: 13,
+                          fontWeight: isActive ? 700 : 500,
+                          color: isActive ? '#0F3D21' : '#E6F4EA',
+                          backgroundColor: isActive ? '#FEF3C7' : 'transparent',
+                          borderLeft: isExpanded ? (isActive ? '4px solid #F59E0B' : '4px solid transparent') : 'none',
+                          textDecoration: 'none',
+                          transition: 'all 0.15s ease-in-out',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: 16 }}>{item.icon ?? '📌'}</span>
+                          {isExpanded ? <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span> : null}
+                        </div>
+                        {isExpanded && item.badge ? (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              color: isActive ? '#14532D' : '#F59E0B',
+                              backgroundColor: isActive ? 'rgba(20,83,45,0.15)' : 'rgba(245, 158, 11, 0.2)',
+                              padding: '2px 6px',
+                              borderRadius: 6,
+                            }}
+                          >
+                            {item.badge}
+                          </span>
+                        ) : null}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </nav>
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowX: 'hidden' }}>
+          {/* Top Header Bar */}
+          <AdminHeaderBar
+            role={role}
+            onLogout={() => void onLogout()}
+            loggingOut={loggingOut}
+            isCompact={isCompact}
+            onToggleCompact={() => setIsCompact((prev) => !prev)}
+          />
+
+          {/* Page Content Container */}
+          <main style={{ padding: '28px 32px', flex: 1, backgroundColor: '#F8FAFC' }}>{children}</main>
+        </div>
+      </div>
+
+      {/* Full-width Executive Admin Footer */}
+      <AdminFooter />
+
+      {/* Foodie AI Operations Assistant Floating Widget */}
+      <AiAssistantWidget />
     </div>
   );
 }
@@ -80,3 +221,4 @@ export function FoundationPlaceholder({ title }: { title: string }) {
     />
   );
 }
+

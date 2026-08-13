@@ -89,7 +89,7 @@ async function executeRefresh({
 
     if (!response.ok || envelope?.success === false) {
       const failureCode = code ?? 'UNAUTHORIZED';
-      logger.error('Admin token refresh failed', {
+      logger.warn('Admin token refresh failed', {
         requestId: envelope?.meta?.requestId,
         code: failureCode,
       });
@@ -104,7 +104,7 @@ async function executeRefresh({
     });
     return true;
   } catch (error) {
-    logger.error('Admin token refresh network failure', {
+    logger.warn('Admin token refresh network failure', {
       message: error instanceof Error ? error.message : 'unknown',
     });
     await callbacks.onRefreshFailed('NETWORK_ERROR');

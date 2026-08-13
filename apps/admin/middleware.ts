@@ -11,31 +11,22 @@ import {
  */
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasAccess = Boolean(request.cookies.get(ACCESS_TOKEN_COOKIE)?.value);
-  const hasRefresh = Boolean(request.cookies.get(REFRESH_TOKEN_COOKIE)?.value);
-  const hasSession = hasAccess || hasRefresh;
 
-  const isAuthRoute = pathname.startsWith('/login');
-  const isDashboardRoute =
-    pathname.startsWith('/restaurants') ||
-    pathname.startsWith('/delivery-partners') ||
-    pathname.startsWith('/coupons') ||
-    pathname.startsWith('/orders') ||
-    pathname.startsWith('/payments') ||
-    pathname.startsWith('/reviews') ||
-    pathname.startsWith('/analytics') ||
-    pathname.startsWith('/audit-log') ||
-    pathname === '/';
+  const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
+  const hasAuth = Boolean(accessToken || refreshToken);
 
-  if (isDashboardRoute && !hasSession) {
+  // If visiting /login while authenticated, redirect to Dashboard /
+  if (hasAuth && pathname === '/login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/login';
+    url.pathname = '/';
     return NextResponse.redirect(url);
   }
 
-  if (isAuthRoute && hasSession) {
+  // If visiting protected routes while unauthenticated, redirect to /login
+  if (!hasAuth && pathname !== '/login') {
     const url = request.nextUrl.clone();
-    url.pathname = '/';
+    url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
