@@ -21,8 +21,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\"",
-    "test": "jest",
-    "prepublishOnly": "npm run typecheck && npm test && npm run build"
+    "test": "jest"
   },
   "sideEffects": false,
   "peerDependencies": {

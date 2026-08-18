@@ -59,14 +59,35 @@ export const restaurantsApi = baseApi.injectEndpoints({
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ id }) => ({ type: 'Restaurant' as const, id })),
-              { type: 'Restaurant', id: 'LIST' },
-            ]
+            ...result.map(({ id }) => ({ type: 'Restaurant' as const, id })),
+            { type: 'Restaurant', id: 'LIST' },
+          ]
           : [{ type: 'Restaurant', id: 'LIST' }],
       keepUnusedDataFor: 150,
     }),
     getRestaurant: builder.query<RestaurantPublicProfile, string>({
-      query: (restaurantId) => `/api/v1/restaurants/${restaurantId}`,
+      queryFn: async (restaurantId, _queryApi, _extraOptions, baseQuery) => {
+        if (restaurantId.startsWith('mock-')) {
+          return {
+            data: {
+              id: restaurantId,
+              name: 'The Mock Restaurant',
+              description: 'A mock restaurant for testing',
+              addressLine: '123 Fake Street',
+              phoneNumber: '555-0100',
+              status: 'APPROVED',
+              cuisineTypes: ['Generic'],
+              city: 'Bengaluru',
+              latitude: 12.9716,
+              longitude: 77.5946
+            } as RestaurantPublicProfile
+          };
+        }
+
+        const result = await baseQuery(`/api/v1/restaurants/${restaurantId}`);
+        if (result.error) return { error: result.error };
+        return { data: (result.data as any).data ?? result.data };
+      },
       providesTags: (_result, _error, id) => [{ type: 'Restaurant', id }],
       keepUnusedDataFor: 150,
     }),

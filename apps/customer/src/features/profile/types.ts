@@ -13,6 +13,7 @@ export type CustomerProfile = {
   email?: string | null;
   phoneNumber?: string | null;
   defaultAddressId?: string | null;
+  profileImageUrl?: string | null;
 };
 
 export type UpdateProfileRequest = {

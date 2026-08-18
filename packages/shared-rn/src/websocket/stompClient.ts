@@ -74,13 +74,13 @@ export function createStompClient(config: StompClientConfig): FoodieStompClient 
       config.onError?.(frame);
     },
     onWebSocketError: (event) => {
-      logger.error('WebSocket transport error');
+      // logger.error('WebSocket transport error'); // Silenced to prevent terminal spam in Dev LAN
       config.onError?.(event);
     },
     debug: config.debug
       ? (msg) => {
-          logger.debug(msg);
-        }
+        logger.debug(msg);
+      }
       : () => undefined,
   });
 

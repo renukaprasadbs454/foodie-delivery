@@ -26,7 +26,10 @@ class RootErrorBoundary extends Component<
 
   override componentDidCatch(error: Error, info: ErrorInfo): void {
     captureCrashException(error, { screenName: 'RootErrorBoundary' });
-    console.error(info.componentStack);
+    console.error("🔥 FATAL ERROR BOUNDARY CRASH 🔥");
+    console.error("Message:", error.message);
+    console.error("Stack:", error.stack);
+    console.error("Component details:", info.componentStack);
   }
 
   override render(): ReactNode {
@@ -48,9 +51,9 @@ class RootErrorBoundary extends Component<
  */
 export default function App() {
   return (
-    <RootErrorBoundary>
-      <ReduxProvider>
-        <ThemeProvider>
+    <ThemeProvider>
+      <RootErrorBoundary>
+        <ReduxProvider>
           <NavigationProvider>
             <BootstrapGate>
               <View style={styles.shell}>
@@ -62,9 +65,9 @@ export default function App() {
               </View>
             </BootstrapGate>
           </NavigationProvider>
-        </ThemeProvider>
-      </ReduxProvider>
-    </RootErrorBoundary>
+        </ReduxProvider>
+      </RootErrorBoundary>
+    </ThemeProvider>
   );
 }
 

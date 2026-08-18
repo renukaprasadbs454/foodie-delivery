@@ -1,11 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 
+import Constants from 'expo-constants';
+
 const KEY = 'foodie.customer.pushRegistration.v1';
 
 /** Avoid importing react-native here — keeps Jest/node suites loadable. */
 function isWebRuntime(): boolean {
   return typeof document !== 'undefined';
+}
+
+function isExpoGo(): boolean {
+  return Constants.appOwnership === 'expo';
 }
 
 export type PushPermissionState = 'undetermined' | 'granted' | 'denied';
@@ -109,7 +115,7 @@ export async function requestLocalPushRegistration(
   userId: string,
 ): Promise<LocalPushRegistration> {
   // Push device APIs are native-oriented; skip on web (GAP-API-01 / Expo Web limitation).
-  if (isWebRuntime()) {
+  if (isWebRuntime() || isExpoGo()) {
     const current = await loadLocalPushRegistration();
     const next: LocalPushRegistration = {
       ...current,
@@ -139,7 +145,7 @@ export async function requestLocalPushRegistration(
 export async function ensureLocalPushRegistration(
   userId: string,
 ): Promise<LocalPushRegistration> {
-  if (isWebRuntime()) {
+  if (isWebRuntime() || isExpoGo()) {
     return requestLocalPushRegistration(userId);
   }
 

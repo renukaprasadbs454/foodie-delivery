@@ -14,81 +14,79 @@ export type AddCartItemArg = AddCartItemRequest & {
 /**
  * Cart RTK — P2-CUS-02 (get/add/clear for Menu) + P2-CUS-03 (remove + Cart UI).
  */
+let mockCart: Cart = { cartId: 'mock-cart', restaurantId: null, items: [], subtotal: 0 };
+export const resetMockCart = () => { mockCart = { cartId: 'mock-cart', restaurantId: null, items: [], subtotal: 0 }; };
+
 export const cartApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getCart: builder.query<Cart, void>({
-      query: () => '/api/v1/cart',
+      queryFn: () => ({ data: JSON.parse(JSON.stringify(mockCart)) }),
       providesTags: [{ type: 'Cart', id: 'CURRENT' }],
       keepUnusedDataFor: 30,
     }),
     addCartItem: builder.mutation<Cart, AddCartItemArg>({
-      query: ({ menuItemId, variantId, quantity, notes }) => ({
-        url: '/api/v1/cart/items',
-        method: 'POST',
-        body: {
-          menuItemId,
-          variantId: variantId ?? null,
-          quantity,
-          notes: notes?.length ? notes : null,
-        },
-      }),
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        const patch = dispatch(
-          cartApi.util.updateQueryData('getCart', undefined, (draft) => {
-            applyOptimisticAdd(draft, arg);
-          }),
+      queryFn: (arg) => {
+        const rId = arg.menuItemId.split('-item-')[0]; // Mock extraction 
+        if (!mockCart.restaurantId) mockCart.restaurantId = rId;
+
+        const variantKey = arg.variantId ?? null;
+        const existing = mockCart.items.find(
+          (item) =>
+            item.menuItemId === arg.menuItemId &&
+            (item.variantId ?? null) === variantKey,
         );
-        try {
-          const { data } = await queryFulfilled;
-          dispatch(
-            cartApi.util.updateQueryData('getCart', undefined, () => data),
-          );
-        } catch {
-          patch.undo();
+        if (existing) {
+          existing.quantity += arg.quantity;
+          if (arg.notes != null) existing.notes = arg.notes;
+          const unit = parseMoney(existing.unitPrice);
+          existing.lineTotal = unit * existing.quantity;
+        } else {
+          const unit = arg.optimisticUnitPrice ?? 150;
+          const provisional: CartItem = {
+            cartItemId: `optimistic-${arg.menuItemId}-${variantKey ?? 'base'}`,
+            menuItemId: arg.menuItemId,
+            variantId: variantKey,
+            quantity: arg.quantity,
+            notes: arg.notes ?? null,
+            unitPrice: unit,
+            lineTotal: unit * arg.quantity,
+          };
+          mockCart.items.push(provisional);
         }
+        mockCart.subtotal = mockCart.items.reduce((sum, item) => sum + parseMoney(item.lineTotal), 0);
+        return { data: JSON.parse(JSON.stringify(mockCart)) };
+      },
+      invalidatesTags: [{ type: 'Cart', id: 'CURRENT' }],
+    }),
+    updateCartItemQuantity: builder.mutation<Cart, { cartItemId: string; quantity: number }>({
+      queryFn: ({ cartItemId, quantity }) => {
+        const item = mockCart.items.find((i) => i.cartItemId === cartItemId);
+        if (item) {
+          item.quantity = quantity;
+          item.lineTotal = parseMoney(item.unitPrice) * quantity;
+          mockCart.subtotal = mockCart.items.reduce((sum, i) => sum + parseMoney(i.lineTotal), 0);
+        }
+        return { data: JSON.parse(JSON.stringify(mockCart)) };
       },
       invalidatesTags: [{ type: 'Cart', id: 'CURRENT' }],
     }),
     removeCartItem: builder.mutation<Cart, string>({
-      query: (cartItemId) => ({
-        url: `/api/v1/cart/items/${cartItemId}`,
-        method: 'DELETE',
-      }),
-      async onQueryStarted(cartItemId, { dispatch, queryFulfilled }) {
-        const patch = dispatch(
-          cartApi.util.updateQueryData('getCart', undefined, (draft) => {
-            applyOptimisticRemove(draft, cartItemId);
-          }),
-        );
-        try {
-          const { data } = await queryFulfilled;
-          dispatch(
-            cartApi.util.updateQueryData('getCart', undefined, () => data),
-          );
-        } catch {
-          patch.undo();
+      queryFn: (cartItemId) => {
+        mockCart.items = mockCart.items.filter((item) => item.cartItemId !== cartItemId);
+        if (mockCart.items.length === 0) {
+          mockCart.restaurantId = null;
+          mockCart.subtotal = 0;
+        } else {
+          mockCart.subtotal = mockCart.items.reduce((sum, item) => sum + parseMoney(item.lineTotal), 0);
         }
+        return { data: JSON.parse(JSON.stringify(mockCart)) };
       },
       invalidatesTags: [{ type: 'Cart', id: 'CURRENT' }],
     }),
     clearCart: builder.mutation<null, void>({
-      query: () => ({
-        url: '/api/v1/cart',
-        method: 'DELETE',
-      }),
-      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
-        const patch = dispatch(
-          cartApi.util.updateQueryData('getCart', undefined, (draft) => {
-            draft.items = [];
-            draft.restaurantId = null;
-            draft.subtotal = 0;
-          }),
-        );
-        try {
-          await queryFulfilled;
-        } catch {
-          patch.undo();
-        }
+      queryFn: () => {
+        mockCart = { cartId: 'mock-cart', restaurantId: null, items: [], subtotal: 0 };
+        return { data: null };
       },
       invalidatesTags: [{ type: 'Cart', id: 'CURRENT' }],
     }),
@@ -142,6 +140,7 @@ function applyOptimisticRemove(draft: Cart, cartItemId: string): void {
 export const {
   useGetCartQuery,
   useAddCartItemMutation,
+  useUpdateCartItemQuantityMutation,
   useRemoveCartItemMutation,
   useClearCartMutation,
 } = cartApi;

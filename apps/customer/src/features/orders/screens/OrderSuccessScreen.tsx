@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Button,
@@ -16,9 +16,6 @@ import { isOrderId } from '../types';
 
 type Props = NativeStackScreenProps<OrdersStackParamList, 'OrderSuccess'>;
 
-/**
- * P2-CUS-06 Order Success — post-payment confirmation; CTA → LiveOrderTracking.
- */
 export function OrderSuccessScreen({ navigation, route }: Props) {
   const { orderId } = route.params;
   const { tokens } = useTheme();
@@ -55,27 +52,47 @@ export function OrderSuccessScreen({ navigation, route }: Props) {
   }
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: tokens.color.background,
-        padding: tokens.spacing.xl,
+    <ScrollView
+      style={{ flex: 1, backgroundColor: tokens.color.background }}
+      contentContainerStyle={{
+        padding: tokens.spacing.lg,
         gap: tokens.spacing.md,
+        paddingBottom: 48,
+        alignItems: 'stretch',
       }}
     >
-      <Text variant="heading1" accessibilityRole="header">
-        Order confirmed
-      </Text>
-      <Text variant="body" color={tokens.color.textSecondary}>
-        Payment confirmed. Track your order for live updates.
-      </Text>
+      {/* Celebration Header Animation / Icon */}
+      <View style={{ alignItems: 'center', marginVertical: tokens.spacing.lg, gap: tokens.spacing.sm }}>
+        <View style={{
+          width: 84,
+          height: 84,
+          borderRadius: 42,
+          backgroundColor: '#DCFCE7', // Light green brand tint
+          justifyContent: 'center',
+          alignItems: 'center',
+          shadowColor: '#14532D',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+          elevation: 4,
+        }}>
+          <Text style={{ fontSize: 38 }}>🎉</Text>
+        </View>
+
+        <Text variant="heading1" style={{ fontWeight: '900', color: tokens.color.textPrimary, textAlign: 'center' }}>
+          Order Confirmed!
+        </Text>
+        <Text variant="bodySmall" color={tokens.color.textSecondary} style={{ textAlign: 'center', paddingHorizontal: tokens.spacing.xl }}>
+          Your payment succeeded. Relax while your preparation starts!
+        </Text>
+      </View>
 
       {orderQuery.isLoading && !orderQuery.data ? (
         <OrderSummarySkeleton />
       ) : orderQuery.isError && !orderQuery.data ? (
         <EmptyState
           title="Order not found"
-          description="We could not load this order."
+          description="We could not load this order details."
           accessibilityLabel="Order not found"
           actionLabel="Retry"
           onAction={() => {
@@ -86,23 +103,37 @@ export function OrderSuccessScreen({ navigation, route }: Props) {
         <OrderSummaryCard order={orderQuery.data} />
       ) : null}
 
-      <Button
-        label="Track order"
-        accessibilityLabel="Track order"
-        onPress={() => {
-          trackAnalyticsEvent('track_order_tapped', { orderId });
-          navigation.replace('LiveOrderTracking', { orderId });
-        }}
-      />
-      <Button
-        label="Back to home"
-        accessibilityLabel="Back to home"
-        variant="secondary"
-        onPress={() => {
-          const parent = navigation.getParent();
-          parent?.navigate('BrowseTab' as never);
-        }}
-      />
-    </View>
+      <View style={{ gap: tokens.spacing.sm, marginTop: tokens.spacing.md }}>
+        <Button
+          label="Live Track Your Delivery"
+          accessibilityLabel="Track order"
+          onPress={() => {
+            trackAnalyticsEvent('track_order_tapped', { orderId });
+            navigation.replace('LiveOrderTracking', { orderId });
+          }}
+          style={{
+            height: 52,
+            borderRadius: tokens.radius.lg,
+            backgroundColor: tokens.color.accent, // Brand green accent
+          }}
+        />
+        <Button
+          label="Back to home"
+          accessibilityLabel="Back to home"
+          variant="secondary"
+          onPress={() => {
+            const parent = navigation.getParent();
+            parent?.navigate('BrowseTab' as never);
+          }}
+          style={{
+            height: 48,
+            borderRadius: tokens.radius.md,
+            borderColor: tokens.color.border,
+            backgroundColor: 'transparent',
+          }}
+        />
+      </View>
+    </ScrollView>
   );
 }
+

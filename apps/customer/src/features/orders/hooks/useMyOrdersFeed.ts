@@ -33,7 +33,7 @@ export function useMyOrdersFeed(args: FeedArgs) {
     sort: (args.sort ?? 'placedAt') as OrderSort,
     page,
     size,
-  });
+  }, { pollingInterval: 4000, refetchOnFocus: true });
 
   useEffect(() => {
     if (!query.isSuccess || !query.data) return;

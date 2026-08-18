@@ -109,11 +109,12 @@ export function createBaseApi<TagTypes extends string = string>(
 
     if (result.error) {
       const fetchError = result.error as FetchBaseQueryError;
+      const errorMsg = ('error' in fetchError && typeof fetchError.error === 'string') ? fetchError.error : 'check your connection';
       const networkError: EnvelopeAwareError = {
         status: fetchError.status,
         data: {
           code: 'NETWORK_ERROR',
-          message: 'check your connection',
+          message: `Network error: ${errorMsg}`,
           fields: null,
         },
       };
@@ -186,12 +187,14 @@ export function createBaseApi<TagTypes extends string = string>(
               extraOptions ?? {},
             );
             if (retryResult.error) {
+              const retryError = retryResult.error as FetchBaseQueryError;
+              const errorMsg = ('error' in retryError && typeof retryError.error === 'string') ? retryError.error : 'check your connection';
               return {
                 error: {
-                  status: (retryResult.error as FetchBaseQueryError).status,
+                  status: retryError.status,
                   data: {
                     code: 'NETWORK_ERROR',
-                    message: 'check your connection',
+                    message: `Network error: ${errorMsg}`,
                     fields: null,
                   },
                 },
