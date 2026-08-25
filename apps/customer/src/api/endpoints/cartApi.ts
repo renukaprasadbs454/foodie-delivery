@@ -1,19 +1,11 @@
 import { baseApi } from '../baseApi';
-import type {
-  AddCartItemRequest,
-  Cart,
-  CartItem,
-} from '../../features/menu/types';
+import type { AddCartItemRequest, Cart, CartItem } from '../../features/menu/types';
 import { parseMoney } from '../../features/menu/types';
 
 export type AddCartItemArg = AddCartItemRequest & {
-  /** Display-only unit for optimistic line; server response is authoritative. */
   optimisticUnitPrice?: number;
 };
 
-/**
- * Cart RTK — P2-CUS-02 (get/add/clear for Menu) + P2-CUS-03 (remove + Cart UI).
- */
 let mockCart: Cart = { cartId: 'mock-cart', restaurantId: null, items: [], subtotal: 0 };
 export const resetMockCart = () => { mockCart = { cartId: 'mock-cart', restaurantId: null, items: [], subtotal: 0 }; };
 
@@ -31,9 +23,7 @@ export const cartApi = baseApi.injectEndpoints({
 
         const variantKey = arg.variantId ?? null;
         const existing = mockCart.items.find(
-          (item) =>
-            item.menuItemId === arg.menuItemId &&
-            (item.variantId ?? null) === variantKey,
+          (item) => item.menuItemId === arg.menuItemId && (item.variantId ?? null) === variantKey
         );
         if (existing) {
           existing.quantity += arg.quantity;
@@ -93,54 +83,4 @@ export const cartApi = baseApi.injectEndpoints({
   }),
 });
 
-function applyOptimisticAdd(draft: Cart, arg: AddCartItemArg): void {
-  const variantKey = arg.variantId ?? null;
-  const existing = draft.items.find(
-    (item) =>
-      item.menuItemId === arg.menuItemId &&
-      (item.variantId ?? null) === variantKey,
-  );
-  if (existing) {
-    existing.quantity += arg.quantity;
-    if (arg.notes != null) existing.notes = arg.notes;
-    const unit = parseMoney(existing.unitPrice);
-    existing.lineTotal = unit * existing.quantity;
-  } else {
-    const unit = arg.optimisticUnitPrice ?? 0;
-    const provisional: CartItem = {
-      cartItemId: `optimistic-${arg.menuItemId}-${variantKey ?? 'base'}`,
-      menuItemId: arg.menuItemId,
-      variantId: variantKey,
-      quantity: arg.quantity,
-      notes: arg.notes ?? null,
-      unitPrice: unit,
-      lineTotal: unit * arg.quantity,
-    };
-    draft.items.push(provisional);
-  }
-  draft.subtotal = draft.items.reduce(
-    (sum, item) => sum + parseMoney(item.lineTotal),
-    0,
-  );
-}
-
-function applyOptimisticRemove(draft: Cart, cartItemId: string): void {
-  draft.items = draft.items.filter((item) => item.cartItemId !== cartItemId);
-  if (draft.items.length === 0) {
-    draft.restaurantId = null;
-    draft.subtotal = 0;
-    return;
-  }
-  draft.subtotal = draft.items.reduce(
-    (sum, item) => sum + parseMoney(item.lineTotal),
-    0,
-  );
-}
-
-export const {
-  useGetCartQuery,
-  useAddCartItemMutation,
-  useUpdateCartItemQuantityMutation,
-  useRemoveCartItemMutation,
-  useClearCartMutation,
-} = cartApi;
+export const { useGetCartQuery, useAddCartItemMutation, useUpdateCartItemQuantityMutation, useRemoveCartItemMutation, useClearCartMutation } = cartApi;

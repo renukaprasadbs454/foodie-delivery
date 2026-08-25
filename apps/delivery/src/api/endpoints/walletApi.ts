@@ -11,6 +11,7 @@ import {
   isLedgerSort,
   normalizeLedgerList,
 } from '../../features/wallet/types';
+import type { PayoutInfo, PayoutHistoryResponse } from '../../features/wallet/types';
 
 /**
  * Wallet RTK — P2-DEL-04 (UI-API Wallet/Ledger/Payout + §9.1–§9.3).
@@ -68,6 +69,25 @@ export const walletApi = baseApi.injectEndpoints({
         { type: 'Wallet', id: 'LIST' },
       ],
     }),
+    getPayoutHistory: builder.query<PayoutInfo[], void>({
+      query: () => ({
+        url: '/api/v1/wallet/payouts',
+      }),
+      transformResponse: (response: PayoutHistoryResponse) => {
+        if (Array.isArray(response)) {
+          return response;
+        }
+        if (response && Array.isArray(response.content)) {
+          return response.content;
+        }
+        return [];
+      },
+      providesTags: ['Wallet'],
+    }),
+    getPayoutDetail: builder.query<PayoutInfo, string>({
+      query: (payoutId) => `/api/v1/wallet/payouts/${payoutId}`,
+      providesTags: (result, error, id) => [{ type: 'Wallet', id: `PAYOUT-${id}` }],
+    }),
   }),
 });
 
@@ -75,4 +95,6 @@ export const {
   useGetWalletBalanceQuery,
   useGetWalletLedgerQuery,
   useRequestPayoutMutation,
+  useGetPayoutHistoryQuery,
+  useGetPayoutDetailQuery,
 } = walletApi;

@@ -42,6 +42,26 @@ export type LedgerQueryParams = {
   createdAtTo?: string;
 };
 
+export type PayoutStatus = 'REQUESTED' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | string;
+
+export type PayoutInfo = {
+  payoutId: string;
+  amount: number | string;
+  requestedDate: string;
+  processedDate?: string;
+  status: PayoutStatus;
+  provider?: string;
+  transactionId?: string;
+  providerReference?: string;
+  failureReason?: string;
+  date?: string; // fallback or general date
+};
+
+export type PayoutHistoryResponse = {
+  content?: PayoutInfo[]; // Optional in case of spring boot page wrapping
+} | PayoutInfo[];
+
+
 export type PayoutRequestResult = {
   payoutId: string;
   status: 'REQUESTED' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | string;

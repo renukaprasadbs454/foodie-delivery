@@ -33,6 +33,11 @@ const NotificationsStack =
   createNativeStackNavigator<NotificationsStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 
+import { DarkStoreScreen } from '../features/darkStore/screens/DarkStoreScreen';
+import { DarkStoreSubCategoryScreen } from '../features/darkStore/screens/DarkStoreSubCategoryScreen';
+import { DarkStoreItemsScreen } from '../features/darkStore/screens/DarkStoreItemsScreen';
+import { DarkStoreSearchScreen } from '../features/darkStore/screens/DarkStoreSearchScreen';
+
 function BrowseStackNavigator() {
   return (
     <BrowseStack.Navigator screenOptions={{ headerShown: false }}>
@@ -86,6 +91,26 @@ function BrowseStackNavigator() {
         component={ReviewsScreen}
         options={{ title: 'Reviews' }}
       />
+      <BrowseStack.Screen
+        name="DarkStore"
+        component={DarkStoreScreen as any}
+        options={{ title: 'Dark Store' }}
+      />
+      <BrowseStack.Screen
+        name="DarkStoreSubCategory"
+        component={DarkStoreSubCategoryScreen as any}
+        options={{ title: 'Category' }}
+      />
+      <BrowseStack.Screen
+        name="DarkStoreItems"
+        component={DarkStoreItemsScreen as any}
+        options={{ title: 'Items' }}
+      />
+      <BrowseStack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notifications' }}
+      />
     </BrowseStack.Navigator>
   );
 }
@@ -117,15 +142,52 @@ function OrdersStackNavigator() {
   );
 }
 
-function NotificationsStackNavigator() {
+const DarkStoreStack = createNativeStackNavigator<any>();
+
+function DarkStoreStackNavigator() {
   return (
-    <NotificationsStack.Navigator screenOptions={{ headerShown: false }}>
-      <NotificationsStack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{ title: 'Notifications' }}
+    <DarkStoreStack.Navigator screenOptions={{ headerShown: false }}>
+      <DarkStoreStack.Screen
+        name="DarkStore"
+        component={DarkStoreScreen as any}
+        options={{ title: 'Dark Store' }}
       />
-    </NotificationsStack.Navigator>
+      <DarkStoreStack.Screen
+        name="DarkStoreSubCategory"
+        component={DarkStoreSubCategoryScreen as any}
+        options={{ title: 'Category' }}
+      />
+      <DarkStoreStack.Screen
+        name="DarkStoreItems"
+        component={DarkStoreItemsScreen as any}
+        options={{ title: 'Items' }}
+      />
+      <DarkStoreStack.Screen
+        name="DarkStoreSearch"
+        component={DarkStoreSearchScreen as any}
+        options={{ title: 'Search' }}
+      />
+      <DarkStoreStack.Screen
+        name="Cart"
+        component={CartScreen as any}
+        options={{ title: 'Cart' }}
+      />
+      <DarkStoreStack.Screen
+        name="Checkout"
+        component={CheckoutScreen as any}
+        options={{ title: 'Checkout' }}
+      />
+      <DarkStoreStack.Screen
+        name="Payment"
+        component={PaymentScreen as any}
+        options={{ title: 'Payment' }}
+      />
+      <DarkStoreStack.Screen
+        name="Addresses"
+        component={AddressesScreen as any}
+        options={{ title: 'Addresses' }}
+      />
+    </DarkStoreStack.Navigator>
   );
 }
 
@@ -182,7 +244,7 @@ export function MainNavigator() {
           let emoji = '🏠';
           if (route.name === 'BrowseTab') emoji = '🏠';
           else if (route.name === 'OrdersTab') emoji = '📋';
-          else if (route.name === 'NotificationsTab') emoji = '🔔';
+          else if (route.name === 'DarkStoreTab') emoji = '🛍️';
           else if (route.name === 'ProfileTab') emoji = '👤';
 
           return (
@@ -210,6 +272,17 @@ export function MainNavigator() {
         })}
       />
       <Tab.Screen
+        name="DarkStoreTab"
+        component={DarkStoreStackNavigator as any}
+        options={{ title: 'Dark Store' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('DarkStoreTab', { screen: 'DarkStore' });
+          },
+        })}
+      />
+      <Tab.Screen
         name="OrdersTab"
         component={OrdersStackNavigator}
         options={{ title: 'Orders' }}
@@ -217,17 +290,6 @@ export function MainNavigator() {
           tabPress: (e) => {
             e.preventDefault();
             navigation.navigate('OrdersTab', { screen: 'MyOrders' });
-          },
-        })}
-      />
-      <Tab.Screen
-        name="NotificationsTab"
-        component={NotificationsStackNavigator}
-        options={{ title: 'Notifications' }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('NotificationsTab', { screen: 'Notifications' });
           },
         })}
       />

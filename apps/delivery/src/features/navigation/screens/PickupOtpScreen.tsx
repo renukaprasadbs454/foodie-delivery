@@ -71,11 +71,7 @@ export function PickupOtpScreen({ navigation, route }: Props) {
       await verify({ assignmentId, orderId, otp: validated.otp }).unwrap();
       trackAnalyticsEvent('pickup_verified', { orderId });
       setToast({ message: 'Pickup verified.', variant: 'success' });
-      navigation.replace('DeliveryNavigation', {
-        assignmentId,
-        orderId,
-        leg: 'drop',
-      });
+      navigation.replace('CustomerDelivery' as any, { assignmentId, orderId });
     } catch (error) {
       setOtp('');
       handleError(toUnwrappedApiError(error));

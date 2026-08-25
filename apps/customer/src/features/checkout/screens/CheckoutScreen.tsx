@@ -35,10 +35,14 @@ import { isAddressId } from '../types';
 
 type Props = NativeStackScreenProps<BrowseStackParamList, 'Checkout'>;
 
-export function CheckoutScreen({ navigation }: Props) {
+export function CheckoutScreen({ navigation, route }: any) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const cartQuery = useGetCartQuery();
+
+  const mockItems = route.params?.mockItems;
+  const isDarkStoreMock = Array.isArray(mockItems) && mockItems.length > 0;
+
   const addressesQuery = useGetAddressesQuery();
   const [createOrder, createState] = useCreateOrderMutation();
 
@@ -97,8 +101,15 @@ export function CheckoutScreen({ navigation }: Props) {
       setToast({ message: 'Select a delivery address.', variant: 'error' });
       return;
     }
-    if (!cart?.items?.length) {
+    if (!isDarkStoreMock && !cart?.items?.length) {
       setToast({ message: 'Your cart is empty.', variant: 'error' });
+      return;
+    }
+    if (isDarkStoreMock) {
+      trackAnalyticsEvent('checkout_completed', { orderId: 'mock-darkstore' });
+      // Calculate mock total here and pass it
+      const mockSubtotal = mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0);
+      navigation.replace('Payment' as any, { orderId: `ds-mock-${Date.now()}`, mockTotal: mockSubtotal + 25 + 18 });
       return;
     }
     if (!placeAttemptKey.current) {
@@ -130,7 +141,7 @@ export function CheckoutScreen({ navigation }: Props) {
     );
   }
 
-  if (!cartQuery.isLoading && (!cart?.items || cart.items.length === 0)) {
+  if (!isDarkStoreMock && !cartQuery.isLoading && (!cart?.items || cart.items.length === 0)) {
     return (
       <EmptyState
         title="Cart is empty"
@@ -142,7 +153,8 @@ export function CheckoutScreen({ navigation }: Props) {
     );
   }
 
-  const grandTotal = Math.max(0, Number(cart?.subtotal || 0) + 25 + 18);
+  const subtotal = isDarkStoreMock ? mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0) : Number(cart?.subtotal || 0);
+  const grandTotal = Math.max(0, subtotal + 25 + 18);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#14532D' }} edges={['top', 'left', 'right']}>
@@ -276,7 +288,7 @@ export function CheckoutScreen({ navigation }: Props) {
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ color: '#6B7280', fontWeight: '600' }}>Item Total</Text>
-                        <Text style={{ color: '#111827', fontWeight: '700' }}>₹{formatMoney(cart?.subtotal || 0)}</Text>
+                        <Text style={{ color: '#111827', fontWeight: '700' }}>₹{formatMoney(subtotal)}</Text>
                       </View>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ color: '#6B7280', fontWeight: '600' }}>Delivery Fee</Text>

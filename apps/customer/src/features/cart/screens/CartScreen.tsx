@@ -32,7 +32,7 @@ import { canProceedToCheckout } from '../types';
 
 type Props = NativeStackScreenProps<BrowseStackParamList, 'Cart'>;
 
-export function CartScreen({ navigation }: Props) {
+export function CartScreen({ navigation, route }: Props) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const cartQuery = useGetCartQuery();
@@ -82,9 +82,27 @@ export function CartScreen({ navigation }: Props) {
     ]).start();
   }, []);
 
-  const items = cartQuery.data?.items ?? [];
+  const mockItems = (route.params as any)?.mockItems;
+  const isDarkStoreMock = Array.isArray(mockItems) && mockItems.length > 0;
+
+  let items = cartQuery.data?.items ?? [];
+  let subtotalAmt = Number(cartQuery.data?.subtotal) || 0;
+  let restaurantId = cartQuery.data?.restaurantId;
+
+  if (isDarkStoreMock) {
+    items = mockItems.map((mi: any) => ({
+      cartItemId: mi.id,
+      menuItemId: mi.id,
+      quantity: mi.quantity,
+      price: mi.price,
+      unitPrice: mi.price,
+      lineTotal: mi.price * mi.quantity
+    }));
+    subtotalAmt = mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0);
+    restaurantId = 'mock-resto-darkstore';
+  }
+
   const checkoutEnabled = canProceedToCheckout(items.length);
-  const restaurantId = cartQuery.data?.restaurantId;
 
   const validId = restaurantId ? (isMenuRestaurantId(restaurantId) || restaurantId.startsWith('mock-resto-')) : false;
   const isMock = restaurantId?.startsWith('mock-resto-') ?? false;
@@ -93,15 +111,26 @@ export function CartScreen({ navigation }: Props) {
   const { data: realRestaurant } = useGetRestaurantQuery(restaurantId || '', { skip: !validId || isMock });
 
   const mockRestaurant = isMock ? MOCK_RESTAURANTS.find((r: any) => r.id === restaurantId) : null;
-  const restaurantData = isMock ? mockRestaurant : realRestaurant;
-  const menuData = isMock && restaurantId ? MOCK_MENUS[restaurantId] : menuQuery.data;
+  const restaurantData = isDarkStoreMock ? { name: 'FoodieMart Dark Store' } : (isMock ? mockRestaurant : realRestaurant);
+  const menuData = isMock && restaurantId && !isDarkStoreMock ? MOCK_MENUS[restaurantId] : menuQuery.data;
 
   const menuItemsMap = new Map();
-  menuData?.categories?.forEach((cat: any) => {
-    cat.items.forEach((mi: any) => {
-      menuItemsMap.set(mi.menuItemId, mi);
+  if (isDarkStoreMock) {
+    mockItems.forEach((mi: any) => {
+      menuItemsMap.set(mi.id, {
+        menuItemId: mi.id,
+        name: mi.name,
+        price: mi.price,
+        isVeg: true
+      });
     });
-  });
+  } else {
+    menuData?.categories?.forEach((cat: any) => {
+      cat.items.forEach((mi: any) => {
+        menuItemsMap.set(mi.menuItemId, mi);
+      });
+    });
+  }
 
   const [userCity, setUserCity] = useState<string>('Bengaluru');
   const [distanceInfo, setDistanceInfo] = useState<string>('Estimating status...');
@@ -134,6 +163,10 @@ export function CartScreen({ navigation }: Props) {
   }, [restaurantId]);
 
   const onRemove = async (cartItemId: string) => {
+    if (isDarkStoreMock) {
+      setToast({ message: 'Dark store cart mock handles checkout locally.', variant: 'info' });
+      return;
+    }
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to update your cart.', variant: 'warning' });
       return;
@@ -151,6 +184,10 @@ export function CartScreen({ navigation }: Props) {
   };
 
   const onUpdateQuantity = async (cartItemId: string, newQty: number) => {
+    if (isDarkStoreMock) {
+      setToast({ message: 'Dark store cart mock handles checkout locally.', variant: 'info' });
+      return;
+    }
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to update your cart.', variant: 'warning' });
       return;
@@ -185,8 +222,7 @@ export function CartScreen({ navigation }: Props) {
     }
   };
 
-  const showItems = !cartQuery.isLoading && !cartQuery.isError && items.length > 0;
-  const subtotalAmt = Number(cartQuery.data?.subtotal) || 0;
+  const showItems = (!cartQuery.isLoading && !cartQuery.isError && items.length > 0) || isDarkStoreMock;
   const deliveryFee = 25;
   const taxes = 18;
   const totalBill = Math.max(0, subtotalAmt + deliveryFee + taxes - discount);
@@ -444,7 +480,7 @@ export function CartScreen({ navigation }: Props) {
           {checkoutEnabled ? (
             <Pressable
               accessibilityLabel="Continue to Checkout"
-              onPress={() => navigation.navigate('Checkout')}
+              onPress={() => navigation.navigate('Checkout' as any, { mockItems: isDarkStoreMock ? mockItems : undefined })}
               style={({ pressed }) => ({
                 backgroundColor: pressed ? '#0F3E22' : '#14532D',
                 paddingVertical: 16,

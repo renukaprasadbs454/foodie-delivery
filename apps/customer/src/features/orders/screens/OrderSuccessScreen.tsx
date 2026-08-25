@@ -17,10 +17,12 @@ import { isOrderId } from '../types';
 type Props = NativeStackScreenProps<OrdersStackParamList, 'OrderSuccess'>;
 
 export function OrderSuccessScreen({ navigation, route }: Props) {
+
   const { orderId } = route.params;
+  const isDarkStoreMock = orderId.startsWith('ds-mock-');
   const { tokens } = useTheme();
-  const validId = isOrderId(orderId);
-  const orderQuery = useGetOrderQuery(orderId, { skip: !validId });
+  const validId = isDarkStoreMock ? true : isOrderId(orderId);
+  const orderQuery = useGetOrderQuery(orderId, { skip: !validId || isDarkStoreMock });
 
   useEffect(() => {
     trackAnalyticsEvent('customer_order_success_viewed', { orderId });

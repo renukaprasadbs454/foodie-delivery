@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 type Props = {
   lastPing: any;
@@ -24,7 +25,11 @@ export function TrackingMap({ lastPing, orderStatus, leg, restaurantLocation, cu
           const req = await Location.requestForegroundPermissionsAsync();
           if (!req.granted) return;
         }
-        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        let pos = await Location.getLastKnownPositionAsync();
+        if (pos) {
+          setDeviceLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        }
+        pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
         setDeviceLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
       } catch {
         // Fallback to Bengaluru coords for robust testing
@@ -73,6 +78,12 @@ export function TrackingMap({ lastPing, orderStatus, leg, restaurantLocation, cu
         }
       };
       void fetchRoute();
+
+      const intervalId = setInterval(() => {
+        void fetchRoute();
+      }, 5000); // refresh every 5 seconds
+
+      return () => clearInterval(intervalId);
     }
   }, [originLocation?.latitude, originLocation?.longitude, targetLocation?.latitude, targetLocation?.longitude]);
 
@@ -95,7 +106,7 @@ export function TrackingMap({ lastPing, orderStatus, leg, restaurantLocation, cu
             anchor={{ x: 0.5, y: 0.5 }}
           >
             <View style={styles.bikeIconContainer}>
-              <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1048/1048325.png' }} style={styles.bikeIcon} />
+              <MaterialCommunityIcons name="motorbike" size={24} color="#14532D" />
             </View>
           </Marker>
         ) : null}
@@ -147,11 +158,9 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.2,
     shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 }
-  },
-  bikeIcon: {
-    width: 24,
-    height: 24,
+    shadowOffset: { width: 0, height: 2 },
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loaderBadge: {
     position: 'absolute',

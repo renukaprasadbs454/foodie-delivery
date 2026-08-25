@@ -32,6 +32,14 @@ export type BrowseStackParamList = {
   Addresses: { selectMode?: boolean } | undefined;
   /** UI-API Reviews — list mode from restaurant details. */
   Reviews: ReviewsScreenParams;
+
+  // Dark Store Routes
+  DarkStore: undefined;
+  DarkStoreSubCategory: { categoryId: string; categoryName: string };
+  DarkStoreItems: { subcategoryId: string; subcategoryName: string };
+
+  // Moved from separate stack so it can be pushed from Home header
+  Notifications: undefined;
 };
 
 export type OrdersStackParamList = {
@@ -55,7 +63,7 @@ export type ProfileStackParamList = {
 export type MainTabParamList = {
   BrowseTab: NavigatorScreenParams<BrowseStackParamList> | undefined;
   OrdersTab: NavigatorScreenParams<OrdersStackParamList> | undefined;
-  NotificationsTab: NavigatorScreenParams<NotificationsStackParamList> | undefined;
+  DarkStoreTab: NavigatorScreenParams<BrowseStackParamList> | undefined;
   ProfileTab: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 

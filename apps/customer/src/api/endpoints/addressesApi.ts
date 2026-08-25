@@ -10,18 +10,20 @@ export const addressesApi = baseApi.injectEndpoints({
     getAddresses: builder.query<CustomerAddress[], void>({
       query: () => '/api/v1/users/me/addresses',
       transformResponse: (response: unknown) => {
-        if (Array.isArray(response)) return response as CustomerAddress[];
+        // Backend returns ApiResponse<List<AddressResponseDto>> — unwrap .data field
+        const unwrapped = (response as any)?.data ?? response;
+        if (Array.isArray(unwrapped)) return unwrapped as CustomerAddress[];
         return [];
       },
       providesTags: (result) =>
         result
           ? [
-              ...result.map(({ addressId }) => ({
-                type: 'Address' as const,
-                id: addressId,
-              })),
-              { type: 'Address', id: 'LIST' },
-            ]
+            ...result.map(({ addressId }) => ({
+              type: 'Address' as const,
+              id: addressId,
+            })),
+            { type: 'Address', id: 'LIST' },
+          ]
           : [{ type: 'Address', id: 'LIST' }],
       keepUnusedDataFor: 120,
     }),

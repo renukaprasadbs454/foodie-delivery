@@ -18,6 +18,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
   const authStatus = useAppSelector(selectAuthStatus);
+  const isNewUser = useAppSelector(selectIsNewUser);
 
   // Conditionally fetch profile only when authenticated
   const profileQuery = useGetDeliveryProfileQuery(undefined, {
@@ -36,11 +37,15 @@ export function RootNavigator() {
   // Strict KYC constraint: Must have all 3 REQUIRED_DOCS uploaded to bypass KYC block
   const hasUploadedDocs = profileQuery.data?.documents && profileQuery.data.documents.length >= 3;
 
-  const initialRouteName = !hasUploadedDocs
-    ? 'Kyc'
-    : (profileQuery.data?.kycStatus === 'PENDING' || profileQuery.data?.kycStatus === 'REJECTED')
-      ? 'PendingVerification'
-      : 'DeliveryHome';
+  const isKycVerified = profileQuery.data?.kycStatus === 'VERIFIED';
+
+  const initialRouteName = isKycVerified
+    ? 'DeliveryHome'
+    : ((isNewUser && !hasUploadedDocs) || !hasUploadedDocs)
+      ? 'Kyc'
+      : (profileQuery.data?.kycStatus === 'PENDING' || profileQuery.data?.kycStatus === 'REJECTED')
+        ? 'PendingVerification'
+        : 'DeliveryHome';
 
   return (
     <NavigationContainer linking={linking}>

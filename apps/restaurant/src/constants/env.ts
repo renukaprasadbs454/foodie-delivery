@@ -21,16 +21,18 @@ if (Platform.OS === 'web') {
     devHost = scriptURL.split('://')[1].split(':')[0];
   } else if (Constants.expoConfig?.hostUri) {
     devHost = Constants.expoConfig.hostUri.split(':')[0];
+  } else if ((Constants as any).manifest2?.extra?.expoGo?.debuggerHost) {
+    devHost = (Constants as any).manifest2.extra.expoGo.debuggerHost.split(':')[0];
   }
 }
 
 export const ENV = {
   apiBaseUrl: __DEV__
-    ? `http://${devHost}:8080`
-    : (process.env.EXPO_PUBLIC_API_BASE_URL ?? extra.apiBaseUrl ?? 'http://localhost:8080'),
+    ? `http://${devHost}:8082`
+    : (process.env.EXPO_PUBLIC_API_BASE_URL ?? extra.apiBaseUrl ?? 'http://localhost:8082'),
   wsUrl: __DEV__
-    ? `ws://${devHost}:8080/ws/websocket`
-    : (process.env.EXPO_PUBLIC_WS_URL ?? extra.wsUrl ?? 'http://localhost:8080/ws'),
+    ? `ws://${devHost}:8082/ws/websocket`
+    : (process.env.EXPO_PUBLIC_WS_URL ?? extra.wsUrl ?? 'http://localhost:8082/ws'),
   appName: 'foodie-restaurant',
   appVersion: Constants.expoConfig?.version ?? '0.1.0',
 } as const;

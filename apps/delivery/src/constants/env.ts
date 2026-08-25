@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { NativeModules, Platform } from 'react-native';
 
 /**
  * Environment configuration — no secrets in git.
@@ -11,27 +12,30 @@ type Extra = {
 
 const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
-import { Platform } from 'react-native';
-
-let devHost = 'localhost';
+let devHost = '127.0.0.1';
 if (Platform.OS === 'web') {
   devHost = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';
-} else if (__DEV__ && Constants.expoConfig?.hostUri) {
-  devHost = Constants.expoConfig.hostUri.split(':')[0];
+} else if (__DEV__) {
+  const scriptURL = NativeModules.SourceCode?.scriptURL;
+  if (scriptURL) {
+    devHost = scriptURL.split('://')[1].split(':')[0];
+  } else if (Constants.expoConfig?.hostUri) {
+    devHost = Constants.expoConfig.hostUri.split(':')[0];
+  } else if ((Constants as any).manifest2?.extra?.expoGo?.debuggerHost) {
+    devHost = (Constants as any).manifest2.extra.expoGo.debuggerHost.split(':')[0];
+  }
 }
 
-const dynamicApiUrl = `http://${devHost}:8080`;
-const dynamicWsUrl = `ws://${devHost}:8080/ws/websocket`;
+const dynamicApiUrl = `http://${devHost}:8082`;
+const dynamicWsUrl = `ws://${devHost}:8082/ws/websocket`;
 
 export const ENV = {
-  apiBaseUrl:
-    process.env.EXPO_PUBLIC_API_BASE_URL ??
-    (__DEV__ ? dynamicApiUrl : extra.apiBaseUrl) ??
-    'https://api.foodie.example.com',
-  wsUrl:
-    process.env.EXPO_PUBLIC_WS_URL ??
-    (__DEV__ ? dynamicWsUrl : extra.wsUrl) ??
-    'https://api.foodie.example.com/ws',
+  apiBaseUrl: __DEV__
+    ? dynamicApiUrl
+    : (process.env.EXPO_PUBLIC_API_BASE_URL ?? extra.apiBaseUrl ?? 'https://api.foodie.example.com'),
+  wsUrl: __DEV__
+    ? dynamicWsUrl
+    : (process.env.EXPO_PUBLIC_WS_URL ?? extra.wsUrl ?? 'https://api.foodie.example.com/ws'),
   appName: 'foodie-delivery',
   appVersion: Constants.expoConfig?.version ?? '0.1.0',
 } as const;

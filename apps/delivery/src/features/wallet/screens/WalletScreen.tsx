@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect } from 'react';
-import { RefreshControl, ScrollView, View, Pressable } from 'react-native';
+import { RefreshControl, ScrollView, View, Pressable, StyleSheet } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Feather } from '@expo/vector-icons';
 import {
   Button,
   Text,
@@ -14,6 +17,7 @@ import { useGetWalletBalanceQuery } from '../../../api/endpoints/walletApi';
 import { WalletSkeleton } from '../components/WalletSkeleton';
 import { parseMoneyAmount } from '../types';
 import type { MainStackParamList } from '../../../navigation/types';
+import { BottomNav } from '../../../navigation/BottomNav';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Wallet'>;
 
@@ -27,6 +31,7 @@ export function WalletScreen({ navigation }: Props) {
     refetchOnMountOrArgChange: true,
   });
   const { refetch: refetchBalance } = balanceQuery;
+  const insets = useSafeAreaInsets();
 
   useFocusEffect(
     useCallback(() => {
@@ -43,12 +48,23 @@ export function WalletScreen({ navigation }: Props) {
   const loading = balanceQuery.isLoading && !balanceQuery.data;
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Decorative Dark Top Background */}
-      <View style={[styles.topArch, { height: 160 }]} />
+    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
+      {/* Decorative Dark Top Background Gradient */}
+      <LinearGradient
+        colors={['#0F3E22', '#14532D', '#1B6A3A']}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 280,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+        }}
+      />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 40, paddingBottom: 80 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -57,18 +73,30 @@ export function WalletScreen({ navigation }: Props) {
               void balanceQuery.refetch();
             }}
             tintColor="#FFF"
-            colors={['#F59E0B']}
+            colors={['#FCD34D']}
           />
         }
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Payouts</Text>
-          <Text style={styles.headerSubtitle}>Manage your earnings securely</Text>
+        <View style={{ paddingTop: 16, marginBottom: 24, flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+            <Feather name="arrow-left" size={22} color="#FFF" />
+          </Pressable>
+          <View>
+            <Text style={{ fontSize: 34, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5, marginBottom: 2 }}>Payouts</Text>
+            <Text style={{ fontSize: 13, color: '#A7F3D0', fontWeight: '600' }}>Manage your earnings securely</Text>
+          </View>
         </View>
 
         {!isConnected ? (
-          <View style={styles.warningContainer}>
-            <Text style={styles.warningText}>
+          <View style={{
+            backgroundColor: 'rgba(251, 191, 36, 0.15)',
+            borderWidth: 1,
+            borderColor: 'rgba(251, 191, 36, 0.3)',
+            borderRadius: 12,
+            padding: 12,
+            marginBottom: 16,
+          }}>
+            <Text style={{ color: '#FCD34D', fontSize: 13, fontWeight: '700' }}>
               Offline — showing cached balance. Reconnect for live money updates.
             </Text>
           </View>
@@ -79,203 +107,141 @@ export function WalletScreen({ navigation }: Props) {
         ) : null}
 
         {!loading ? (
-          <View style={styles.balanceCard}>
-            <View style={styles.balanceHeader}>
-              <View style={styles.walletIconCircle}>
-                <Feather name="briefcase" size={20} color="#F59E0B" />
+          <LinearGradient
+            colors={['#0F3E22', '#1B6A3A']}
+            style={{
+              borderRadius: 24,
+              padding: 24,
+              marginBottom: 24,
+              borderWidth: 2,
+              borderColor: '#FCD34D',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 5,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <View style={{
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: 'rgba(252, 211, 77, 0.15)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 10,
+              }}>
+                <Feather name="credit-card" size={18} color="#FCD34D" />
               </View>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={{ fontSize: 13, color: '#A7F3D0', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase' }}>
+                Available Balance
+              </Text>
             </View>
+
             <Text
-              style={styles.balanceAmount}
-              accessibilityLabel={
-                amount === null ? 'Balance unavailable' : formatMoneyInr(amount)
-              }
+              style={{ fontSize: 44, lineHeight: 52, paddingTop: 8, fontWeight: '900', color: '#FCD34D', marginBottom: 12, includeFontPadding: true }}
+              accessibilityLabel={amount === null ? 'Balance unavailable' : formatMoneyInr(amount)}
             >
               {amount === null ? '—' : formatMoneyInr(amount)}
             </Text>
+
             {balanceQuery.isError ? (
-              <View style={styles.errorRow}>
-                <Feather name="alert-circle" size={14} color="#E23744" />
-                <Text style={styles.errorText}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' }}>
+                <Feather name="alert-circle" size={13} color="#FCA5A5" />
+                <Text style={{ color: '#FCA5A5', fontSize: 12, fontWeight: '600', marginLeft: 6 }}>
                   Could not refresh. Pull down to retry.
                 </Text>
               </View>
             ) : null}
-          </View>
+          </LinearGradient>
         ) : null}
 
-        <View style={styles.actionGrid}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
           <Pressable
-            style={styles.actionButtonPrimary}
+            style={({ pressed }) => ({
+              flex: 1,
+              minWidth: 90,
+              backgroundColor: '#1E1B4B',
+              borderRadius: 20,
+              paddingVertical: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 2,
+              borderColor: '#FCD34D',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.1,
+              shadowRadius: 6,
+              elevation: 3,
+              opacity: pressed ? 0.9 : 1,
+            })}
             onPress={() => {
               trackAnalyticsEvent('open_payout_tapped');
               navigation.navigate('PayoutRequests');
             }}
           >
-            <Feather name="arrow-up-circle" size={24} color="#FFF" style={{ marginBottom: 8 }} />
-            <Text style={styles.actionButtonPrimaryText}>Withdraw</Text>
+            <Feather name="arrow-up-circle" size={24} color="#FCD34D" style={{ marginBottom: 8 }} />
+            <Text style={{ color: '#FCD34D', fontSize: 15, fontWeight: '800' }}>Withdraw</Text>
           </Pressable>
 
           <Pressable
-            style={styles.actionButtonSecondary}
+            style={({ pressed }) => ({
+              flex: 1,
+              minWidth: 90,
+              backgroundColor: '#FFFBEB',
+              borderRadius: 20,
+              paddingVertical: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: '#FDE68A',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 2,
+              opacity: pressed ? 0.9 : 1,
+            })}
+            onPress={() => {
+              trackAnalyticsEvent('open_cod_deposit_tapped');
+              navigation.navigate('CashDeposit' as any);
+            }}
+          >
+            <Feather name="package" size={24} color="#D97706" style={{ marginBottom: 8 }} />
+            <Text style={{ color: '#D97706', fontSize: 15, fontWeight: '800' }}>COD Deposit</Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => ({
+              flex: 1,
+              minWidth: 90,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 20,
+              paddingVertical: 20,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              elevation: 2,
+              opacity: pressed ? 0.9 : 1,
+            })}
             onPress={() => {
               trackAnalyticsEvent('open_ledger_tapped');
               navigation.navigate('Ledger');
             }}
           >
-            <Feather name="file-text" size={24} color="#1A202C" style={{ marginBottom: 8 }} />
-            <Text style={styles.actionButtonSecondaryText}>Ledger</Text>
+            <Feather name="file-text" size={24} color="#14532D" style={{ marginBottom: 8 }} />
+            <Text style={{ color: '#14532D', fontSize: 15, fontWeight: '800' }}>Ledger</Text>
           </Pressable>
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+      <BottomNav />
+    </View>
   );
 }
-
-import { StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  topArch: {
-    position: 'absolute',
-    top: 0,
-    width: '100%',
-    backgroundColor: '#14532D',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 40,
-    paddingBottom: 60,
-  },
-  header: {
-    marginBottom: 32,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: '#A0AEC0',
-    fontWeight: '500',
-  },
-  warningContainer: {
-    backgroundColor: 'rgba(234, 179, 8, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(234, 179, 8, 0.3)',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-  },
-  warningText: {
-    color: '#eab308',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  balanceCard: {
-    backgroundColor: '#14532D',
-    borderRadius: 28,
-    padding: 24,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#323438',
-  },
-  balanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  walletIconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 53, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  balanceLabel: {
-    fontSize: 14,
-    color: '#A0AEC0',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  balanceAmount: {
-    fontSize: 34,
-    fontWeight: '900',
-    color: '#F59E0B',
-    lineHeight: 40,
-    marginBottom: 6,
-  },
-  errorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    backgroundColor: 'rgba(226, 55, 68, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  errorText: {
-    color: '#E23744',
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 6,
-  },
-  actionGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  actionButtonPrimary: {
-    flex: 1,
-    backgroundColor: '#F59E0B',
-    borderRadius: 20,
-    paddingVertical: 24,
-    alignItems: 'center',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  actionButtonPrimaryText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionButtonSecondary: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    paddingVertical: 24,
-    alignItems: 'center',
-    shadowColor: '#1A202C',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  actionButtonSecondaryText: {
-    color: '#1A202C',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});

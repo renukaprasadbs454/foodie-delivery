@@ -3,7 +3,7 @@
  */
 
 export type PaymentInitiation = {
-  razorpayOrderId: string;
+  razorpayOrderId?: string | null; // optional — omit for mock/simple payment mode
   amount: number | string;
   currency: string;
   keyId: string;

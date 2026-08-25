@@ -170,6 +170,25 @@ export function HomeScreen({ navigation }: Props) {
               <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 13 }}>❓ Help</Text>
             </Pressable>
 
+            {/* Notifications Button */}
+            <Pressable
+              onPress={() => (navigation as any).navigate('NotificationsTab', { screen: 'Notifications' })}
+              accessibilityRole="button"
+              accessibilityLabel="View notifications"
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: pressed ? '#1B6A3A' : 'rgba(255, 255, 255, 0.15)',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.25)',
+              })}
+            >
+              <Text style={{ fontSize: 18 }}>🔔</Text>
+            </Pressable>
+
             {/* Cart Button */}
             <Pressable
               onPress={() => navigation.navigate('Cart')}

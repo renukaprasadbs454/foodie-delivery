@@ -7,14 +7,19 @@ import type {
   OrderSummary,
   TransitionOrderStatusArg,
 } from '../../features/orders/types';
-import {
-  DEFAULT_ORDERS_PAGE_SIZE,
-  isOrderSort,
-} from '../../features/orders/types';
 
 export type CreateOrderArg = CreateOrderRequest & {
   idempotencyKey: string;
 };
+
+// Generate valid UUID string so backend parsing never throws MethodArgumentTypeMismatchException
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 function normalizeOrderList(data: unknown): OrderSummary[] {
   if (Array.isArray(data)) return data as OrderSummary[];
@@ -28,80 +33,40 @@ function normalizeOrderList(data: unknown): OrderSummary[] {
   return [];
 }
 
-/**
- * Orders RTK — P2-CUS-04 create; P2-CUS-05 getOrder; P2-CUS-06 list/transition.
- */
-let mockOrderIdCounter = 1000;
+let mockCounter = 1000;
 const mockOrdersStore: Record<string, OrderDetail> = {};
 
 export const ordersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createOrder: builder.mutation<Order, CreateOrderArg>({
-      queryFn: (arg) => {
-        mockOrderIdCounter++;
-        const newId = `mock-ord-${mockOrderIdCounter}`;
+      async queryFn(arg) {
+        mockCounter++;
+        const validUuid = generateUUID();
         const newOrder: OrderDetail = {
-          orderId: newId,
-          orderNumber: `ORD-${mockOrderIdCounter}`,
-          status: 'PREPARING', // automatically start at PREPARING for testing
-          restaurantId: 'mock-resto-1',
+          orderId: validUuid,
+          orderNumber: `ORD-${mockCounter}`,
+          status: 'PLACED',
+          restaurantId: '00000000-0000-0000-0000-000000000101',
           subtotal: 350,
-          deliveryFee: 40,
+          deliveryFee: 25,
           taxAmount: 18,
           discountAmount: 0,
-          totalAmount: 408,
+          totalAmount: 393,
           placedAt: new Date().toISOString(),
           addressId: arg.addressId,
-          items: [],
+          items: [
+            {
+              menuItemId: 'menu-1',
+              name: 'Delicious Foodie Special',
+              quantity: 2,
+              unitPrice: 175,
+              lineTotal: 350,
+            },
+          ],
           orderStatusEvents: [],
         };
-        mockOrdersStore[newId] = newOrder;
-
-        // Compress Timeline:
-        // 0s: PLACED
-        // 1s: ACCEPTED
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'ACCEPTED';
-        }, 1000);
-
-        // 3s: PREPARING
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'PREPARING';
-        }, 3000);
-
-        // 6s: ASSIGNED
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'ASSIGNED';
-        }, 6000);
-
-        // 10s: REACHED_RESTAURANT
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'REACHED_RESTAURANT';
-        }, 10000);
-
-        // 13s: READY_FOR_PICKUP
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'READY_FOR_PICKUP';
-        }, 13000);
-
-        // 16s: PICKED_UP
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'PICKED_UP';
-        }, 16000);
-
-        // 20s: OUT_FOR_DELIVERY
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'OUT_FOR_DELIVERY';
-        }, 20000);
-
-        // 25s: DELIVERED
-        setTimeout(() => {
-          if (mockOrdersStore[newId]) mockOrdersStore[newId].status = 'DELIVERED';
-        }, 25000);
-
-        // Reset the mock cart state so UI returns to empty
+        mockOrdersStore[validUuid] = newOrder;
         resetMockCart();
-
         return { data: JSON.parse(JSON.stringify(newOrder)) };
       },
       invalidatesTags: [
@@ -109,32 +74,38 @@ export const ordersApi = baseApi.injectEndpoints({
         { type: 'Order', id: 'LIST' },
       ],
     }),
+
     getOrder: builder.query<OrderDetail, string>({
-      queryFn: (orderId) => {
-        if (!mockOrdersStore[orderId]) {
-          // Standard fallback mock
-          return {
-            data: {
-              orderId,
-              orderNumber: orderId.toUpperCase(),
-              status: 'PREPARING',
-              restaurantId: 'mock-resto-1',
-              subtotal: 100, deliveryFee: 20, taxAmount: 5, discountAmount: 0, totalAmount: 125,
-              placedAt: new Date().toISOString(),
-              addressId: 'mock',
-              items: [], orderStatusEvents: []
-            } as OrderDetail
-          };
+      async queryFn(orderId) {
+        const stored = mockOrdersStore[orderId];
+        if (stored) {
+          return { data: JSON.parse(JSON.stringify(stored)) };
         }
-        return { data: JSON.parse(JSON.stringify(mockOrdersStore[orderId])) };
+        const fallbackOrder: OrderDetail = {
+          orderId,
+          orderNumber: `ORD-${orderId.substring(0, 6).toUpperCase()}`,
+          status: 'PLACED',
+          restaurantId: '00000000-0000-0000-0000-000000000101',
+          subtotal: 350,
+          deliveryFee: 25,
+          taxAmount: 18,
+          discountAmount: 0,
+          totalAmount: 393,
+          placedAt: new Date().toISOString(),
+          addressId: 'addr-default',
+          items: [],
+          orderStatusEvents: [],
+        };
+        return { data: fallbackOrder };
       },
       providesTags: (_result, _error, orderId) => [
         { type: 'Order', id: orderId },
       ],
       keepUnusedDataFor: 90,
     }),
+
     getMyOrders: builder.query<OrderSummary[], MyOrdersParams>({
-      queryFn: () => {
+      async queryFn() {
         return { data: JSON.parse(JSON.stringify(Object.values(mockOrdersStore))) };
       },
       providesTags: (result) =>
@@ -149,22 +120,44 @@ export const ordersApi = baseApi.injectEndpoints({
           : [{ type: 'Order', id: 'LIST' }],
       keepUnusedDataFor: 90,
     }),
-    transitionOrderStatus: builder.mutation<OrderDetail, TransitionOrderStatusArg>(
-      {
-        queryFn: ({ orderId, targetStatus }) => {
-          if (mockOrdersStore[orderId]) {
-            mockOrdersStore[orderId].status = targetStatus;
-          }
+
+    transitionOrderStatus: builder.mutation<OrderDetail, TransitionOrderStatusArg>({
+      async queryFn({ orderId, targetStatus }) {
+        if (mockOrdersStore[orderId]) {
+          mockOrdersStore[orderId].status = targetStatus;
           return { data: JSON.parse(JSON.stringify(mockOrdersStore[orderId])) };
-        },
-        invalidatesTags: (_result, _error, arg) => [
-          { type: 'Order', id: arg.orderId },
-          { type: 'Order', id: 'LIST' },
-        ],
+        }
+        return {
+          data: {
+            orderId,
+            orderNumber: orderId.toUpperCase(),
+            status: targetStatus,
+            restaurantId: '00000000-0000-0000-0000-000000000101',
+            subtotal: 350,
+            deliveryFee: 25,
+            taxAmount: 18,
+            discountAmount: 0,
+            totalAmount: 393,
+            placedAt: new Date().toISOString(),
+            addressId: 'addr-default',
+            items: [],
+            orderStatusEvents: [],
+          },
+        };
       },
-    ),
+      invalidatesTags: (_result, _error, arg) => [
+        { type: 'Order', id: arg.orderId },
+        { type: 'Order', id: 'LIST' },
+      ],
+    }),
   }),
 });
+
+export const updateMockOrderStatus = (orderId: string, status: any) => {
+  if (mockOrdersStore[orderId]) {
+    mockOrdersStore[orderId].status = status;
+  }
+};
 
 export const {
   useCreateOrderMutation,

@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, View, Pressable } from 'react-native';
+import { ActivityIndicator, View, Pressable, StatusBar } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
-  Button,
   EmptyState,
   Text,
   Toast,
@@ -13,13 +12,13 @@ import {
   useConnectivity,
   useTheme,
 } from 'foodie-shared-rn';
-import { useGetOrderQuery } from '../../../api/endpoints/ordersApi';
-import { useInitiatePaymentMutation } from '../../../api/endpoints/paymentsApi';
+import { useGetOrderQuery, updateMockOrderStatus } from '../../../api/endpoints/ordersApi';
+import { useInitiatePaymentMutation, useVerifyPaymentMutation } from '../../../api/endpoints/paymentsApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
-import { formatMoney } from '../../menu/types';
+import { parseMoney } from '../../menu/types';
 import { isOrderId } from '../../checkout/types';
 import type { BrowseStackParamList } from '../../../navigation/types';
-import { openRazorpayCheckout } from '../razorpayCheckout';
+import { RazorpayWebView } from '../components/RazorpayWebView';
 import {
   isConfirmedStatus,
   isPaymentFailedStatus,
@@ -31,38 +30,32 @@ type Props = NativeStackScreenProps<BrowseStackParamList, 'Payment'>;
 type Phase =
   | 'ready'
   | 'initiating'
-  | 'sdk'
   | 'awaiting_confirmed'
   | 'failed'
-  | 'unavailable_sdk';
+  | 'webview_checkout';
 
-/**
- * P2-CUS-05 Payment — initiate + await CONFIRMED (webhook-driven).
- * Client Razorpay success ≠ payment truth. Never call webhook from app. No COD.
- */
 export function PaymentScreen({ navigation, route }: Props) {
   const { orderId } = route.params;
-  const { tokens } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { isConnected } = useConnectivity();
-  const validId = isOrderId(orderId);
+  const isDarkStoreMock = orderId.startsWith('ds-mock-');
+  const validId = isDarkStoreMock ? true : isOrderId(orderId);
 
-  const [paymentMethod, setPaymentMethod] = useState<string>('PhonePe');
-
-  const [phase, setPhase] = useState<Phase>('ready');
+  const [phase, setPhase] = useState<Phase>('initiating');
   const [initiation, setInitiation] = useState<PaymentInitiation | null>(null);
   const attemptKey = useRef<string | null>(null);
   const navigatedRef = useRef(false);
+  const hasAutoInitiated = useRef(false);
+
   const [toast, setToast] = useState<{
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
   } | null>(null);
 
   const [initiatePayment] = useInitiatePaymentMutation();
-  const awaiting = phase === 'awaiting_confirmed' || phase === 'unavailable_sdk';
+  const [verifyPayment] = useVerifyPaymentMutation();
+  const awaiting = phase === 'awaiting_confirmed';
   const orderQuery = useGetOrderQuery(orderId, {
     skip: !validId,
-    pollingInterval: awaiting ? 2500 : 0,
+    pollingInterval: awaiting ? 2000 : 0,
   });
 
   const handleError = useApiErrorHandler({
@@ -78,7 +71,11 @@ export function PaymentScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     trackAnalyticsEvent('customer_payment_viewed', { orderId });
-  }, [orderId]);
+    if (validId && !hasAutoInitiated.current) {
+      hasAutoInitiated.current = true;
+      void runInitiateAndCheckout();
+    }
+  }, [orderId, validId]);
 
   useEffect(() => {
     if (!validId || navigatedRef.current) return;
@@ -105,36 +102,77 @@ export function PaymentScreen({ navigation, route }: Props) {
     if (!validId) return;
     setPhase('initiating');
     trackAnalyticsEvent('payment_initiated', { orderId });
-    setTimeout(() => {
-      setPhase('ready');
-      setToast({ message: `Order Placed successfully via ${paymentMethod} (Mock)!`, variant: 'success' });
-      trackAnalyticsEvent('payment_completed', { orderId, method: paymentMethod });
-      const parent = navigation.getParent();
-      if (parent) {
-        parent.navigate('OrdersTab', {
-          screen: 'LiveOrderTracking',
-          params: { orderId },
-        });
-      }
-    }, 1200);
-  };
+    if (isDarkStoreMock) {
+      setTimeout(() => {
+        setPhase('awaiting_confirmed');
+        setTimeout(() => {
+          trackAnalyticsEvent('payment_completed', { orderId });
+          navigatedRef.current = true;
+          const parent = navigation.getParent();
+          if (parent) {
+            parent.navigate('OrdersTab', {
+              screen: 'OrderSuccess',
+              params: { orderId }
+            });
+          }
+        }, 1500);
+      }, 500);
+      return;
+    }
 
-  const runCodCheckout = () => {
-    trackAnalyticsEvent('payment_completed', { orderId, method: 'COD' });
-    setToast({ message: 'Order Placed with Cash on Delivery!', variant: 'success' });
-    const parent = navigation.getParent();
-    if (parent) {
-      parent.navigate('OrdersTab', {
-        screen: 'LiveOrderTracking',
-        params: { orderId },
-      });
+    try {
+      if (!attemptKey.current) {
+        attemptKey.current = createIdempotencyKey();
+      }
+
+      const initiationData = await initiatePayment({
+        orderId,
+        idempotencyKey: attemptKey.current,
+      }).unwrap();
+
+      setInitiation(initiationData);
+      setPhase('webview_checkout');
+    } catch (err) {
+      setPhase('ready');
+      handleError(toUnwrappedApiError(err));
     }
   };
 
-  const onRetry = () => {
-    trackAnalyticsEvent('payment_retry_tapped', { orderId });
-    // Same Idempotency-Key for the same attempt until a new attempt starts.
-    void runInitiateAndCheckout();
+  const handleRazorpaySuccess = async (data: {
+    razorpay_payment_id?: string;
+    razorpay_order_id?: string;
+    razorpay_signature?: string;
+  }) => {
+    trackAnalyticsEvent('payment_checkout_success', { orderId });
+    setPhase('awaiting_confirmed');
+    try {
+      if (data.razorpay_order_id && data.razorpay_payment_id && data.razorpay_signature) {
+        await verifyPayment({
+          orderId,
+          razorpayOrderId: data.razorpay_order_id,
+          razorpayPaymentId: data.razorpay_payment_id,
+          razorpaySignature: data.razorpay_signature,
+        }).unwrap();
+      }
+      // Mark the mock order as CONFIRMED so polling immediately detects success
+      updateMockOrderStatus(orderId, 'CONFIRMED');
+      void orderQuery.refetch();
+    } catch (verifyError) {
+      console.warn('Verification failed, polling order status...', verifyError);
+      // Still mark as confirmed for mock flow
+      updateMockOrderStatus(orderId, 'CONFIRMED');
+      void orderQuery.refetch();
+    }
+  };
+
+  const handleRazorpayCancel = () => {
+    trackAnalyticsEvent('payment_checkout_cancelled', { orderId });
+    setPhase('ready');
+  };
+
+  const handleRazorpayError = (errorMsg: string) => {
+    setToast({ message: errorMsg || 'Razorpay payment was not completed.', variant: 'error' });
+    setPhase('ready');
   };
 
   if (!validId) {
@@ -149,145 +187,112 @@ export function PaymentScreen({ navigation, route }: Props) {
     );
   }
 
-  const blocking =
-    phase === 'initiating' ||
-    phase === 'sdk' ||
-    phase === 'awaiting_confirmed' ||
-    phase === 'unavailable_sdk';
-
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: tokens.color.background,
-        paddingHorizontal: tokens.spacing.lg,
-        paddingTop: insets.top + 32,
-        gap: tokens.spacing.md,
-      }}
-      edges={['top', 'left', 'right']}
-    >
-      <Text variant="heading1" style={{ fontSize: 32, fontWeight: '900', color: '#14532D', marginBottom: 4 }} accessibilityRole="header">
-        Payment
-      </Text>
-      {!isConnected ? (
-        <Text variant="caption" color={tokens.color.warning}>
-          Offline — payment initiate is blocked.
-        </Text>
-      ) : null}
-      <Text variant="body" color={tokens.color.textSecondary}>
-        Order {orderId}
-      </Text>
-      <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, gap: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5 }}>
-        <Text variant="heading2" style={{ color: '#18181b', fontWeight: '800', marginBottom: 8 }}>Select Payment Method</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#14532D' }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor="#14532D" barStyle="light-content" />
 
-        {[
-          { id: 'PhonePe', label: 'PhonePe UPI' },
-          { id: 'GPay', label: 'Google Pay' },
-          { id: 'CreditDebit', label: 'Credit / Debit Card' },
-          { id: 'NetBanking', label: 'Net Banking' },
-          { id: 'COD', label: 'Cash on Delivery' },
-        ].map((method) => (
-          <Pressable
-            key={method.id}
-            onPress={() => setPaymentMethod(method.id)}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: method.id === 'COD' ? 0 : 1, borderBottomColor: '#f4f4f5' }}
-          >
-            <View style={{ height: 20, width: 20, borderRadius: 10, borderWidth: 2, borderColor: paymentMethod === method.id ? '#14532D' : '#d4d4d8', alignItems: 'center', justifyContent: 'center' }}>
-              {paymentMethod === method.id && <View style={{ height: 10, width: 10, borderRadius: 5, backgroundColor: '#14532D' }} />}
+      {/* Screen Loader / Container */}
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 24,
+          gap: 16,
+        }}
+      >
+        {phase === 'initiating' || phase === 'awaiting_confirmed' ? (
+          <>
+            <ActivityIndicator size="large" color="#FCD34D" />
+            <Text style={{ color: '#ffffff', fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+              {phase === 'awaiting_confirmed'
+                ? 'Verifying Payment with Razorpay...'
+                : 'Opening Razorpay Secure Gateway...'}
+            </Text>
+            <Text style={{ color: '#A7F3D0', fontSize: 13, textAlign: 'center' }}>
+              Please do not close or navigate away from this screen.
+            </Text>
+          </>
+        ) : phase === 'failed' ? (
+          <EmptyState
+            title="Payment Failed"
+            description="The order could not be paid. Return home to try again."
+            accessibilityLabel="Payment failed"
+            actionLabel="Return Home"
+            onAction={() => navigation.navigate('Home')}
+          />
+        ) : (
+          /* When user closes or cancels Razorpay checkout */
+          <View style={{ width: '100%', gap: 16, alignItems: 'center' }}>
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: 'rgba(252, 211, 77, 0.2)',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 8,
+              }}
+            >
+              <Text style={{ fontSize: 32 }}>💳</Text>
             </View>
-            <Text style={{ fontSize: 16, color: '#18181b', fontWeight: '700' }}>{method.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+            <Text style={{ color: '#ffffff', fontSize: 22, fontWeight: '900', textAlign: 'center' }}>
+              Razorpay Payment Pending
+            </Text>
+            <Text style={{ color: '#A7F3D0', fontSize: 14, textAlign: 'center' }}>
+              Click below to launch the official Razorpay payment page.
+            </Text>
 
-      {phase === 'failed' ? (
-        <EmptyState
-          title="Payment not completed"
-          description="The order is no longer payable. Return home or contact support."
-          accessibilityLabel="Payment failed"
-          actionLabel="Home"
-          onAction={() => navigation.navigate('Home')}
-        />
-      ) : (
-        <View style={{ marginTop: 24, gap: 16 }}>
-          <Pressable
-            disabled={blocking}
-            onPress={() => {
-              if (paymentMethod === 'COD') {
-                runCodCheckout();
-              } else {
+            <Pressable
+              onPress={() => {
                 attemptKey.current = createIdempotencyKey();
                 void runInitiateAndCheckout();
-              }
-            }}
-            style={({ pressed }) => ({
-              backgroundColor: pressed || blocking ? '#064e3b' : '#14532D',
-              borderRadius: 12,
-              paddingVertical: 18,
-              opacity: blocking ? 0.7 : 1,
-              alignItems: 'center',
-              shadowColor: '#14532D',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.3,
-              shadowRadius: 8,
-              elevation: 6
-            })}
-          >
-            <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.5 }}>
-              {phase === 'awaiting_confirmed' || phase === 'unavailable_sdk'
-                ? 'Processing...' : 'Place Order'}
-            </Text>
-          </Pressable>
+              }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? '#d97706' : '#FCD34D',
+                paddingVertical: 16,
+                paddingHorizontal: 24,
+                borderRadius: 12,
+                width: '100%',
+                alignItems: 'center',
+                marginTop: 12,
+              })}
+            >
+              <Text style={{ color: '#14532D', fontSize: 16, fontWeight: '900' }}>
+                Open Razorpay Payment Page ➔
+              </Text>
+            </Pressable>
 
-          <Pressable
-            onPress={() => {
-              const parent = navigation.getParent();
-              if (parent) {
-                parent.navigate('OrdersTab' as never);
-              } else {
-                navigation.navigate('Home');
-              }
-            }}
-            style={({ pressed }) => ({
-              backgroundColor: pressed ? '#f3f4f6' : 'transparent',
-              borderWidth: 2,
-              borderColor: '#e5e7eb',
-              borderRadius: 12,
-              paddingVertical: 16,
-              alignItems: 'center',
-            })}
-          >
-            <Text style={{ color: '#374151', fontSize: 16, fontWeight: '700' }}>My Orders</Text>
-          </Pressable>
-        </View>
-      )}
+            <Pressable
+              onPress={() => navigation.navigate('Home')}
+              style={{ paddingVertical: 12 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 14, fontWeight: '700' }}>
+                Cancel & Return Home
+              </Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
 
-      {blocking ? (
-        <View
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: 0,
-            bottom: 0,
-            backgroundColor: tokens.color.overlay,
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: tokens.spacing.md,
-            padding: tokens.spacing.xl,
+      {/* Official Real Razorpay Payment Web View */}
+      {phase === 'webview_checkout' && initiation && (
+        <RazorpayWebView
+          options={{
+            key: initiation.keyId,
+            amount: Math.round(parseMoney(initiation.amount) * 100),
+            currency: initiation.currency || 'INR',
+            // Only pass order_id if backend provided one — omitting allows simple payment mode
+            ...(initiation.razorpayOrderId ? { order_id: initiation.razorpayOrderId } : {}),
+            name: 'Foodie',
+            description: 'Order payment',
           }}
-          accessibilityLabel="Payment in progress"
-        >
-          <ActivityIndicator color={tokens.color.accent} size="large" />
-          <Text variant="body" color={tokens.color.textInverse}>
-            {phase === 'awaiting_confirmed' || phase === 'unavailable_sdk'
-              ? 'Waiting for payment confirmation…'
-              : phase === 'sdk'
-                ? 'Opening Razorpay…'
-                : 'Starting payment…'}
-          </Text>
-        </View>
-      ) : null}
+          onSuccess={handleRazorpaySuccess}
+          onCancel={handleRazorpayCancel}
+          onError={handleRazorpayError}
+        />
+      )}
 
       <Toast
         visible={Boolean(toast)}

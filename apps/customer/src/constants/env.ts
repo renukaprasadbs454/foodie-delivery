@@ -15,20 +15,21 @@ const extra = (Constants.expoConfig?.extra ?? {}) as Extra;
 
 // Dynamically resolve local IP for Expo Go any-WiFi support
 let hostIp = '127.0.0.1';
-if (__DEV__) {
+if (Platform.OS === 'web') {
+  hostIp = typeof window !== 'undefined' && window.location?.hostname ? window.location.hostname : 'localhost';
+} else if (__DEV__) {
   const scriptURL = NativeModules.SourceCode?.scriptURL;
   if (scriptURL) {
     hostIp = scriptURL.split('://')[1].split(':')[0];
-  } else {
-    const hostUri = Constants.expoConfig?.hostUri;
-    if (hostUri) {
-      hostIp = hostUri.split(':')[0];
-    }
+  } else if (Constants.expoConfig?.hostUri) {
+    hostIp = Constants.expoConfig.hostUri.split(':')[0];
+  } else if ((Constants as any).manifest2?.extra?.expoGo?.debuggerHost) {
+    hostIp = (Constants as any).manifest2.extra.expoGo.debuggerHost.split(':')[0];
   }
 }
 
-const defaultApiBaseUrl = __DEV__ ? `http://${hostIp}:8080` : 'https://api.foodie.example.com';
-const defaultWsUrl = __DEV__ ? `ws://${hostIp}:8080/ws/websocket` : 'wss://api.foodie.example.com/ws';
+const defaultApiBaseUrl = __DEV__ ? `http://${hostIp}:8082` : 'https://api.foodie.example.com';
+const defaultWsUrl = __DEV__ ? `ws://${hostIp}:8082/ws/websocket` : 'wss://api.foodie.example.com/ws';
 
 export const ENV = {
   apiBaseUrl: __DEV__
