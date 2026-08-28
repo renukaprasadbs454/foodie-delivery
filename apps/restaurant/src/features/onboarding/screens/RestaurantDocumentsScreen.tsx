@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
 import {
-  Button,
   DOCUMENT_ALLOWED_MIME_TYPES,
   isDocumentWithinSizeLimit,
-  Text,
   Toast,
   trackAnalyticsEvent,
   useApiErrorHandler,
   useConnectivity,
-  useTheme,
 } from 'foodie-shared-rn';
 import { useUploadRestaurantDocumentMutation } from '../../../api/endpoints/restaurantsApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
@@ -24,15 +28,14 @@ type Props = NativeStackScreenProps<
   'RestaurantDocuments'
 >;
 
-/**
- * P2-RES-01 — POST /restaurants/me/documents (FSSAI|GST|PAN).
- * No list API — upload affordances only (UI-API Gap).
- */
+const BRAND_PRIMARY = '#14532D';
+const BRAND_ACCENT = '#F59E0B';
+
 export function RestaurantDocumentsScreen({ navigation }: Props) {
-  const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const [upload, uploadState] = useUploadRestaurantDocumentMutation();
   const [docType, setDocType] = useState<RestaurantDocType>('FSSAI');
+  const [uploadedTypes, setUploadedTypes] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<{
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
@@ -94,87 +97,125 @@ export function RestaurantDocumentsScreen({ navigation }: Props) {
       }).unwrap();
       trackAnalyticsEvent('document_uploaded', { docType });
       trackAnalyticsEvent('restaurant_document_uploaded', { docType });
-      setToast({ message: `${docType} uploaded.`, variant: 'success' });
+      setUploadedTypes((prev) => ({ ...prev, [docType]: true }));
+      setToast({ message: `${docType} uploaded successfully!`, variant: 'success' });
     } catch (error) {
       handleError(toUnwrappedApiError(error));
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
+    <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={{
-          padding: tokens.spacing.md,
-          gap: tokens.spacing.md,
-          paddingBottom: 48,
-        }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Text variant="heading1" accessibilityRole="header">
-          Documents
-        </Text>
-        <OnboardingStepper activeIndex={1} />
-        <Text variant="body" color={tokens.color.textSecondary}>
-          Upload FSSAI, GST, or PAN. Verification is performed by admin.
-        </Text>
-
-        <Text variant="label">Document type</Text>
-        <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-          {DOC_TYPES.map((type) => {
-            const selected = docType === type;
-            return (
-              <Pressable
-                key={type}
-                onPress={() => setDocType(type)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                accessibilityLabel={type}
-                style={{
-                  paddingHorizontal: tokens.spacing.md,
-                  paddingVertical: tokens.spacing.sm,
-                  borderRadius: tokens.radius.sm,
-                  borderWidth: 1,
-                  borderColor: tokens.color.border,
-                  backgroundColor: selected
-                    ? tokens.color.accent
-                    : tokens.color.surface,
-                }}
-              >
-                <Text
-                  variant="body"
-                  color={
-                    selected
-                      ? tokens.color.textInverse
-                      : tokens.color.textPrimary
-                  }
-                >
-                  {type}
-                </Text>
-              </Pressable>
-            );
-          })}
+        {/* Header Card */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.headerBadge}>COMPLIANCE & LEGAL</Text>
+              <Text style={styles.headerTitle}>Upload KYC Documents</Text>
+              <Text style={styles.headerSubtitle}>
+                Provide official legal certificates for verification
+              </Text>
+            </View>
+            <View style={styles.iconCircle}>
+              <Text style={{ fontSize: 26 }}>📄</Text>
+            </View>
+          </View>
         </View>
 
-        <Button
-          label={`Upload ${docType}`}
-          accessibilityLabel={`Upload ${docType} document`}
-          loading={uploadState.isLoading}
-          onPress={() => {
-            void onPickAndUpload();
-          }}
-        />
-        <Button
-          label="Continue to images"
-          accessibilityLabel="Continue to images"
-          variant="secondary"
-          onPress={() => navigation.navigate('RestaurantImages')}
-        />
-        <Button
-          label="Skip to pending"
-          accessibilityLabel="Skip to pending approval"
-          variant="secondary"
-          onPress={() => navigation.navigate('PendingApproval')}
-        />
+        {/* Stepper */}
+        <OnboardingStepper activeIndex={1} />
+
+        {/* Upload Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeader}>📋 Document Selection</Text>
+
+          <View style={styles.docTypeRow}>
+            {DOC_TYPES.map((type) => {
+              const selected = docType === type;
+              const isUploaded = Boolean(uploadedTypes[type]);
+              return (
+                <Pressable
+                  key={type}
+                  onPress={() => setDocType(type)}
+                  style={[
+                    styles.docTypeChip,
+                    selected && styles.docTypeChipSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.docTypeChipText,
+                      selected && styles.docTypeChipTextSelected,
+                    ]}
+                  >
+                    {isUploaded ? '✓ ' : ''}{type}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Guidelines Box */}
+          <View style={styles.infoBox}>
+            <Text style={styles.infoTitle}>📌 Requirements for {docType}:</Text>
+            <Text style={styles.infoText}>
+              • Accepted Formats: PDF, PNG, JPG (Max 10 MB).{'\n'}
+              • Must show legible license number, validity, and business address.
+            </Text>
+          </View>
+
+          {/* Upload CTA Button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+              uploadState.isLoading && styles.buttonDisabled,
+            ]}
+            onPress={() => void onPickAndUpload()}
+            disabled={uploadState.isLoading}
+          >
+            {uploadState.isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                📤 Choose & Upload {docType}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Navigation Action Buttons */}
+        <View style={{ gap: 12 }}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.secondaryButtonPressed,
+            ]}
+            onPress={() => navigation.navigate('RestaurantImages')}
+          >
+            <Text style={styles.secondaryButtonText}>
+              Proceed to Images →
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.textButton,
+              pressed && styles.textButtonPressed,
+            ]}
+            onPress={() => navigation.navigate('PendingApproval')}
+          >
+            <Text style={styles.textButtonText}>
+              Skip to Approval Status
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
+
       <Toast
         visible={Boolean(toast)}
         message={toast?.message ?? ''}
@@ -185,3 +226,172 @@ export function RestaurantDocumentsScreen({ navigation }: Props) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    padding: 16,
+    gap: 16,
+    paddingBottom: 48,
+  },
+  headerCard: {
+    backgroundColor: BRAND_PRIMARY,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    shadowColor: '#14532D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: BRAND_ACCENT,
+    letterSpacing: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#A7F3D0',
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1.5,
+    borderColor: BRAND_ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  sectionHeader: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: BRAND_PRIMARY,
+  },
+  docTypeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  docTypeChip: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+  },
+  docTypeChipSelected: {
+    backgroundColor: '#F0FDF4',
+    borderColor: BRAND_PRIMARY,
+  },
+  docTypeChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  docTypeChipTextSelected: {
+    color: BRAND_PRIMARY,
+    fontWeight: '900',
+  },
+  infoBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 4,
+  },
+  infoTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: BRAND_PRIMARY,
+  },
+  infoText: {
+    fontSize: 12,
+    color: '#64748B',
+    lineHeight: 18,
+  },
+  primaryButton: {
+    backgroundColor: BRAND_PRIMARY,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: BRAND_PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonPressed: {
+    opacity: 0.9,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BRAND_PRIMARY,
+  },
+  secondaryButtonPressed: {
+    opacity: 0.8,
+  },
+  secondaryButtonText: {
+    color: BRAND_PRIMARY,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  textButton: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  textButtonPressed: {
+    opacity: 0.6,
+  },
+  textButtonText: {
+    color: '#64748B',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+});

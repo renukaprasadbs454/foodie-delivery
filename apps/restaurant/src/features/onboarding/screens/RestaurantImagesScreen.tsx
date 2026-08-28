@@ -1,17 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import {
-  Button,
   IMAGE_ALLOWED_MIME_TYPES,
   isImageWithinSizeLimit,
-  Text,
   Toast,
   trackAnalyticsEvent,
   useApiErrorHandler,
   useConnectivity,
-  useTheme,
 } from 'foodie-shared-rn';
 import { useUploadRestaurantImagesMutation } from '../../../api/endpoints/restaurantsApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
@@ -24,14 +29,14 @@ type Props = NativeStackScreenProps<
   'RestaurantImages'
 >;
 
-/**
- * P2-RES-01 — POST /restaurants/me/images (LOGO|COVER).
- */
+const BRAND_PRIMARY = '#14532D';
+const BRAND_ACCENT = '#F59E0B';
+
 export function RestaurantImagesScreen({ navigation }: Props) {
-  const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const [upload, uploadState] = useUploadRestaurantImagesMutation();
   const [imageType, setImageType] = useState<RestaurantImageType>('LOGO');
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
@@ -63,7 +68,7 @@ export function RestaurantImagesScreen({ navigation }: Props) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       setToast({
-        message: 'Gallery permission denied.',
+        message: 'Gallery permission is required.',
         variant: 'warning',
       });
       return;
@@ -76,6 +81,7 @@ export function RestaurantImagesScreen({ navigation }: Props) {
     });
     if (result.canceled || !result.assets?.[0]) return;
     const asset = result.assets[0];
+    setPreviewUri(asset.uri);
     const mimeType = asset.mimeType ?? 'image/jpeg';
     if (!(IMAGE_ALLOWED_MIME_TYPES as readonly string[]).includes(mimeType)) {
       setToast({
@@ -103,81 +109,124 @@ export function RestaurantImagesScreen({ navigation }: Props) {
       }).unwrap();
       trackAnalyticsEvent('image_uploaded', { imageType });
       trackAnalyticsEvent('restaurant_image_uploaded', { imageType });
-      setToast({ message: `${imageType} uploaded.`, variant: 'success' });
+      setToast({ message: `${imageType} uploaded successfully!`, variant: 'success' });
     } catch (error) {
       handleError(toUnwrappedApiError(error));
     }
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
+    <View style={styles.screen}>
       <ScrollView
-        contentContainerStyle={{
-          padding: tokens.spacing.md,
-          gap: tokens.spacing.md,
-          paddingBottom: 48,
-        }}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Text variant="heading1" accessibilityRole="header">
-          Images
-        </Text>
-        <OnboardingStepper activeIndex={2} />
-        <Text variant="body" color={tokens.color.textSecondary}>
-          Upload a logo and cover image for your restaurant.
-        </Text>
-
-        <Text variant="label">Image type</Text>
-        <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
-          {IMAGE_TYPES.map((type) => {
-            const selected = imageType === type;
-            return (
-              <Pressable
-                key={type}
-                onPress={() => setImageType(type)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                accessibilityLabel={type}
-                style={{
-                  paddingHorizontal: tokens.spacing.md,
-                  paddingVertical: tokens.spacing.sm,
-                  borderRadius: tokens.radius.sm,
-                  borderWidth: 1,
-                  borderColor: tokens.color.border,
-                  backgroundColor: selected
-                    ? tokens.color.accent
-                    : tokens.color.surface,
-                }}
-              >
-                <Text
-                  variant="body"
-                  color={
-                    selected
-                      ? tokens.color.textInverse
-                      : tokens.color.textPrimary
-                  }
-                >
-                  {type}
-                </Text>
-              </Pressable>
-            );
-          })}
+        {/* Header Card */}
+        <View style={styles.headerCard}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, gap: 4 }}>
+              <Text style={styles.headerBadge}>BRANDING & MEDIA</Text>
+              <Text style={styles.headerTitle}>Restaurant Photos</Text>
+              <Text style={styles.headerSubtitle}>
+                Upload high-res logo and cover banner for customer display
+              </Text>
+            </View>
+            <View style={styles.iconCircle}>
+              <Text style={{ fontSize: 26 }}>🖼️</Text>
+            </View>
+          </View>
         </View>
 
-        <Button
-          label={`Upload ${imageType}`}
-          accessibilityLabel={`Upload ${imageType} image`}
-          loading={uploadState.isLoading}
-          onPress={() => {
-            void onPickAndUpload();
-          }}
-        />
-        <Button
-          label="Continue to pending"
-          accessibilityLabel="Continue to pending approval"
-          variant="secondary"
+        {/* Stepper */}
+        <OnboardingStepper activeIndex={2} />
+
+        {/* Upload Card */}
+        <View style={styles.card}>
+          <Text style={styles.sectionHeader}>📸 Image Slot Selection</Text>
+
+          <View style={styles.imageTypeRow}>
+            {IMAGE_TYPES.map((type) => {
+              const selected = imageType === type;
+              return (
+                <Pressable
+                  key={type}
+                  onPress={() => {
+                    setImageType(type);
+                    setPreviewUri(null);
+                  }}
+                  style={[
+                    styles.imageTypeChip,
+                    selected && styles.imageTypeChipSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.imageTypeChipText,
+                      selected && styles.imageTypeChipTextSelected,
+                    ]}
+                  >
+                    {type === 'LOGO' ? '🏷️ Brand Logo' : '🖼️ Cover Banner'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Preview Box */}
+          <View style={styles.previewBox}>
+            {previewUri ? (
+              <Image source={{ uri: previewUri }} style={styles.previewImage} />
+            ) : (
+              <View style={styles.placeholderBox}>
+                <Text style={{ fontSize: 32 }}>
+                  {imageType === 'LOGO' ? '🏷️' : '📸'}
+                </Text>
+                <Text style={styles.placeholderText}>
+                  No {imageType.toLowerCase()} uploaded yet
+                </Text>
+                <Text style={styles.placeholderSub}>
+                  {imageType === 'LOGO'
+                    ? 'Square 1:1 format recommended (PNG or JPG)'
+                    : 'Landscape 16:9 banner format recommended'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Upload Button */}
+          <Pressable
+            style={({ pressed }) => [
+              styles.primaryButton,
+              pressed && styles.primaryButtonPressed,
+              uploadState.isLoading && styles.buttonDisabled,
+            ]}
+            onPress={() => void onPickAndUpload()}
+            disabled={uploadState.isLoading}
+          >
+            {uploadState.isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                📸 Select & Upload {imageType}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+
+        {/* Continue Action */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.secondaryButton,
+            pressed && styles.secondaryButtonPressed,
+          ]}
           onPress={() => navigation.navigate('PendingApproval')}
-        />
+        >
+          <Text style={styles.secondaryButtonText}>
+            Submit & View Approval Status →
+          </Text>
+        </Pressable>
       </ScrollView>
+
       <Toast
         visible={Boolean(toast)}
         message={toast?.message ?? ''}
@@ -188,3 +237,173 @@ export function RestaurantImagesScreen({ navigation }: Props) {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    padding: 16,
+    gap: 16,
+    paddingBottom: 48,
+  },
+  headerCard: {
+    backgroundColor: BRAND_PRIMARY,
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    shadowColor: '#14532D',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerBadge: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: BRAND_ACCENT,
+    letterSpacing: 1,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#A7F3D0',
+  },
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1.5,
+    borderColor: BRAND_ACCENT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  sectionHeader: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: BRAND_PRIMARY,
+  },
+  imageTypeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  imageTypeChip: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+  },
+  imageTypeChipSelected: {
+    backgroundColor: '#F0FDF4',
+    borderColor: BRAND_PRIMARY,
+  },
+  imageTypeChipText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  imageTypeChipTextSelected: {
+    color: BRAND_PRIMARY,
+    fontWeight: '900',
+  },
+  previewBox: {
+    height: 160,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  placeholderBox: {
+    alignItems: 'center',
+    gap: 6,
+    padding: 12,
+  },
+  placeholderText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  placeholderSub: {
+    fontSize: 11,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  primaryButton: {
+    backgroundColor: BRAND_PRIMARY,
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: BRAND_PRIMARY,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryButtonPressed: {
+    opacity: 0.9,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  secondaryButton: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: BRAND_PRIMARY,
+  },
+  secondaryButtonPressed: {
+    opacity: 0.8,
+  },
+  secondaryButtonText: {
+    color: BRAND_PRIMARY,
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+});

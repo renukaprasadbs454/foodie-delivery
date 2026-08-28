@@ -3,7 +3,7 @@ import {
   ErrorBoundaryFallback,
   captureCrashException,
 } from 'foodie-shared-rn';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { RootNavigator } from '../navigation/RootNavigator';
 import { BootstrapGate } from './bootstrap/BootstrapGate';
 import { ConnectivityBanner } from './components/ConnectivityBanner';
@@ -71,8 +71,10 @@ export default function App() {
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
+    height: Platform.OS === 'web' ? ('100vh' as any) : '100%',
   },
   content: {
     flex: 1,
+    height: Platform.OS === 'web' ? ('100vh' as any) : '100%',
   },
 });

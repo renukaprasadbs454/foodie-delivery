@@ -26,3 +26,21 @@ try {
         if (priv.default && typeof priv.default.enableOptimisedVirtualizedCells !== 'function') priv.default.enableOptimisedVirtualizedCells = () => false;
     }
 } catch (e) { }
+
+if (typeof document !== 'undefined') {
+    const style = document.createElement('style');
+    style.id = 'expo-reset';
+    style.textContent = `
+      html, body, #root {
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        margin: 0;
+        padding: 0;
+      }
+    `;
+    if (!document.getElementById('expo-reset')) {
+        document.head.appendChild(style);
+    }
+}

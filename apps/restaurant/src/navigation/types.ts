@@ -34,6 +34,7 @@ export type ProfileStackParamList = {
   RestaurantSettings: undefined;
   BankAndBusinessDetails: undefined;
   RestaurantLocation: undefined;
+  SettlementHistory: undefined;
   RestaurantDocuments: undefined;
   RestaurantImages: undefined;
   PendingApproval: undefined;

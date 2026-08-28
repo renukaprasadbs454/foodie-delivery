@@ -171,6 +171,13 @@ export function RestaurantSettingsScreen({ navigation }: Props) {
           />
 
           <ListItem
+            title="💰 Payment & Settlement History"
+            subtitle="View real payout history, revenue splits & commission ledger"
+            accessibilityLabel="Payment and Settlement History"
+            onPress={() => navigation.navigate('SettlementHistory')}
+          />
+
+          <ListItem
             title="📜 Tax & Legal Information"
             subtitle="GSTIN, PAN number, business structure & FSSAI license"
             accessibilityLabel="Tax and Legal Information"

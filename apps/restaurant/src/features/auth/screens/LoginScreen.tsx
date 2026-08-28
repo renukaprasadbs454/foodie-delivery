@@ -156,8 +156,8 @@ export function LoginScreen() {
     <View
       style={{
         flex: 1,
-        backgroundColor: '#FAFAF7',
-        padding: tokens.spacing.xl,
+        backgroundColor: '#0F291E',
+        paddingHorizontal: isWide ? tokens.spacing.xxl : tokens.spacing.lg,
         justifyContent: 'center',
         alignItems: 'center',
       }}
@@ -165,101 +165,115 @@ export function LoginScreen() {
       <View
         style={{
           backgroundColor: '#FFFFFF',
-          borderRadius: 20,
-          padding: tokens.spacing.lg,
-          gap: tokens.spacing.md,
+          borderRadius: 24,
+          padding: tokens.spacing.xl,
+          gap: tokens.spacing.lg,
           shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 12,
-          elevation: 4,
-          borderWidth: 1,
-          borderColor: '#E2E8F0',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.15,
+          shadowRadius: 20,
+          elevation: 8,
           width: '100%',
-          maxWidth: 460,
+          maxWidth: 440,
         }}
       >
         {/* BRAND HEADER */}
-        <View style={{ alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <View style={{ alignItems: 'center', gap: 8, marginBottom: 4 }}>
           <View
             style={{
-              width: 68,
-              height: 68,
-              borderRadius: 34,
+              width: 72,
+              height: 72,
+              borderRadius: 36,
               backgroundColor: '#14532D',
               alignItems: 'center',
               justifyContent: 'center',
               marginBottom: 4,
               borderWidth: 2,
               borderColor: '#F59E0B',
+              shadowColor: '#14532D',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.3,
+              shadowRadius: 8,
             }}
           >
-            <Text style={{ fontSize: 34 }}>🍳</Text>
+            <Text style={{ fontSize: 36 }}>🍳</Text>
           </View>
           <Text
             variant="heading1"
-            style={{ color: '#14532D', fontWeight: 'bold' }}
+            style={{ color: '#0F291E', fontWeight: '800', fontSize: 26, letterSpacing: -0.5 }}
             accessibilityRole="header"
           >
             Foodie Partner
           </Text>
-          <Text variant="caption" color={tokens.color.textSecondary}>
-            Restaurant Partner Portal Sign In
+          <Text variant="caption" style={{ color: '#64748B', fontSize: 14 }}>
+            Restaurant Portal • Secure iOS Sign In
           </Text>
         </View>
 
         {step === 'phone' ? (
-          <>
-            <Text variant="body" color={tokens.color.textSecondary}>
-              Enter your registered mobile number to receive a one-time verification code (OTP).
-            </Text>
-            <TextInput
-              label="Mobile number"
-              accessibilityLabel="Mobile number"
-              value={phoneInput}
-              onChangeText={setPhoneInput}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              placeholder="+9198XXXXXXXX"
-              errorText={phoneError}
-              editable={!busy}
-            />
+          <View style={{ gap: 16 }}>
+            <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+              <Text variant="body" style={{ color: '#475569', fontSize: 13, lineHeight: 18 }}>
+                Enter your mobile number to receive a secure 6-digit verification code (OTP).
+              </Text>
+            </View>
+
+            <View>
+              <TextInput
+                label="Mobile Number"
+                accessibilityLabel="Mobile number"
+                value={phoneInput}
+                onChangeText={setPhoneInput}
+                keyboardType="phone-pad"
+                autoComplete="tel"
+                placeholder="+91 98XXXXXXXX"
+                errorText={phoneError}
+                editable={!busy}
+              />
+            </View>
+
             <Button
               label="Send OTP Code"
               accessibilityLabel="Send OTP"
               loading={requestState.isLoading}
               disabled={busy}
-              style={{ backgroundColor: '#14532D', height: 48 }}
+              style={{ backgroundColor: '#14532D', height: 50, borderRadius: 14 }}
               onPress={() => {
                 void onRequestOtp();
               }}
             />
-          </>
+          </View>
         ) : (
-          <>
-            <Text variant="body" color={tokens.color.textSecondary}>
-              Enter the 6-digit verification code sent to <Text variant="label">{phoneNumber}</Text>.
-            </Text>
+          <View style={{ gap: 16 }}>
+            <View style={{ backgroundColor: '#F0FDF4', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BBF7D0' }}>
+              <Text variant="body" style={{ color: '#166534', fontSize: 13, lineHeight: 18 }}>
+                Verification code sent to <Text style={{ fontWeight: '700' }}>{phoneNumber}</Text>
+              </Text>
+            </View>
+
             <TextInput
-              label="One-time code"
+              label="One-Time Code"
               accessibilityLabel="One-time code"
               value={otp}
               onChangeText={setOtp}
               keyboardType="number-pad"
               maxLength={6}
+              placeholder="••••••"
               errorText={otpError}
               editable={!busy}
             />
+
             <Button
               label="Verify & Login"
               accessibilityLabel="Verify OTP"
               loading={verifyState.isLoading}
               disabled={busy}
-              style={{ backgroundColor: '#14532D', height: 48 }}
+              style={{ backgroundColor: '#14532D', height: 50, borderRadius: 14 }}
               onPress={() => {
                 void onVerify();
               }}
             />
+
             <View style={{ flexDirection: 'row', gap: tokens.spacing.sm }}>
               <Button
                 label={
@@ -269,7 +283,7 @@ export function LoginScreen() {
                 variant="secondary"
                 loading={requestState.isLoading}
                 disabled={busy || cooldown > 0}
-                style={{ flex: 1 }}
+                style={{ flex: 1, borderRadius: 12 }}
                 onPress={() => {
                   void onResend();
                 }}
@@ -279,7 +293,7 @@ export function LoginScreen() {
                 accessibilityLabel="Change phone number"
                 variant="secondary"
                 disabled={busy}
-                style={{ flex: 1 }}
+                style={{ flex: 1, borderRadius: 12 }}
                 onPress={() => {
                   setStep('phone');
                   setOtp('');
@@ -287,7 +301,7 @@ export function LoginScreen() {
                 }}
               />
             </View>
-          </>
+          </View>
         )}
       </View>
 

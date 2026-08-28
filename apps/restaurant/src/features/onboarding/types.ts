@@ -26,7 +26,9 @@ export type RestaurantDocType = (typeof DOC_TYPES)[number];
 export const IMAGE_TYPES = ['LOGO', 'COVER'] as const;
 export type RestaurantImageType = (typeof IMAGE_TYPES)[number];
 
-export type RestaurantStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | string;
+export type RestaurantCategoryType = 'VEGETARIAN' | 'NON_VEGETARIAN' | 'BOTH';
+
+export type RestaurantStatus = 'PENDING' | 'APPROVED' | 'SUSPENDED' | 'REJECTED' | string;
 
 export type RestaurantAddress = {
   line1: string;
@@ -41,6 +43,7 @@ export type RegisterRestaurantRequest = {
   name: string;
   description?: string | null;
   cuisineTypes: CuisineType[];
+  restaurantType?: RestaurantCategoryType;
   address: RestaurantAddress;
 };
 
@@ -49,6 +52,8 @@ export type RestaurantDetail = {
   name: string;
   description?: string | null;
   cuisineTypes?: string[];
+  restaurantType?: RestaurantCategoryType;
+  rejectionReason?: string | null;
   address?: RestaurantAddress;
   status?: RestaurantStatus;
   logoImageUrl?: string | null;
@@ -85,6 +90,7 @@ export function validateRegistrationForm(input: {
   name: string;
   description: string;
   cuisineTypes: string[];
+  restaurantType?: RestaurantCategoryType;
   line1: string;
   line2: string;
   city: string;
@@ -137,6 +143,7 @@ export function validateRegistrationForm(input: {
       name,
       description: description || null,
       cuisineTypes,
+      restaurantType: input.restaurantType || 'BOTH',
       address: {
         line1,
         line2: line2 || null,
