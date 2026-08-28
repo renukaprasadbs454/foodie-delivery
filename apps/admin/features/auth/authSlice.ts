@@ -12,10 +12,18 @@ export type AuthState = {
   authStatus: AuthStatus;
 };
 
+const getSavedRole = (): AdminRole => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('foodie_admin_role') || sessionStorage.getItem('foodie_admin_role');
+    if (saved) return saved as AdminRole;
+  }
+  return 'SUPER_ADMIN';
+};
+
 const initialState: AuthState = {
   userType: 'ADMIN',
-  userId: 'admin-super-id-001',
-  role: 'SUPER_ADMIN',
+  userId: 'admin-user-001',
+  role: getSavedRole(),
   authStatus: 'authenticated',
 };
 
@@ -34,15 +42,17 @@ const authSlice = createSlice({
       state.userId = action.payload.userId;
       state.role = action.payload.role;
       state.authStatus = 'authenticated';
+      if (typeof window !== 'undefined' && action.payload.role) {
+        localStorage.setItem('foodie_admin_role', action.payload.role);
+        sessionStorage.setItem('foodie_admin_role', action.payload.role);
+      }
     },
-/**
- * Cookie session proven via BFF refresh — Blueprint §11.3 / §12.1.
- * Fallback when refresh succeeds without identity payload.
- */
     markCookieSessionValid(state) {
       state.userType = 'ADMIN';
-      state.userId = null;
-      state.role = null;
+      state.userId = state.userId || 'admin-user-001';
+      if (!state.role) {
+        state.role = getSavedRole();
+      }
       state.authStatus = 'authenticated';
     },
     setAuthStatus(state, action: PayloadAction<AuthStatus>) {

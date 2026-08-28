@@ -26,6 +26,8 @@ function sanitizeContext(context?: LogContext): LogContext | undefined {
   return cleaned;
 }
 
+declare const process: { env?: { NODE_ENV?: string } } | undefined;
+
 const defaultSink: LoggerSink = {
   log(level, message, context) {
     const payload = sanitizeContext(context);
@@ -40,7 +42,7 @@ const defaultSink: LoggerSink = {
         console.warn(line);
         break;
       case 'DEBUG':
-        if (process.env.NODE_ENV !== 'production') {
+        if (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production') {
           console.debug(line);
         }
         break;

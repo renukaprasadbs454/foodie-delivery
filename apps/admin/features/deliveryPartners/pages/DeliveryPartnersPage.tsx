@@ -17,6 +17,10 @@ export interface DeliverymanRecord {
   totalDeliveries: number;
   rating: number;
   kycStatus: 'VERIFIED' | 'PENDING' | 'REJECTED';
+  documentType?: 'Aadhaar Card' | 'Driving License' | 'PAN Card' | 'Passport';
+  documentNumber?: string;
+  documentVerificationStatus?: 'VERIFIED' | 'PENDING' | 'REJECTED';
+  uploadedDocumentName?: string;
 }
 
 const MOCK_PARTNERS: DeliverymanRecord[] = [
@@ -31,6 +35,10 @@ const MOCK_PARTNERS: DeliverymanRecord[] = [
     totalDeliveries: 480,
     rating: 4.9,
     kycStatus: 'VERIFIED',
+    documentType: 'Driving License',
+    documentNumber: 'DL-982347102934',
+    documentVerificationStatus: 'VERIFIED',
+    uploadedDocumentName: 'dl_vikram_verified.pdf',
   },
   {
     id: 'p2222222-3333-4444-5555-666666666666',
@@ -43,6 +51,10 @@ const MOCK_PARTNERS: DeliverymanRecord[] = [
     totalDeliveries: 230,
     rating: 4.7,
     kycStatus: 'VERIFIED',
+    documentType: 'Aadhaar Card',
+    documentNumber: 'UID-8899-4433-2211',
+    documentVerificationStatus: 'VERIFIED',
+    uploadedDocumentName: 'aadhaar_arjun_scan.pdf',
   },
   {
     id: 'p3333333-4444-5555-6666-777777777777',
@@ -55,6 +67,10 @@ const MOCK_PARTNERS: DeliverymanRecord[] = [
     totalDeliveries: 45,
     rating: 4.5,
     kycStatus: 'PENDING',
+    documentType: 'Driving License',
+    documentNumber: 'DL-773322119988',
+    documentVerificationStatus: 'PENDING',
+    uploadedDocumentName: 'dl_siddharth_pending.png',
   },
 ];
 
@@ -73,6 +89,12 @@ export function DeliveryPartnersPage() {
   const [newZone, setNewZone] = useState('Downtown Central');
   const [newVehicle, setNewVehicle] = useState<'Motorcycle' | 'Bicycle' | 'Electric Scooter'>('Motorcycle');
 
+  // Document Verification State
+  const [newDocumentType, setNewDocumentType] = useState<'Aadhaar Card' | 'Driving License' | 'PAN Card' | 'Passport'>('Driving License');
+  const [newDocumentNumber, setNewDocumentNumber] = useState('');
+  const [newDocumentStatus, setNewDocumentStatus] = useState<'VERIFIED' | 'PENDING'>('VERIFIED');
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+
   useEffect(() => {
     trackAnalyticsEvent('admin_delivery_partners_viewed', {
       gapId: GAP_API_15_PARTNER_LIST,
@@ -85,15 +107,20 @@ export function DeliveryPartnersPage() {
       searchQuery === '' ||
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.zone.toLowerCase().includes(searchQuery.toLowerCase());
+      p.zone.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (p.documentNumber && p.documentNumber.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesTab && matchesSearch;
   });
 
   const handleApproveKyc = (id: string) => {
     setPartners((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, kycStatus: 'VERIFIED' } : p)),
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, kycStatus: 'VERIFIED', documentVerificationStatus: 'VERIFIED' }
+          : p,
+      ),
     );
-    setToastMsg('Delivery partner KYC approved successfully');
+    setToastMsg('Delivery partner KYC & document verified successfully');
     setTimeout(() => setToastMsg(null), 3000);
   };
 
@@ -103,6 +130,13 @@ export function DeliveryPartnersPage() {
       alert('Please fill out Deliveryman Name and Contact Phone.');
       return;
     }
+    if (!newDocumentNumber.trim()) {
+      alert('Please provide an Identity Document Number (e.g. DL or Aadhaar number).');
+      return;
+    }
+
+    const docName = uploadedFileName ?? `${newDocumentType.toLowerCase().replace(/\s+/g, '_')}_doc.pdf`;
+
     const newPartner: DeliverymanRecord = {
       id: `p-${Date.now().toString().slice(-4)}`,
       name: newName.trim(),
@@ -113,14 +147,20 @@ export function DeliveryPartnersPage() {
       cashInHand: 0,
       totalDeliveries: 0,
       rating: 5.0,
-      kycStatus: 'VERIFIED',
+      kycStatus: newDocumentStatus,
+      documentType: newDocumentType,
+      documentNumber: newDocumentNumber.trim(),
+      documentVerificationStatus: newDocumentStatus,
+      uploadedDocumentName: docName,
     };
 
     setPartners((prev) => [newPartner, ...prev]);
     setIsAddModalOpen(false);
     setNewName('');
     setNewPhone('');
-    setToastMsg(`Delivery partner "${newPartner.name}" registered successfully!`);
+    setNewDocumentNumber('');
+    setUploadedFileName(null);
+    setToastMsg(`Delivery partner "${newPartner.name}" registered with Verified Document (${newPartner.documentType})!`);
     setTimeout(() => setToastMsg(null), 3000);
   };
 
@@ -136,22 +176,40 @@ export function DeliveryPartnersPage() {
             Monitor delivery dispatchers, verify driver KYC credentials & track cash collections
           </Text>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsAddModalOpen(true)}
-          style={{
-            padding: '10px 18px',
-            backgroundColor: '#14532D',
-            color: '#F59E0B',
-            border: 'none',
-            borderRadius: 8,
-            fontWeight: 700,
-            fontSize: 14,
-            cursor: 'pointer',
-          }}
-        >
-          ➕ Register Deliveryman
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => router.push('/delivery-payouts')}
+            style={{
+              padding: '10px 18px',
+              backgroundColor: '#0F3D21',
+              color: '#FFFFFF',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            💸 Payouts & Reconciliation
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsAddModalOpen(true)}
+            style={{
+              padding: '10px 18px',
+              backgroundColor: '#14532D',
+              color: '#F59E0B',
+              border: 'none',
+              borderRadius: 8,
+              fontWeight: 700,
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            ➕ Register Deliveryman
+          </button>
+        </div>
       </div>
 
       {/* Delivery Partner Pricing Rules Card */}
@@ -250,7 +308,7 @@ export function DeliveryPartnersPage() {
 
         <input
           type="text"
-          placeholder="Search by Deliveryman Name or Zone..."
+          placeholder="Search by Name, Zone, or Document No..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={{
@@ -280,9 +338,9 @@ export function DeliveryPartnersPage() {
               <th style={{ padding: '14px 20px' }}>Deliveryman Name</th>
               <th style={{ padding: '14px 20px' }}>Contact Phone</th>
               <th style={{ padding: '14px 20px' }}>Vehicle & Zone</th>
+              <th style={{ padding: '14px 20px' }}>Document Verification</th>
               <th style={{ padding: '14px 20px' }}>Live Availability</th>
               <th style={{ padding: '14px 20px' }}>Cash in Hand</th>
-              <th style={{ padding: '14px 20px' }}>Rating & Deliveries</th>
               <th style={{ padding: '14px 20px' }}>KYC Status</th>
               <th style={{ padding: '14px 20px', textAlign: 'right' }}>Actions</th>
             </tr>
@@ -298,6 +356,28 @@ export function DeliveryPartnersPage() {
                 <td style={{ padding: '16px 20px' }}>
                   <div style={{ fontWeight: 600, color: '#14532D' }}>🛵 {p.vehicleType}</div>
                   <div style={{ fontSize: 12, color: '#64748B' }}>{p.zone}</div>
+                </td>
+                <td style={{ padding: '16px 20px' }}>
+                  <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
+                    📄 {p.documentType ?? 'Driving License'}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>
+                    {p.documentNumber ?? 'DL-9811122233'}
+                  </div>
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      marginTop: 4,
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      backgroundColor: p.documentVerificationStatus === 'PENDING' ? '#FEF3C7' : '#D1FAE5',
+                      color: p.documentVerificationStatus === 'PENDING' ? '#B45309' : '#047857',
+                    }}
+                  >
+                    {p.documentVerificationStatus === 'PENDING' ? '⏳ Doc Pending' : '✅ Doc Verified'}
+                  </span>
                 </td>
                 <td style={{ padding: '16px 20px' }}>
                   <span
@@ -323,10 +403,6 @@ export function DeliveryPartnersPage() {
                 </td>
                 <td style={{ padding: '16px 20px', fontWeight: 700, color: '#D97706' }}>
                   ₹{p.cashInHand}
-                </td>
-                <td style={{ padding: '16px 20px' }}>
-                  <div style={{ fontWeight: 700, color: '#D97706' }}>⭐ {p.rating}</div>
-                  <div style={{ fontSize: 12, color: '#64748B' }}>{p.totalDeliveries} orders</div>
                 </td>
                 <td style={{ padding: '16px 20px' }}>
                   <span
@@ -403,19 +479,26 @@ export function DeliveryPartnersPage() {
             style={{
               backgroundColor: '#FFFFFF',
               borderRadius: 16,
-              width: 440,
-              maxWidth: '90%',
+              width: 500,
+              maxWidth: '92%',
               padding: 28,
               boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
               display: 'flex',
               flexDirection: 'column',
-              gap: 20,
+              gap: 18,
+              maxHeight: '90vh',
+              overflowY: 'auto',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text as="h2" variant="heading2" color="#14532D">
-                Register Delivery Partner
-              </Text>
+              <div>
+                <Text as="h2" variant="heading2" color="#14532D">
+                  Register Delivery Partner
+                </Text>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  Submit driver credentials and mandatory identity document verification
+                </div>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsAddModalOpen(false)}
@@ -426,25 +509,28 @@ export function DeliveryPartnersPage() {
             </div>
 
             <form onSubmit={handleAddPartner} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {/* Basic Driver Details Section */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#14532D' }}>Full Name</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#14532D' }}>Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. Vikram Choudhary"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                  required
                 />
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <label style={{ fontSize: 12, fontWeight: 700, color: '#14532D' }}>Phone Number</label>
+                <label style={{ fontSize: 12, fontWeight: 700, color: '#14532D' }}>Phone Number *</label>
                 <input
                   type="text"
                   placeholder="+91 98111 22233"
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                  required
                 />
               </div>
 
@@ -477,7 +563,98 @@ export function DeliveryPartnersPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 12 }}>
+              {/* Document & Identity Verification Section */}
+              <div
+                style={{
+                  marginTop: 6,
+                  padding: 14,
+                  borderRadius: 10,
+                  backgroundColor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#14532D', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  📄 Document & Identity Verification
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Document Type *</label>
+                    <select
+                      value={newDocumentType}
+                      onChange={(e) => setNewDocumentType(e.target.value as any)}
+                      style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                    >
+                      <option value="Driving License">Driving License (DL)</option>
+                      <option value="Aadhaar Card">Aadhaar Card (UIDAI)</option>
+                      <option value="PAN Card">PAN Card</option>
+                      <option value="Passport">Passport</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Document ID Number *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. DL-9811223344"
+                      value={newDocumentNumber}
+                      onChange={(e) => setNewDocumentNumber(e.target.value)}
+                      style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Upload Verification Document File */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>
+                    Upload Identity Document (Front & Back PDF / Photo)
+                  </label>
+                  <div
+                    style={{
+                      border: '1.5px dashed #CBD5E1',
+                      borderRadius: 8,
+                      padding: 12,
+                      backgroundColor: '#FFFFFF',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      id="doc-upload-file"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setUploadedFileName(e.target.files[0].name);
+                        }
+                      }}
+                    />
+                    <label htmlFor="doc-upload-file" style={{ cursor: 'pointer', fontSize: 12, color: '#047857', fontWeight: 600 }}>
+                      {uploadedFileName ? `✅ Attached: ${uploadedFileName}` : '📁 Click to upload or select file (PDF, PNG, JPG)'}
+                    </label>
+                  </div>
+                </div>
+
+                {/* Document Verification Action Status */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>Verification Status</label>
+                  <select
+                    value={newDocumentStatus}
+                    onChange={(e) => setNewDocumentStatus(e.target.value as 'VERIFIED' | 'PENDING')}
+                    style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
+                  >
+                    <option value="VERIFIED">✅ Approve & Mark Document Verified</option>
+                    <option value="PENDING">⏳ Submit for Admin Verification Review</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
@@ -489,7 +666,7 @@ export function DeliveryPartnersPage() {
                   type="submit"
                   style={{ padding: '10px 20px', borderRadius: 8, border: 'none', backgroundColor: '#14532D', color: '#F59E0B', fontWeight: 800, fontSize: 13, cursor: 'pointer' }}
                 >
-                  Register Partner
+                  Register Partner & Verify Doc
                 </button>
               </div>
             </form>

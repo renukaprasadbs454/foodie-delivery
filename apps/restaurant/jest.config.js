@@ -4,7 +4,7 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.ts'],
   moduleNameMapper: {
-    '^foodie-shared-rn$': '<rootDir>/../foodie-shared-rn/src/index.ts',
+    '^foodie-shared-rn$': '<rootDir>/../../packages/shared-rn/src/index.ts',
   },
   clearMocks: true,
 };

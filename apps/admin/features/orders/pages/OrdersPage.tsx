@@ -16,7 +16,7 @@ export interface OrderItemRecord {
   itemsSummary: string;
   totalAmount: number;
   paymentMethod: 'COD' | 'DIGITAL';
-  status: 'PENDING' | 'PREPARING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELED';
+  status: 'PENDING' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELED';
   createdAt: string;
 }
 
@@ -32,6 +32,18 @@ const MOCK_ORDERS: OrderItemRecord[] = [
     paymentMethod: 'DIGITAL',
     status: 'PREPARING',
     createdAt: '10 mins ago',
+  },
+  {
+    id: 'e5f6a7b8-0005-4000-8000-555566667777',
+    customerName: 'Ananya Sharma',
+    customerPhone: '+91 98765 00005',
+    storeName: 'Punjab Grill & Spice',
+    module: 'North Indian & Tandoori',
+    itemsSummary: '1x Paneer Tikka Masala, 2x Garlic Naan, 1x Mango Lassi',
+    totalAmount: 620,
+    paymentMethod: 'DIGITAL',
+    status: 'READY_FOR_PICKUP',
+    createdAt: '15 mins ago',
   },
   {
     id: 'b2c3d4e5-0002-4000-8000-222233334444',
@@ -142,7 +154,7 @@ export function OrdersPage() {
         }}
       >
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {['ALL', 'PENDING', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELED'].map((st) => (
+          {['ALL', 'PENDING', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELED'].map((st) => (
             <button
               key={st}
               type="button"
@@ -158,7 +170,7 @@ export function OrdersPage() {
                 cursor: 'pointer',
               }}
             >
-              {st === 'ALL' ? 'All Orders' : st.replace(/_/g, ' ')}
+              {st === 'ALL' ? 'ALL ORDERS' : st.replace(/_/g, ' ').toUpperCase()}
             </button>
           ))}
         </div>
@@ -240,6 +252,8 @@ export function OrdersPage() {
                       backgroundColor:
                         order.status === 'DELIVERED'
                           ? '#D1FAE5'
+                          : order.status === 'READY_FOR_PICKUP'
+                          ? '#E0E7FF'
                           : order.status === 'OUT_FOR_DELIVERY' || order.status === 'PREPARING'
                           ? '#FEF3C7'
                           : order.status === 'PENDING'
@@ -248,6 +262,8 @@ export function OrdersPage() {
                       color:
                         order.status === 'DELIVERED'
                           ? '#047857'
+                          : order.status === 'READY_FOR_PICKUP'
+                          ? '#3730A3'
                           : order.status === 'OUT_FOR_DELIVERY' || order.status === 'PREPARING'
                           ? '#B45309'
                           : order.status === 'PENDING'
@@ -259,10 +275,33 @@ export function OrdersPage() {
                       borderRadius: 20,
                     }}
                   >
-                    {order.status.replace(/_/g, ' ')}
+                    {order.status === 'READY_FOR_PICKUP' ? 'READY FOR PICKUP' : order.status.replace(/_/g, ' ')}
                   </span>
                 </td>
                 <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                  {order.status === 'PREPARING' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrders((prev) =>
+                          prev.map((o) => (o.id === order.id ? { ...o, status: 'READY_FOR_PICKUP' } : o)),
+                        );
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#E0E7FF',
+                        color: '#3730A3',
+                        border: '1px solid #C7D2FE',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        marginRight: 8,
+                      }}
+                    >
+                      Mark Ready for Pickup
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => router.push(`/orders/${order.id}`)}

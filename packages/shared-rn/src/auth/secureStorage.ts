@@ -24,25 +24,33 @@ function isWebRuntime(): boolean {
   );
 }
 
+type GlobalWithLocalStorage = typeof globalThis & {
+  localStorage?: {
+    getItem: (key: string) => string | null;
+    setItem: (key: string, value: string) => void;
+    removeItem: (key: string) => void;
+  };
+};
+
 /** Web-only fallback — not a Keychain equivalent; documented limitation for Expo Web. */
 const webLocalStorageAdapter: SecureStorageAdapter = {
   getItemAsync: async (key) => {
     try {
-      return globalThis.localStorage?.getItem(key) ?? null;
+      return (globalThis as GlobalWithLocalStorage).localStorage?.getItem(key) ?? null;
     } catch {
       return null;
     }
   },
   setItemAsync: async (key, value) => {
     try {
-      globalThis.localStorage?.setItem(key, value);
+      (globalThis as GlobalWithLocalStorage).localStorage?.setItem(key, value);
     } catch {
       /* quota / private mode — ignore */
     }
   },
   deleteItemAsync: async (key) => {
     try {
-      globalThis.localStorage?.removeItem(key);
+      (globalThis as GlobalWithLocalStorage).localStorage?.removeItem(key);
     } catch {
       /* ignore */
     }

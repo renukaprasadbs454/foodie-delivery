@@ -46,6 +46,27 @@ type EnvelopeAwareError = {
   data: UnwrappedApiError;
 };
 
+/** Helper to check if a status string represents a fetch/network transport error. */
+export function isTransportFetchStatus(status: number | string): boolean {
+  return (
+    typeof status === 'string' &&
+    ['FETCH_ERROR', 'PARSING_ERROR', 'TIMEOUT_ERROR', 'CUSTOM_ERROR'].includes(status)
+  );
+}
+
+/** Helper to safely extract an ApiEnvelope from an unknown response body. */
+export function parseEnvelopeFromUnknown(data: unknown): ApiEnvelope<unknown> | null {
+  if (
+    data &&
+    typeof data === 'object' &&
+    'success' in data &&
+    typeof (data as Record<string, unknown>).success === 'boolean'
+  ) {
+    return data as ApiEnvelope<unknown>;
+  }
+  return null;
+}
+
 function extractUrl(args: string | FetchArgs): string {
   return typeof args === 'string' ? args : args.url;
 }
@@ -125,7 +146,7 @@ export function createBaseApi<TagTypes extends string = string>(
       return { error: networkError, meta: result.meta };
     }
 
-    const envelope = result.data as ApiEnvelope<unknown>;
+    const envelope = parseEnvelopeFromUnknown(result.data);
     const requestId = envelope?.meta?.requestId;
     recordRequestId(requestId);
 
@@ -201,7 +222,7 @@ export function createBaseApi<TagTypes extends string = string>(
                 meta: retryResult.meta,
               };
             }
-            const retryEnvelope = retryResult.data as ApiEnvelope<unknown>;
+            const retryEnvelope = parseEnvelopeFromUnknown(retryResult.data);
             recordRequestId(retryEnvelope?.meta?.requestId);
             if (retryEnvelope?.success) {
               return { data: retryEnvelope.data, meta: retryResult.meta };
