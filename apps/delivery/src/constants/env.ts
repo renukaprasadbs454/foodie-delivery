@@ -26,16 +26,18 @@ if (Platform.OS === 'web') {
   }
 }
 
-const dynamicApiUrl = `http://${devHost}:8082`;
-const dynamicWsUrl = `ws://${devHost}:8082/ws/websocket`;
+const defaultApiBaseUrl = 'https://api.foodie.kwiko.org';
+const defaultWsUrl = 'wss://api.foodie.kwiko.org/ws';
 
 export const ENV = {
-  apiBaseUrl: __DEV__
-    ? dynamicApiUrl
-    : (process.env.EXPO_PUBLIC_API_BASE_URL ?? extra.apiBaseUrl ?? 'https://api.foodie.example.com'),
-  wsUrl: __DEV__
-    ? dynamicWsUrl
-    : (process.env.EXPO_PUBLIC_WS_URL ?? extra.wsUrl ?? 'https://api.foodie.example.com/ws'),
+  apiBaseUrl:
+    process.env.EXPO_PUBLIC_API_BASE_URL ??
+    extra.apiBaseUrl ??
+    defaultApiBaseUrl,
+  wsUrl:
+    process.env.EXPO_PUBLIC_WS_URL ??
+    extra.wsUrl ??
+    defaultWsUrl,
   appName: 'foodie-delivery',
   appVersion: Constants.expoConfig?.version ?? '0.1.0',
 } as const;

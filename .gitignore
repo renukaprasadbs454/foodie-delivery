@@ -43,3 +43,8 @@ Thumbs.db
 # Lock files (keep pnpm-lock.yaml if used, but exclude npm/yarn)
 package-lock.json
 yarn.lock
+
+# Local tooling & binaries
+.jdk-17/
+*.zip
+

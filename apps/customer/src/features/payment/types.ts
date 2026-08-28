@@ -7,6 +7,8 @@ export type PaymentInitiation = {
   amount: number | string;
   currency: string;
   keyId: string;
+  walletAmountUsed?: number | string;
+  status?: string;
 };
 
 export const ORDER_STATUS_CONFIRMED = 'CONFIRMED';

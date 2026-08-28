@@ -22,7 +22,7 @@ export type IdempotentMutationArg = {
 };
 
 export type CreateBaseApiConfig<TagTypes extends string = string> = {
-  /** Per-environment API origin, e.g. https://api.foodie.example.com */
+  /** Per-environment API origin, e.g. https://api.foodie.kwiko.org */
   baseUrl: string;
   reducerPath?: string;
   /** Apps supply their tagTypes; shared factory does not invent feature tags. */

@@ -23,6 +23,7 @@ import '../api/endpoints/ordersApi';
 import '../api/endpoints/paymentsApi';
 import '../api/endpoints/reviewsApi';
 import '../api/endpoints/notificationsApi';
+import '../api/endpoints/walletApi';
 import type { AuthState } from '../features/auth/authSlice';
 import { rootReducer, type RootReducerState } from './rootReducer';
 import { websocketMiddleware } from './websocketMiddleware';

@@ -191,6 +191,8 @@ function DarkStoreStackNavigator() {
   );
 }
 
+import { WalletScreen } from '../features/wallet/screens/WalletScreen';
+
 function ProfileStackNavigator() {
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
@@ -203,6 +205,11 @@ function ProfileStackNavigator() {
         name="Addresses"
         component={AddressesScreen}
         options={{ title: 'Addresses' }}
+      />
+      <ProfileStack.Screen
+        name="Wallet"
+        component={WalletScreen}
+        options={{ title: 'Wallet' }}
       />
       <ProfileStack.Screen
         name="Settings"

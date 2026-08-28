@@ -26,6 +26,7 @@ import {
 import { useGetAddressesQuery } from '../../../api/endpoints/addressesApi';
 import { useGetCartQuery } from '../../../api/endpoints/cartApi';
 import { useCreateOrderMutation } from '../../../api/endpoints/ordersApi';
+import { useGetWalletBalanceQuery } from '../../../api/endpoints/walletApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import { formatMoney, parseMoney } from '../../menu/types';
 import type { BrowseStackParamList } from '../../../navigation/types';
@@ -39,6 +40,7 @@ export function CheckoutScreen({ navigation, route }: any) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const cartQuery = useGetCartQuery();
+  const walletQuery = useGetWalletBalanceQuery();
 
   const mockItems = route.params?.mockItems;
   const isDarkStoreMock = Array.isArray(mockItems) && mockItems.length > 0;
@@ -47,6 +49,7 @@ export function CheckoutScreen({ navigation, route }: any) {
   const [createOrder, createState] = useCreateOrderMutation();
 
   const [addressId, setAddressId] = useState<string | null>(null);
+  const [useWallet, setUseWallet] = useState<boolean>(false);
   const placeAttemptKey = useRef<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
@@ -67,6 +70,7 @@ export function CheckoutScreen({ navigation, route }: any) {
   const cart = cartQuery.data;
   const restaurantId = cart?.restaurantId ?? undefined;
   const addresses = addressesQuery.data ?? [];
+  const walletBalance = Number(walletQuery.data?.balance || 0);
 
   useEffect(() => {
     trackAnalyticsEvent('customer_checkout_viewed');
@@ -84,7 +88,7 @@ export function CheckoutScreen({ navigation, route }: any) {
         useNativeDriver: true,
       })
     ]).start();
-  }, []);
+  }, [scaleValue, fadeValue]);
 
   useEffect(() => {
     const list = addressesQuery.data;
@@ -94,7 +98,7 @@ export function CheckoutScreen({ navigation, route }: any) {
     }
   }, [addressId, addressesQuery.data]);
 
-  const loading = cartQuery.isLoading || addressesQuery.isLoading || createState.isLoading;
+  const loading = cartQuery.isLoading || addressesQuery.isLoading || createState.isLoading || walletQuery.isLoading;
 
   const onPlaceOrder = async () => {
     if (!addressId || !isAddressId(addressId)) {
@@ -107,9 +111,8 @@ export function CheckoutScreen({ navigation, route }: any) {
     }
     if (isDarkStoreMock) {
       trackAnalyticsEvent('checkout_completed', { orderId: 'mock-darkstore' });
-      // Calculate mock total here and pass it
       const mockSubtotal = mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0);
-      navigation.replace('Payment' as any, { orderId: `ds-mock-${Date.now()}`, mockTotal: mockSubtotal + 25 + 18 });
+      navigation.replace('Payment' as any, { orderId: `ds-mock-${Date.now()}`, mockTotal: mockSubtotal + 25 + 18, useWallet });
       return;
     }
     if (!placeAttemptKey.current) {
@@ -123,7 +126,7 @@ export function CheckoutScreen({ navigation, route }: any) {
       }).unwrap();
       trackAnalyticsEvent('checkout_completed', { orderId: order.orderId });
       placeAttemptKey.current = null;
-      navigation.replace('Payment', { orderId: order.orderId });
+      navigation.replace('Payment', { orderId: order.orderId, useWallet });
     } catch (err) {
       handleError(toUnwrappedApiError(err));
     }
@@ -154,7 +157,9 @@ export function CheckoutScreen({ navigation, route }: any) {
   }
 
   const subtotal = isDarkStoreMock ? mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0) : Number(cart?.subtotal || 0);
-  const grandTotal = Math.max(0, subtotal + 25 + 18);
+  const orderTotal = Math.max(0, subtotal + 25 + 18);
+  const walletApplied = useWallet ? Math.min(walletBalance, orderTotal) : 0;
+  const grandTotal = Math.max(0, orderTotal - walletApplied);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#14532D' }} edges={['top', 'left', 'right']}>
@@ -170,10 +175,11 @@ export function CheckoutScreen({ navigation, route }: any) {
             }}
             refreshControl={
               <RefreshControl
-                refreshing={cartQuery.isFetching || addressesQuery.isFetching}
+                refreshing={cartQuery.isFetching || addressesQuery.isFetching || walletQuery.isFetching}
                 onRefresh={() => {
                   void cartQuery.refetch();
                   void addressesQuery.refetch();
+                  void walletQuery.refetch();
                 }}
                 tintColor="#FCD34D"
               />
@@ -261,6 +267,61 @@ export function CheckoutScreen({ navigation, route }: any) {
                     )}
                   </View>
 
+                  {/* Wallet Section */}
+                  <View style={{
+                    backgroundColor: '#FFFFFF',
+                    padding: 16,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    shadowColor: '#14532D',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 10,
+                    elevation: 2
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <Text style={{ fontSize: 18 }}>💳</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#14532D' }}>Foodie Wallet</Text>
+                    </View>
+
+                    <Pressable
+                      disabled={walletBalance <= 0}
+                      onPress={() => {
+                        setUseWallet(!useWallet);
+                        trackAnalyticsEvent('wallet_toggled_checkout', { enabled: !useWallet });
+                      }}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        opacity: walletBalance <= 0 ? 0.6 : (pressed ? 0.8 : 1),
+                        paddingVertical: 4,
+                      })}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          borderWidth: 2,
+                          borderColor: useWallet ? '#14532D' : '#D1D5DB',
+                          backgroundColor: useWallet ? '#14532D' : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          {useWallet && <Text style={{ color: '#FCD34D', fontWeight: 'bold', fontSize: 14 }}>✓</Text>}
+                        </View>
+                        <View>
+                          <Text style={{ fontWeight: '700', fontSize: 15, color: '#111827' }}>Use Wallet Balance</Text>
+                          <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+                            Available: ₹{formatMoney(walletBalance)}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  </View>
+
                   {/* Detailed Bill Block */}
                   <View style={{
                     backgroundColor: '#FFFFFF',
@@ -298,6 +359,14 @@ export function CheckoutScreen({ navigation, route }: any) {
                         <Text style={{ color: '#6B7280', fontWeight: '600' }}>Taxes & Charges</Text>
                         <Text style={{ color: '#111827', fontWeight: '700' }}>₹18.00</Text>
                       </View>
+
+                      {useWallet && walletApplied > 0 && (
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ color: '#059669', fontWeight: '700' }}>Wallet Applied</Text>
+                          <Text style={{ color: '#059669', fontWeight: '700' }}>-₹{formatMoney(walletApplied)}</Text>
+                        </View>
+                      )}
+
                       <View style={{ height: 1.5, backgroundColor: '#F3F4F6', marginVertical: 4 }} />
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ fontWeight: '900', color: '#14532D', fontSize: 16 }}>To Pay</Text>

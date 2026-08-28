@@ -57,6 +57,7 @@ export type NotificationsStackParamList = {
 export type ProfileStackParamList = {
   Profile: undefined;
   Addresses: { selectMode?: boolean } | undefined;
+  Wallet: undefined;
   Settings: undefined;
 };
 

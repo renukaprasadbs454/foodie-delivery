@@ -424,6 +424,22 @@ export function ProfileScreen({ navigation }: Props) {
                 <View style={{ height: 1, backgroundColor: '#F3F4F6', marginLeft: 48 }} />
 
                 <Pressable
+                  onPress={() => navigation.navigate('Wallet')}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingHorizontal: 16,
+                    paddingVertical: 18,
+                    backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+                  })}
+                >
+                  <Feather name="credit-card" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                  <Text style={{ fontSize: 17, color: '#111827', fontWeight: '600', flex: 1 }}>My Wallet</Text>
+                  <Text style={{ fontSize: 20, color: '#FCD34D', fontWeight: 'bold' }}>›</Text>
+                </Pressable>
+                <View style={{ height: 1, backgroundColor: '#F3F4F6', marginLeft: 48 }} />
+
+                <Pressable
                   onPress={() => navigation.navigate('Settings')}
                   style={({ pressed }) => ({
                     flexDirection: 'row',

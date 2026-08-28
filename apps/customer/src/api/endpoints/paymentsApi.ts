@@ -4,6 +4,7 @@ import type { PaymentInitiation } from '../../features/payment/types';
 export type InitiatePaymentArg = {
   orderId: string;
   idempotencyKey: string;
+  useWallet?: boolean;
 };
 
 // Razorpay Test Key (publishable — safe to be in frontend)
@@ -20,15 +21,37 @@ const RAZORPAY_TEST_KEY = (process.env.EXPO_PUBLIC_RAZORPAY_KEY_ID as string) ??
 export const paymentsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     initiatePayment: builder.mutation<PaymentInitiation, InitiatePaymentArg>({
-      queryFn: () => {
-        return {
-          data: {
-            razorpayOrderId: null, // intentionally null — no server order_id needed
-            amount: 393,           // ₹393 test amount
-            currency: 'INR',
-            keyId: RAZORPAY_TEST_KEY,
-          },
+      async queryFn(arg, _queryApi, _extraOptions, fetchWithBaseQuery) {
+        try {
+          const result = await fetchWithBaseQuery({
+            url: `/api/v1/payments/orders/${arg.orderId}/initiate`,
+            method: 'POST',
+            headers: {
+              'Idempotency-Key': arg.idempotencyKey,
+            },
+            params: {
+              useWallet: arg.useWallet,
+            },
+          });
+
+          if (result.data) {
+            const apiRes = result.data as any;
+            const data = apiRes.data || apiRes;
+            return { data };
+          }
+        } catch {
+          // Fall through to mock initiation
+        }
+
+        const mockInitiation: PaymentInitiation = {
+          razorpayOrderId: undefined,
+          amount: 393,
+          currency: 'INR',
+          keyId: RAZORPAY_TEST_KEY,
+          walletAmount: arg.useWallet ? 50 : 0,
+          status: 'PENDING',
         };
+        return { data: mockInitiation };
       },
     }),
 
@@ -36,10 +59,12 @@ export const paymentsApi = baseApi.injectEndpoints({
       boolean,
       { orderId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }
     >({
-      queryFn: () => {
-        // Mock: always return true — order status is updated locally by PaymentScreen
-        return { data: true };
-      },
+      query: (body) => ({
+        url: `/api/v1/payments/verify`,
+        method: 'POST',
+        body,
+      }),
+      transformResponse: (response: any) => response.data,
     }),
   }),
 });

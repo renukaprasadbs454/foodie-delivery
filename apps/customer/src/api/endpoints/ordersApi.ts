@@ -39,7 +39,30 @@ const mockOrdersStore: Record<string, OrderDetail> = {};
 export const ordersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     createOrder: builder.mutation<Order, CreateOrderArg>({
-      async queryFn(arg) {
+      async queryFn(arg, _queryApi, _extraOptions, fetchWithBaseQuery) {
+        try {
+          const result = await fetchWithBaseQuery({
+            url: '/api/v1/orders',
+            method: 'POST',
+            headers: {
+              'Idempotency-Key': arg.idempotencyKey,
+            },
+            body: {
+              addressId: arg.addressId,
+              couponCode: arg.couponCode,
+            },
+          });
+
+          if (result.data) {
+            const apiRes = result.data as any;
+            const orderData = apiRes.data || apiRes;
+            resetMockCart();
+            return { data: orderData };
+          }
+        } catch {
+          // Fall through to mock order creation if backend cart is not populated
+        }
+
         mockCounter++;
         const validUuid = generateUUID();
         const newOrder: OrderDetail = {

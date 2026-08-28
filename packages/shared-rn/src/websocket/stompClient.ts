@@ -12,7 +12,7 @@ import { logger } from '../utils/logger';
  */
 
 export type StompClientConfig = {
-  /** e.g. https://api.foodie.example.com/ws (SockJS endpoint) */
+  /** e.g. wss://api.foodie.kwiko.org/ws (SockJS endpoint) */
   brokerURL: string;
   getAccessToken: () => AccessToken | string | null | undefined;
   onConnect?: () => void;
