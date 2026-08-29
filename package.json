@@ -8,7 +8,7 @@
     "dev:delivery": "pnpm --filter foodie-delivery start",
     "dev:admin": "pnpm --filter foodie-admin dev",
     "web:customer": "pnpm --filter foodie-customer exec expo start --web",
-    "build": "turbo run build",
+    "build": "node scripts/hostinger-build.js",
     "typecheck": "turbo run typecheck",
     "lint": "turbo run lint",
     "test": "turbo run test"
