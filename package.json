@@ -1,7 +1,7 @@
 {
   "name": "foodie-frontend",
   "private": true,
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@11.24.0",
   "scripts": {
     "dev:customer": "pnpm --filter foodie-customer start",
     "dev:restaurant": "pnpm --filter foodie-restaurant start",
