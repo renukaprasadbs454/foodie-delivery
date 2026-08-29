@@ -2,6 +2,14 @@
   "name": "foodie-frontend",
   "private": true,
   "packageManager": "pnpm@11.24.0",
+
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
+
   "scripts": {
     "dev:customer": "pnpm --filter foodie-customer start",
     "dev:restaurant": "pnpm --filter foodie-restaurant start",
@@ -13,6 +21,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test"
   },
+
   "devDependencies": {
     "turbo": "^2.5.4"
   }
