@@ -294,7 +294,7 @@ export function RoleLandingHub() {
               <div style={{ fontSize: 11, color: '#92400E' }}>Preparing & Ready</div>
             </div>
             <div style={{ padding: 14, borderRadius: 10, backgroundColor: '#DCFCE7', border: '1px solid #86EFAC' }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>TODAY'S NET EARNINGS</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#15803D' }}>TODAY&apos;S NET EARNINGS</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: '#166534' }}>₹ 4,820.00</div>
               <div style={{ fontSize: 11, color: '#15803D' }}>After Platform Commission</div>
             </div>
