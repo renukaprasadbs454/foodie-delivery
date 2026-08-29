@@ -9,7 +9,6 @@ type Props = {
   onSelect: () => void;
 };
 
-/** UI-API AddressPickerRow — P2-CUS-04. */
 export function AddressPickerRow({ address, selected, onSelect }: Props) {
   const { tokens } = useTheme();
   const title = address.label?.trim() || address.line1;
@@ -21,37 +20,69 @@ export function AddressPickerRow({ address, selected, onSelect }: Props) {
       accessibilityState={{ selected }}
       accessibilityLabel={`Address ${title}`}
       style={{
+        flexDirection: 'row',
+        alignItems: 'center',
         padding: tokens.spacing.md,
-        borderRadius: tokens.radius.md,
-        borderWidth: 1,
+        borderRadius: tokens.radius.lg,
+        borderWidth: selected ? 2 : 1,
         borderColor: selected ? tokens.color.accent : tokens.color.border,
         backgroundColor: tokens.color.surface,
-        gap: tokens.spacing.xs,
+        gap: tokens.spacing.md,
+        shadowColor: '#14532D',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: selected ? 0.05 : 0.02,
+        shadowRadius: 4,
+        elevation: selected ? 3 : 1,
       }}
     >
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          gap: tokens.spacing.sm,
-        }}
-      >
-        <Text variant="label" style={{ flex: 1 }}>
-          {title}
-        </Text>
-        {address.isDefault ? (
-          <Badge
-            label="Default"
-            tone="accent"
-            accessibilityLabel="Default address"
-          />
+      {/* Branded Left Side Radio Indicator */}
+      <View style={{
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: selected ? tokens.color.accent : tokens.color.border,
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
+        {selected ? (
+          <View style={{
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: tokens.color.accent, // Brand Green dot
+          }} />
         ) : null}
       </View>
-      <Text variant="bodySmall" color={tokens.color.textSecondary}>
-        {[address.line1, address.line2, address.city, address.pincode]
-          .filter(Boolean)
-          .join(', ')}
-      </Text>
+
+      {/* Address Details on Right Side */}
+      <View style={{ flex: 1, gap: 2 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: tokens.spacing.sm,
+          }}
+        >
+          <Text variant="label" style={{ fontWeight: '700', color: tokens.color.textPrimary }}>
+            {title}
+          </Text>
+          {address.isDefault ? (
+            <Badge
+              label="Default"
+              tone="accent"
+              accessibilityLabel="Default address"
+            />
+          ) : null}
+        </View>
+        <Text variant="caption" color={tokens.color.textSecondary} style={{ lineHeight: 16 }}>
+          {[address.line1, address.line2, address.city, address.pincode]
+            .filter(Boolean)
+            .join(', ')}
+        </Text>
+      </View>
     </Pressable>
   );
 }
+

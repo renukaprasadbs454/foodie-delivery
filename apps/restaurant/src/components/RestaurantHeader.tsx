@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Pressable, View, useWindowDimensions } from 'react-native';
+import { Modal, Pressable, View, useWindowDimensions } from 'react-native';
 import { Text, useTheme } from 'foodie-shared-rn';
 import { useAppSelector } from '../store/hooks';
 import { selectRestaurantId } from '../features/onboarding/restaurantOnboardingSlice';
@@ -9,6 +9,7 @@ type Props = {
   subtitle?: string;
   navigation?: any;
   showBack?: boolean;
+  onLogout?: () => void;
 };
 
 const BRAND_PRIMARY = '#14532D'; // Dark Green
@@ -19,6 +20,7 @@ export function RestaurantHeader({
   subtitle,
   navigation,
   showBack = false,
+  onLogout,
 }: Props) {
   const { tokens } = useTheme();
   const { width } = useWindowDimensions();
@@ -26,6 +28,7 @@ export function RestaurantHeader({
 
   const restaurantId = useAppSelector(selectRestaurantId);
   const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
   const displayTitle: string = title;
   const displaySubtitle: string =
@@ -34,7 +37,28 @@ export function RestaurantHeader({
   const canGoBack = showBack || (navigation && typeof navigation.canGoBack === 'function' && navigation.canGoBack());
 
   const handleProfilePress = () => {
+    setIsMenuOpen(true);
+  };
+
+  const handleNavigateProfile = () => {
+    setIsMenuOpen(false);
     if (navigation && typeof navigation.navigate === 'function') {
+      navigation.navigate('ProfileTab');
+    }
+  };
+
+  const handleNavigateSettings = () => {
+    setIsMenuOpen(false);
+    if (navigation && typeof navigation.navigate === 'function') {
+      navigation.navigate('ProfileTab');
+    }
+  };
+
+  const handleLogoutPress = () => {
+    setIsMenuOpen(false);
+    if (onLogout) {
+      onLogout();
+    } else if (navigation && typeof navigation.navigate === 'function') {
       navigation.navigate('ProfileTab');
     }
   };
@@ -196,7 +220,7 @@ export function RestaurantHeader({
           <Pressable
             onPress={handleProfilePress}
             accessibilityRole="button"
-            accessibilityLabel="Restaurant Profile"
+            accessibilityLabel="Restaurant Profile Dropdown"
             style={({ pressed }) => [{
               width: 36,
               height: 36,
@@ -214,8 +238,64 @@ export function RestaurantHeader({
         </View>
       </View>
 
+      {/* PROFILE DROPDOWN MODAL */}
+      <Modal
+        visible={isMenuOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsMenuOpen(false)}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.3)',
+            justifyContent: 'flex-start',
+            alignItems: 'flex-end',
+            paddingTop: 60,
+            paddingRight: 16,
+          }}
+          onPress={() => setIsMenuOpen(false)}
+        >
+          <View
+            style={{
+              width: 180,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 12,
+              paddingVertical: 4,
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 5,
+            }}
+          >
+            <Pressable
+              onPress={handleLogoutPress}
+              accessibilityRole="button"
+              accessibilityLabel="Log out option"
+              style={({ pressed }) => [{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
+                backgroundColor: pressed ? '#FEF2F2' : 'transparent',
+              }]}
+            >
+              <Text style={{ fontSize: 16 }}>🚪</Text>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: '#EF4444' }}>
+                Log out
+              </Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
       {/* SUBTLE AMBER BOTTOM ACCENT LINE */}
       <View style={{ height: 2, backgroundColor: BRAND_ACCENT }} />
     </View>
   );
 }
+

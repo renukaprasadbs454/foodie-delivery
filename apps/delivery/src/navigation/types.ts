@@ -33,19 +33,24 @@ export type MainStackParamList = {
     assignmentId: string;
     leg: NavigationLeg;
   };
+  CustomerDelivery: { assignmentId: string; orderId: string };
   PickupOtp: { assignmentId: string; orderId: string };
   DeliveryOtp: { assignmentId: string; orderId: string };
   /** Deep-link target for /wallet. */
   Wallet: undefined;
   Ledger: undefined;
   PayoutRequests: undefined;
+  PayoutHistory: undefined;
+  PayoutDetail: { payoutId: string };
   /** Deep-link target for /notifications — UI-API `DeliveryNotifications`. */
   DeliveryNotifications: undefined;
   DeliveryProfile: undefined;
   DeliverySettings: undefined;
+  DeliveryBankDetails: undefined;
   Kyc: undefined;
   PendingVerification: undefined;
   Incentives: undefined;
+  CashDeposit: undefined;
 };
 
 export type RootStackParamList = {

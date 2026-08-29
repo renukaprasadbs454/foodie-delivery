@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Pressable } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Button,
@@ -17,6 +18,8 @@ import {
   useGetOrderQuery,
   useTransitionOrderStatusMutation,
 } from '../../../api/endpoints/ordersApi';
+import { useGetRestaurantQuery } from '../../../api/endpoints/restaurantsApi';
+import { useGetAddressesQuery } from '../../../api/endpoints/addressesApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import type { OrdersStackParamList } from '../../../navigation/types';
 import { OrderStatusStepper } from '../components/OrderStatusStepper';
@@ -53,7 +56,7 @@ export function LiveOrderTrackingScreen({ navigation, route }: Props) {
 
   const orderQuery = useGetOrderQuery(orderId, {
     skip: !validId,
-    pollingInterval: 0,
+    pollingInterval: 3000,
     refetchOnFocus: true,
   });
 
@@ -63,6 +66,20 @@ export function LiveOrderTrackingScreen({ navigation, route }: Props) {
     validId ? orderId : '',
     status,
   );
+
+  const [eta, setEta] = useState<number | null>(null);
+
+  const { data: restaurant } = useGetRestaurantQuery(orderQuery.data?.restaurantId ?? '', { skip: !orderQuery.data?.restaurantId });
+  const { data: addresses } = useGetAddressesQuery(undefined, { skip: !orderQuery.data?.addressId });
+  const address = addresses?.find(a => a.addressId === orderQuery.data?.addressId);
+
+  const restaurantLocation = restaurant?.latitude && restaurant?.longitude
+    ? { latitude: Number(restaurant.latitude), longitude: Number(restaurant.longitude) }
+    : undefined;
+
+  const customerLocation = address?.latitude && address?.longitude
+    ? { latitude: Number(address.latitude), longitude: Number(address.longitude) }
+    : undefined;
 
   // Separate subscription drives fallback polling (shared cache).
   const pollSubscription = useGetOrderQuery(orderId, {
@@ -139,24 +156,70 @@ export function LiveOrderTrackingScreen({ navigation, route }: Props) {
   const order = orderQuery.data;
   const loading = orderQuery.isLoading && !order;
 
+  const renderHeaderUi = (currentStatus: string) => {
+    let title = 'Order Placed';
+    let icon = '🕒';
+
+    switch (currentStatus) {
+      case 'PLACED':
+        title = 'Order Placed';
+        icon = '✅';
+        break;
+      case 'ACCEPTED':
+        title = 'Restaurant Accepted';
+        icon = '🧑‍🍳';
+        break;
+      case 'PREPARING':
+        title = 'Food is preparing';
+        icon = '🍳';
+        break;
+      case 'READY_FOR_PICKUP':
+      case 'REACHED_RESTAURANT':
+        title = 'Ready to pickup';
+        icon = '🛍️';
+        break;
+      case 'ASSIGNED':
+        title = 'Delivery Partner Assigned';
+        icon = '🛵';
+        break;
+      case 'PICKED_UP':
+      case 'OUT_FOR_DELIVERY':
+        title = 'Order is on the way';
+        icon = '🤟';
+        break;
+      case 'DELIVERED':
+        title = 'Order Delivered';
+        icon = '🎉';
+        break;
+      case 'CANCELLED':
+        title = 'Order Cancelled';
+        icon = '❌';
+        break;
+    }
+
+    return (
+      <LinearGradient
+        colors={['#0F3E22', '#14532D', '#1B6A3A']}
+        style={{ padding: 24, paddingTop: 48, paddingBottom: 60, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 }}
+      >
+        <Text style={{ color: '#FCD34D', fontSize: 26, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>{title} {icon}</Text>
+        {eta !== null && (
+          <View style={{ backgroundColor: 'rgba(252, 211, 77, 0.2)', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 25, marginTop: 16, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(252, 211, 77, 0.3)' }}>
+            <Text style={{ color: '#FEF3C7', fontWeight: '800', fontSize: 17, letterSpacing: 0.5 }}>Arrival in {eta} mins</Text>
+          </View>
+        )}
+      </LinearGradient>
+    );
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
       <ScrollView
         contentContainerStyle={{
-          padding: tokens.spacing.md,
-          gap: tokens.spacing.md,
           paddingBottom: 48,
         }}
+        bounces={false}
       >
-        <Text variant="heading1" accessibilityRole="header">
-          Track order
-        </Text>
-        {!isConnected ? (
-          <Text variant="caption" color={tokens.color.warning}>
-            Offline — showing cached status. Cancel is unavailable.
-          </Text>
-        ) : null}
-
         {loading ? (
           <TrackingSkeleton />
         ) : orderQuery.isError && !order ? (
@@ -165,54 +228,171 @@ export function LiveOrderTrackingScreen({ navigation, route }: Props) {
             description="We could not load this order."
             accessibilityLabel="Tracking order not found"
             actionLabel="Retry"
-            onAction={() => {
-              void orderQuery.refetch();
-            }}
+            onAction={() => void orderQuery.refetch()}
           />
         ) : order ? (
           <>
-            <Text variant="label" color={tokens.color.textSecondary}>
-              {order.orderNumber}
-            </Text>
-            <OrderStatusStepper status={order.status} />
-            <TrackingMap location={location} orderStatus={order.status} />
+            {renderHeaderUi(order.status)}
 
-            {canCustomerCancelOrder(order.status) ? (
+            {order.status === 'PREPARING' || order.status === 'PLACED' || order.status === 'ACCEPTED' ? (
+              <View style={{ paddingHorizontal: tokens.spacing.md, marginTop: tokens.spacing.md }}>
+                <View style={{
+                  padding: 32,
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 24,
+                  alignItems: 'center',
+                  elevation: 5,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6,
+                  borderColor: '#E5E7EB',
+                  borderWidth: 1
+                }}>
+                  <ActivityIndicator size="large" color="#14532D" style={{ marginBottom: 16 }} />
+                  <Text style={{ fontSize: 18, color: '#14532D', fontWeight: '800', textAlign: 'center' }}>Searching nearby delivery partner...</Text>
+                  <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' }}>Please wait while we assign the best rider for your order.</Text>
+                </View>
+              </View>
+            ) : order.status === 'DELIVERED' ? (
+              <View style={{ paddingHorizontal: tokens.spacing.md, marginTop: tokens.spacing.md }}>
+                <View style={{
+                  padding: 32,
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 24,
+                  alignItems: 'center',
+                  elevation: 5,
+                  shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8,
+                  borderColor: '#FCD34D',
+                  borderWidth: 2
+                }}>
+                  <Text style={{ fontSize: 48, marginBottom: 16 }}>🌟</Text>
+                  <Text style={{ fontSize: 20, color: '#14532D', fontWeight: '900', textAlign: 'center' }}>Enjoyed your meal?</Text>
+                  <Text style={{ fontSize: 15, color: '#6B7280', marginTop: 8, textAlign: 'center', marginBottom: 20 }}>Rate the restaurant and your delivery partner to help us improve!</Text>
+
+                  <Pressable
+                    onPress={() => {
+                      navigation.navigate('Reviews', {
+                        mode: 'submit',
+                        orderId: order.orderId,
+                        restaurantId: order.restaurantId
+                      } as never);
+                    }}
+                    style={{
+                      backgroundColor: '#14532D',
+                      paddingHorizontal: 24,
+                      paddingVertical: 14,
+                      borderRadius: 24,
+                      width: '100%',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <Text style={{ color: '#FCD34D', fontWeight: 'bold', fontSize: 16 }}>Rate This Order</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <View style={{ paddingHorizontal: tokens.spacing.md, marginTop: tokens.spacing.md }}>
+                <TrackingMap
+                  location={location}
+                  orderStatus={order.status}
+                  restaurantLocation={restaurantLocation}
+                  customerLocation={customerLocation}
+                  onEtaUpdate={setEta}
+                />
+              </View>
+            )}
+
+            {/* Mock Zomato-style Delivery Partner Block */}
+            {['ASSIGNED', 'REACHED_RESTAURANT', 'READY_FOR_PICKUP', 'PICKED_UP', 'OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.status) && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FFFFFF',
+                padding: tokens.spacing.md,
+                borderRadius: tokens.radius.lg,
+                marginTop: tokens.spacing.md,
+                marginHorizontal: tokens.spacing.md,
+                elevation: 4,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+              }}>
+                <View style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: 25,
+                  backgroundColor: '#E5E7EB',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  overflow: 'hidden'
+                }}>
+                  <Text style={{ fontSize: 28 }}>👨🏽‍✈️</Text>
+                </View>
+                <View style={{ flex: 1, marginLeft: tokens.spacing.md }}>
+                  <Text variant="heading3" style={{ fontWeight: '800', color: '#14532D' }}>Suresh Kumar</Text>
+                  <Text variant="caption" style={{ color: tokens.color.textSecondary, fontWeight: '600' }}>
+                    ★ 4.9 • KA-06-EN-4493
+                  </Text>
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Button
+                    label="Chat"
+                    accessibilityLabel="Chat Delivery Partner"
+                    variant="secondary"
+                    onPress={() => setToast({ message: 'Opening chat...', variant: 'info' })}
+                    style={{ borderRadius: tokens.radius.full, paddingHorizontal: 16 }}
+                  />
+                  <Button
+                    label="Call"
+                    accessibilityLabel="Call Delivery Partner"
+                    variant="primary"
+                    onPress={() => setToast({ message: 'Calling Suresh Kumar...', variant: 'info' })}
+                    style={{ borderRadius: tokens.radius.full, paddingHorizontal: 16, backgroundColor: '#14532D' }}
+                  />
+                </View>
+              </View>
+            )}
+
+            <View style={{ paddingHorizontal: tokens.spacing.md }}>
+              {canCustomerCancelOrder(order.status) ? (
+                <Button
+                  label="Cancel order"
+                  accessibilityLabel="Cancel order"
+                  variant="secondary"
+                  disabled={!isConnected || transitionState.isLoading}
+                  onPress={() => {
+                    trackAnalyticsEvent('cancel_tapped', {
+                      orderId,
+                      phase: 'open',
+                    });
+                    setCancelVisible(true);
+                  }}
+                  style={{ marginTop: tokens.spacing.md }}
+                />
+              ) : null}
+
+              {order.status === 'DELIVERED' ? (
+                <Button
+                  label="Leave a review"
+                  accessibilityLabel="Leave a review"
+                  onPress={() =>
+                    navigation.navigate('Reviews', {
+                      mode: 'submit',
+                      orderId,
+                      restaurantId: order.restaurantId,
+                    })
+                  }
+                  style={{ marginTop: tokens.spacing.md }}
+                />
+              ) : null}
+
               <Button
-                label="Cancel order"
-                accessibilityLabel="Cancel order"
+                label="My orders"
+                accessibilityLabel="My orders"
                 variant="secondary"
-                disabled={!isConnected || transitionState.isLoading}
-                onPress={() => {
-                  trackAnalyticsEvent('cancel_tapped', {
-                    orderId,
-                    phase: 'open',
-                  });
-                  setCancelVisible(true);
-                }}
+                onPress={() => navigation.navigate('MyOrders')}
+                style={{ marginTop: tokens.spacing.md }}
               />
-            ) : null}
-
-            {order.status === 'DELIVERED' ? (
-              <Button
-                label="Leave a review"
-                accessibilityLabel="Leave a review"
-                onPress={() =>
-                  navigation.navigate('Reviews', {
-                    mode: 'submit',
-                    orderId,
-                    restaurantId: order.restaurantId,
-                  })
-                }
-              />
-            ) : null}
-
-            <Button
-              label="My orders"
-              accessibilityLabel="My orders"
-              variant="secondary"
-              onPress={() => navigation.navigate('MyOrders')}
-            />
+            </View>
           </>
         ) : null}
       </ScrollView>
@@ -258,6 +438,6 @@ export function LiveOrderTrackingScreen({ navigation, route }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
-    </View>
+    </View >
   );
 }

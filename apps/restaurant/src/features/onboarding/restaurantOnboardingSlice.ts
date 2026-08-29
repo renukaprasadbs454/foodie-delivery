@@ -15,8 +15,8 @@ export type RestaurantOnboardingState = {
 };
 
 const initialState: RestaurantOnboardingState = {
-  restaurantId: DEFAULT_DEV_RESTAURANT_ID,
-  status: 'APPROVED',
+  restaurantId: null,
+  status: null,
   draftName: '',
 };
 
@@ -29,24 +29,24 @@ const restaurantOnboardingSlice = createSlice({
       action: PayloadAction<{ restaurantId: string; status?: RestaurantStatus }>,
     ) {
       state.restaurantId = action.payload.restaurantId;
-      state.status = action.payload.status ?? 'APPROVED';
+      state.status = action.payload.status ?? 'PENDING';
     },
-    setRestaurantStatus(state, action: PayloadAction<RestaurantStatus>) {
+    setRestaurantStatus(state, action: PayloadAction<RestaurantStatus | null>) {
       state.status = action.payload;
     },
     setDraftName(state, action: PayloadAction<string>) {
       state.draftName = action.payload;
     },
     clearOnboarding(state) {
-      state.restaurantId = DEFAULT_DEV_RESTAURANT_ID;
-      state.status = 'APPROVED';
+      state.restaurantId = null;
+      state.status = null;
       state.draftName = '';
     },
   },
   extraReducers: (builder) => {
     builder.addCase(clearCredentials, (state) => {
-      state.restaurantId = DEFAULT_DEV_RESTAURANT_ID;
-      state.status = 'APPROVED';
+      state.restaurantId = null;
+      state.status = null;
       state.draftName = '';
     });
   },
@@ -61,10 +61,10 @@ export const {
 
 export const selectRestaurantId = (state: {
   restaurantOnboarding: RestaurantOnboardingState;
-}) => state.restaurantOnboarding.restaurantId || DEFAULT_DEV_RESTAURANT_ID;
+}) => state.restaurantOnboarding.restaurantId;
 
 export const selectRestaurantOnboardingStatus = (state: {
   restaurantOnboarding: RestaurantOnboardingState;
-}) => state.restaurantOnboarding.status || 'APPROVED';
+}) => state.restaurantOnboarding.status;
 
 export default restaurantOnboardingSlice.reducer;

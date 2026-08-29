@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { EmptyState } from 'foodie-shared-web';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { selectAdminRole } from '@/features/auth/authSlice';
+import { selectAdminRole, selectUserId } from '@/features/auth/authSlice';
 import { logoutAdmin } from '@/features/auth/session';
 import { filterNavForRole, type NavCategory, type NavItem } from '@/lib/routeGuards';
 import { AdminHeaderBar } from '@/components/AdminHeaderBar';
@@ -17,11 +17,22 @@ import { AdminFooter } from '@/components/AdminFooter';
  */
 export function DashboardShell({ children }: { children: ReactNode }) {
   const role = useAppSelector(selectAdminRole);
+  const userId = useAppSelector(selectUserId);
   const nav = filterNavForRole(role);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
   const [loggingOut, setLoggingOut] = React.useState(false);
+
+  // Granular client-side RBAC URL protection
+  React.useEffect(() => {
+    import('@/lib/routeGuards').then(({ isRouteAllowedForRole, getHomeRouteForRole }) => {
+      if (role && !isRouteAllowedForRole(pathname, role)) {
+        const targetHome = getHomeRouteForRole(role);
+        router.replace(targetHome);
+      }
+    });
+  }, [pathname, role, router]);
 
   // Compact Hover-to-Peek Panel state
   const [isCompact, setIsCompact] = React.useState(false);
@@ -140,6 +151,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                       ? pathname === '/'
                       : pathname.startsWith(item.href);
 
+                  const isHighlighted = item.highlighted ?? false;
+
                   return (
                     <li key={item.href}>
                       <Link
@@ -152,17 +165,28 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                           padding: isExpanded ? '9px 12px' : '10px 0',
                           borderRadius: 8,
                           fontSize: 13,
-                          fontWeight: isActive ? 700 : 500,
-                          color: isActive ? '#0F3D21' : '#E6F4EA',
-                          backgroundColor: isActive ? '#FEF3C7' : 'transparent',
-                          borderLeft: isExpanded ? (isActive ? '4px solid #F59E0B' : '4px solid transparent') : 'none',
+                          fontWeight: isActive || isHighlighted ? 800 : 500,
+                          color: isActive
+                            ? '#0F3D21'
+                            : isHighlighted
+                            ? '#FEF3C7'
+                            : '#E6F4EA',
+                          backgroundColor: isActive
+                            ? '#FEF3C7'
+                            : isHighlighted
+                            ? 'rgba(245, 158, 11, 0.25)'
+                            : 'transparent',
+                          borderLeft: isExpanded
+                            ? isActive || isHighlighted
+                              ? '4px solid #F59E0B'
+                              : '4px solid transparent'
+                            : 'none',
                           textDecoration: 'none',
                           transition: 'all 0.15s ease-in-out',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: 16 }}>{item.icon ?? '📌'}</span>
-                          {isExpanded ? <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span> : null}
+                          <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>
                         </div>
                         {isExpanded && item.badge ? (
                           <span
@@ -192,6 +216,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           {/* Top Header Bar */}
           <AdminHeaderBar
             role={role}
+            userId={userId}
             onLogout={() => void onLogout()}
             loggingOut={loggingOut}
             isCompact={isCompact}

@@ -12,7 +12,7 @@ import { logger } from '../utils/logger';
  */
 
 export type StompClientConfig = {
-  /** e.g. https://api.foodie.example.com/ws (SockJS endpoint) */
+  /** e.g. wss://api.foodie.kwiko.org/ws (SockJS endpoint) */
   brokerURL: string;
   getAccessToken: () => AccessToken | string | null | undefined;
   onConnect?: () => void;
@@ -74,13 +74,13 @@ export function createStompClient(config: StompClientConfig): FoodieStompClient 
       config.onError?.(frame);
     },
     onWebSocketError: (event) => {
-      logger.error('WebSocket transport error');
+      // logger.error('WebSocket transport error'); // Silenced to prevent terminal spam in Dev LAN
       config.onError?.(event);
     },
     debug: config.debug
       ? (msg) => {
-          logger.debug(msg);
-        }
+        logger.debug(msg);
+      }
       : () => undefined,
   });
 

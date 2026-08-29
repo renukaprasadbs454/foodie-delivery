@@ -1,48 +1,43 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, TextInput, ActivityIndicator } from 'react-native';
+import { ScrollView, View, ActivityIndicator, Pressable, StyleSheet, Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
-import Constants from 'expo-constants';
+import { Feather } from '@expo/vector-icons';
+import { ENV } from '../../../constants/env';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Avatar,
-  Button,
-  ListItem,
   Text,
   Toast,
-  IMAGE_ALLOWED_MIME_TYPES,
-  isImageWithinSizeLimit,
   trackAnalyticsEvent,
   useApiErrorHandler,
   useConnectivity,
   useTheme,
 } from 'foodie-shared-rn';
-import { useGetDeliveryProfileQuery, useUpsertDeliveryProfileMutation, useUploadDeliveryProfileImageMutation } from '../../../api/endpoints/deliveryApi';
+import { useGetDeliveryProfileQuery, useUploadDeliveryProfileImageMutation } from '../../../api/endpoints/deliveryApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import {
   selectUserId,
   selectUserType,
+  clearCredentials,
 } from '../../auth/authSlice';
-import { useAppSelector } from '../../../store/hooks';
+import { clearRefreshToken } from 'foodie-shared-rn';
+import { baseApi } from '../../../api/baseApi';
+import { useAppSelector, useAppDispatch } from '../../../store/hooks';
 import type { MainStackParamList } from '../../../navigation/types';
+import { BottomNav } from '../../../navigation/BottomNav';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryProfile'>;
 
-/**
- * P2-DEL-05 Profile — session identity + profile-image upload.
- * GET /delivery/me is GAP-API-08 — no invented partner profile GET.
- */
 export function DeliveryProfileScreen({ navigation }: Props) {
   const { tokens } = useTheme();
+  const insets = useSafeAreaInsets();
   const { isConnected } = useConnectivity();
   const userId = useAppSelector(selectUserId);
   const userType = useAppSelector(selectUserType);
   const profileQuery = useGetDeliveryProfileQuery();
-  const [upsertProfile] = useUpsertDeliveryProfileMutation();
-  const [uploadImage] = useUploadDeliveryProfileImageMutation();
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [editNameText, setEditNameText] = useState('');
-  const [isSavingName, setIsSavingName] = useState(false);
-
+  const dispatch = useAppDispatch();
   const [toast, setToast] = useState<{
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
@@ -50,12 +45,9 @@ export function DeliveryProfileScreen({ navigation }: Props) {
 
   const handleError = useApiErrorHandler({
     onToast: (error) => setToast({ message: error.message, variant: 'error' }),
-    onModalBlocking: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
-    onInlineField: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
-    onFullScreen: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
+    onModalBlocking: (error) => setToast({ message: error.message, variant: 'error' }),
+    onInlineField: (error) => setToast({ message: error.message, variant: 'error' }),
+    onFullScreen: (error) => setToast({ message: error.message, variant: 'error' }),
     onGeneric: (error) => setToast({ message: error.message, variant: 'error' }),
   });
 
@@ -63,69 +55,12 @@ export function DeliveryProfileScreen({ navigation }: Props) {
     trackAnalyticsEvent('delivery_profile_viewed');
   }, []);
 
-  const onPickPhoto = async () => {
-    if (!isConnected) {
-      setToast({
-        message: 'Connect to the internet to upload a photo.',
-        variant: 'warning',
-      });
-      return;
-    }
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setToast({
-        message: 'Gallery permission denied.',
-        variant: 'warning',
-      });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 1,
-      allowsEditing: true,
-      aspect: [1, 1],
-    });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    const mimeType = asset.mimeType ?? 'image/jpeg';
-    if (!(IMAGE_ALLOWED_MIME_TYPES as readonly string[]).includes(mimeType)) {
-      setToast({
-        message: 'Use a JPEG, PNG, or WebP image.',
-        variant: 'error',
-      });
-      return;
-    }
-    if (
-      typeof asset.fileSize === 'number' &&
-      !isImageWithinSizeLimit(asset.fileSize)
-    ) {
-      setToast({
-        message: 'Image must be 5 MB or smaller.',
-        variant: 'error',
-      });
-      return;
-    }
-    try {
-      await uploadImage({
-        uri: asset.uri,
-        mimeType,
-        fileName: asset.fileName ?? 'profile.jpg',
-      }).unwrap();
-      // Refetch from server immediately so the signed URL persists across navigation
-      await profileQuery.refetch();
-      trackAnalyticsEvent('photo_uploaded');
-      trackAnalyticsEvent('profile_image_uploaded');
-      setToast({ message: 'Photo uploaded.', variant: 'success' });
-    } catch (error) {
-      handleError(toUnwrappedApiError(error));
-    }
-  };
 
   const initials = userId ? userId.slice(0, 2).toUpperCase() : 'DP';
 
   let finalImgUri = profileQuery.data?.profileImageUrl ?? null;
   if (finalImgUri) {
-    const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
+    const apiBaseUrl = ENV.apiBaseUrl;
     if (finalImgUri.includes('localhost') && apiBaseUrl) {
       const hostMatch = apiBaseUrl.match(/:\/\/(.[^:/]+)/);
       if (hostMatch && hostMatch[1]) {
@@ -136,138 +71,252 @@ export function DeliveryProfileScreen({ navigation }: Props) {
     }
   }
 
-  const handleSaveName = async () => {
-    if (!editNameText.trim()) {
-      setIsEditingName(false);
-      return;
-    }
-    setIsSavingName(true);
-    try {
-      await upsertProfile({ fullName: editNameText.trim(), vehicleType: 'BIKE', vehicleNumber: '' }).unwrap();
-      setToast({ message: 'Name updated successfully', variant: 'success' });
-      setIsEditingName(false);
-    } catch (error) {
-      handleError(toUnwrappedApiError(error));
-    } finally {
-      setIsSavingName(false);
-    }
+  const nameVal = profileQuery.data?.fullName && profileQuery.data.fullName !== 'Delivery Partner' ? profileQuery.data.fullName : 'Delivery Partner';
+  const roleVal = userType ?? 'DELIVERY_PARTNER';
+  const kycStatus = profileQuery.data?.kycStatus ?? 'PENDING';
+
+  const handleLogout = () => {
+    void clearRefreshToken().then(() => {
+      dispatch(clearCredentials());
+      setTimeout(() => {
+        dispatch(baseApi.util.resetApiState());
+      }, 500);
+      trackAnalyticsEvent('delivery_logout');
+      setToast({ message: 'Logged out successfully.', variant: 'success' });
+    });
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={[styles.topArch, { height: 180 }]} />
+    <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
+      {/* Curved Dark Green brand banner top arch with smooth gradient */}
+      <LinearGradient
+        colors={['#0F3E22', '#14532D', '#1B6A3A']}
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 310,
+          borderBottomLeftRadius: 40,
+          borderBottomRightRadius: 40,
+        }}
+      />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={{ paddingBottom: 80, paddingTop: insets.top + 16 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>My Profile</Text>
-          <Text style={styles.headerSubtitle}>Manage your account and settings</Text>
+        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+            <Feather name="arrow-left" size={22} color="#FFF" />
+          </Pressable>
+          <Text style={{ fontSize: 34, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5 }}>Profile</Text>
         </View>
 
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Avatar
-              uri={finalImgUri}
-              initials={initials}
-              size={96}
-              accessibilityLabel="Profile avatar"
-            />
-            <Pressable
-              style={styles.editImageBtn}
-              onPress={() => {
-                void onPickPhoto();
-              }}
-              accessibilityLabel="Upload photo"
-            >
-              <Feather name="camera" size={16} color="#FFF" />
-            </Pressable>
-          </View>
-
-          <View style={styles.nameRow}>
-            {isEditingName ? (
-              <View style={styles.editNameContainer}>
-                <TextInput
-                  style={styles.nameInput}
-                  value={editNameText}
-                  onChangeText={setEditNameText}
-                  autoFocus
-                  placeholder="Enter your name"
-                />
-                {isSavingName ? (
-                  <ActivityIndicator size="small" color="#F59E0B" style={{ marginLeft: 8 }} />
-                ) : (
-                  <Pressable onPress={handleSaveName} style={styles.saveNameBtn}>
-                    <Feather name="check" size={20} color="#14532D" />
-                  </Pressable>
-                )}
-              </View>
+        {/* iOS Profile Avatar header inside the dark green arch */}
+        <View style={{ alignItems: 'center', marginBottom: 28 }}>
+          <View
+            style={{
+              width: 104,
+              height: 104,
+              borderRadius: 52,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 3,
+              borderColor: '#FCD34D', // Premium gold accent border
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
+          >
+            {finalImgUri ? (
+              <Image
+                source={{ uri: finalImgUri }}
+                style={{ width: 94, height: 94, borderRadius: 47 }}
+                resizeMode="cover"
+              />
             ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.profileName}>
-                  {profileQuery.data?.fullName && profileQuery.data.fullName !== 'Delivery Partner'
-                    ? profileQuery.data.fullName
-                    : 'Delivery Partner'}
-                </Text>
-                <Pressable onPress={() => {
-                  setEditNameText(profileQuery.data?.fullName && profileQuery.data.fullName !== 'Delivery Partner' ? profileQuery.data.fullName : '');
-                  setIsEditingName(true);
-                }} style={{ marginLeft: 8, marginTop: -4 }}>
-                  <Feather name="edit-2" size={16} color="#A0AEC0" />
-                </Pressable>
+              <View style={{ width: 94, height: 94, borderRadius: 47, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 32, fontWeight: '800', color: '#64748B' }}>{initials}</Text>
               </View>
             )}
           </View>
-          <Text style={styles.profileRole}>{userType ?? 'DELIVERY_PARTNER'}</Text>
+
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 }}>
+            {nameVal}
+          </Text>
+          <Text style={{ fontSize: 15, color: '#A7F3D0', fontWeight: '600' }}>
+            {roleVal.replace('_', ' ')}
+          </Text>
         </View>
 
-        <View style={styles.infoCard}>
-          <View style={styles.infoCardHeader}>
-            <Feather name="shield" size={18} color="#F59E0B" />
-            <Text style={styles.infoCardTitle}>Account Details</Text>
+        <View style={{ paddingHorizontal: 20 }}>
+          <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '600', marginLeft: 16, marginBottom: 8, letterSpacing: 0.5 }}>
+            ACCOUNT DETAILS
+          </Text>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>Full Name</Text>
+              <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>{nameVal}</Text>
+            </View>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>User ID</Text>
+              <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>
+                #{userId ? userId.substring(0, 8).toUpperCase() : '...'}
+              </Text>
+            </View>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>Verification</Text>
+              <Text style={{ fontSize: 16, color: kycStatus === 'VERIFIED' ? '#10B981' : '#F59E0B', fontWeight: '700' }}>
+                {kycStatus === 'VERIFIED' ? 'Verified' : 'Pending KYC'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>User ID</Text>
-            <Text style={styles.infoValue} numberOfLines={1}>{userId ?? '—'}</Text>
+
+          <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '600', marginLeft: 16, marginBottom: 8, letterSpacing: 0.5 }}>
+            PREFERENCES & SETTINGS
+          </Text>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+            <Pressable
+              onPress={() => navigation.navigate('DeliverySettings')}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="settings" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>App Settings</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
+            <Pressable
+              onPress={() => navigation.navigate('Wallet')}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="credit-card" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>Wallet & Payouts</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('DeliveryBankDetails')}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="briefcase" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>Bank Details</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
+            {/* COD Cash Deposit */}
+            <Pressable
+              onPress={() => navigation.navigate('CashDeposit' as any)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="package" size={20} color="#D97706" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>COD Cash Deposit</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
+            {/* Legal Documents */}
+            <Pressable
+              onPress={() => setToast({ message: 'Terms & Conditions clicked.', variant: 'info' })}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="file-text" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>Terms & Conditions</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
+            <Pressable
+              onPress={() => setToast({ message: 'Privacy Policy clicked.', variant: 'info' })}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="shield" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>Privacy Policy</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
           </View>
-          <View style={styles.divider} />
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>System Status</Text>
-            <Text style={styles.infoValueSuccess}>Verified</Text>
-          </View>
+
+          {/* Premium Logout Button */}
+          <Pressable
+            onPress={handleLogout}
+            style={({ pressed }) => ({
+              backgroundColor: '#fee2e2',
+              borderColor: '#fca5a5',
+              borderWidth: 1,
+              borderRadius: 16,
+              height: 52,
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 32,
+              opacity: pressed ? 0.8 : 1,
+            })}
+          >
+            <Text style={{ color: '#dc2626', fontSize: 16, fontWeight: '700' }}>Logout</Text>
+          </Pressable>
         </View>
-
-        <Text style={styles.sectionHeader}>Quick Actions</Text>
-
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('DeliverySettings')}
-        >
-          <View style={[styles.actionIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
-            <Feather name="settings" size={24} color="#38bdf8" />
-          </View>
-          <View style={styles.actionTextContent}>
-            <Text style={styles.actionTitle}>Settings</Text>
-            <Text style={styles.actionSubtitle}>App preferences and sign out</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color="#A0AEC0" />
-        </Pressable>
-
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('Wallet')}
-        >
-          <View style={[styles.actionIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.1)' }]}>
-            <Feather name="dollar-sign" size={24} color="#14532D" />
-          </View>
-          <View style={styles.actionTextContent}>
-            <Text style={styles.actionTitle}>Wallet</Text>
-            <Text style={styles.actionSubtitle}>Balance, ledger and payouts</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color="#A0AEC0" />
-        </Pressable>
-
       </ScrollView>
 
       <Toast
@@ -277,208 +326,118 @@ export function DeliveryProfileScreen({ navigation }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
-    </SafeAreaView>
+      <BottomNav />
+    </View>
   );
 }
 
-import { StyleSheet, Pressable } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
-  },
-  topArch: {
-    position: 'absolute',
-    top: 0,
-    width: '100%',
-    backgroundColor: '#14532D',
+    backgroundColor: '#F2F2F7', // Standard iOS background
   },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 40,
+    paddingHorizontal: 16,
     paddingBottom: 60,
   },
-  header: {
+  pageTitle: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: 0.5,
+    marginBottom: 24,
+  },
+  avatarSection: {
+    alignItems: 'center',
     marginBottom: 32,
   },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFF',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 15,
-    color: '#A0AEC0',
-    fontWeight: '500',
-  },
-  profileSection: {
-    alignItems: 'center',
+  avatarWrap: {
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 24,
-    shadowColor: '#1A202C',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
-    elevation: 4,
-    marginTop: -20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  avatarContainer: {
-    marginBottom: 16,
-    position: 'relative',
-    zIndex: 10,
-    elevation: 10,
-  },
-  editImageBtn: {
-    position: 'absolute',
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#F59E0B',
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#FCD34D',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
-    borderColor: '#FFF',
-    shadowColor: '#1A202C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 3,
   },
-  nameRow: {
-    marginBottom: 4,
-    minHeight: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  editNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  nameInput: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#F59E0B',
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#1A202C',
-    paddingVertical: 2,
-    minWidth: 150,
-    textAlign: 'center',
-  },
-  saveNameBtn: {
-    marginLeft: 8,
-    backgroundColor: '#dcfce7',
-    padding: 6,
-    borderRadius: 16,
-  },
-  profileName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#1A202C',
-    marginBottom: 4,
-  },
-  profileRole: {
-    fontSize: 13,
-    color: '#A0AEC0',
+  headerName: {
+    fontSize: 24,
     fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+    color: '#111827',
   },
-  infoCard: {
-    backgroundColor: '#14532D',
-    borderRadius: 24,
-    padding: 20,
+  headerRole: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  changePhotoBtn: {
+    marginTop: 16,
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  changePhotoText: {
+    color: '#14532D',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  groupLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginLeft: 16,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  groupedList: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     marginBottom: 32,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: '#323438',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  infoCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  infoCardTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#FFF',
-    marginLeft: 8,
-  },
-  infoRow: {
+  listItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
   },
-  infoLabel: {
-    fontSize: 14,
-    color: '#A0AEC0',
+  listItemNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  listLabel: {
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '400',
+  },
+  listValue: {
+    fontSize: 16,
+    color: '#6B7280',
     fontWeight: '500',
-  },
-  infoValue: {
-    fontSize: 14,
-    color: '#FFF',
-    fontWeight: '600',
-    maxWidth: 160,
-  },
-  infoValueSuccess: {
-    fontSize: 14,
-    color: '#F59E0B',
-    fontWeight: '800',
   },
   divider: {
-    height: 1,
-    backgroundColor: '#323438',
-    marginVertical: 12,
-  },
-  sectionHeader: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#1A202C',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  actionIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  actionTextContent: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A202C',
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    fontSize: 13,
-    color: '#718096',
-    fontWeight: '500',
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: '#E5E7EB',
+    marginLeft: 16,
   },
 });

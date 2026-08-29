@@ -1,3 +1,4 @@
+import './polyfill';
 import { registerRootComponent } from 'expo';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -25,4 +26,3 @@ if (Platform.OS !== 'web') {
 }
 
 registerRootComponent(App);
-

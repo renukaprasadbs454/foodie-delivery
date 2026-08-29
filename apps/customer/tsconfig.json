@@ -4,6 +4,7 @@
     "strict": true,
     "noImplicitOverride": true,
     "skipLibCheck": true,
+    "types": ["jest", "node"],
     "paths": {
       "foodie-shared-rn": ["../../packages/shared-rn/src/index.ts"]
     }

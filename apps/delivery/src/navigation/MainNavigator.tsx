@@ -5,18 +5,25 @@ import { AvailabilityScreen } from '../features/home/screens/AvailabilityScreen'
 import { DeliveryOffersScreen } from '../features/home/screens/DeliveryOffersScreen';
 import { AssignmentDetailsScreen } from '../features/home/screens/AssignmentDetailsScreen';
 import { DeliveryNavigationScreen } from '../features/navigation/screens/DeliveryNavigationScreen';
+import { CustomerDeliveryScreen } from '../features/navigation/screens/CustomerDeliveryScreen';
 import { PickupOtpScreen } from '../features/navigation/screens/PickupOtpScreen';
 import { DeliveryOtpScreen } from '../features/navigation/screens/DeliveryOtpScreen';
 import { WalletScreen } from '../features/wallet/screens/WalletScreen';
 import { LedgerScreen } from '../features/wallet/screens/LedgerScreen';
 import { PayoutRequestsScreen } from '../features/wallet/screens/PayoutRequestsScreen';
+import { PayoutHistoryScreen } from '../features/wallet/screens/PayoutHistoryScreen';
+import { PayoutDetailScreen } from '../features/wallet/screens/PayoutDetailScreen';
 import { DeliveryNotificationsScreen } from '../features/notifications/screens/DeliveryNotificationsScreen';
 import { DeliveryProfileScreen } from '../features/profile/screens/DeliveryProfileScreen';
 import { DeliverySettingsScreen } from '../features/profile/screens/DeliverySettingsScreen';
+import { DeliveryBankDetailsScreen } from '../features/profile/screens/DeliveryBankDetailsScreen';
 import { KycScreen } from '../features/kyc/screens/KycScreen';
 import { PendingVerificationScreen } from '../features/kyc/screens/PendingVerificationScreen';
 import { IncentivesScreen } from '../features/home/screens/IncentivesScreen';
+import { CashDepositScreen } from '../features/wallet/screens/CashDepositScreen';
 import type { MainStackParamList } from './types';
+import { BottomNav } from './BottomNav';
+import { View } from 'react-native';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -49,44 +56,64 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
         options={{ presentation: 'modal', headerShown: true, title: 'Navigation' }}
       />
       <Stack.Screen
+        name="CustomerDelivery"
+        component={CustomerDeliveryScreen}
+        options={{ presentation: 'modal', headerShown: true, title: 'Delivery', headerBackVisible: false, gestureEnabled: false }}
+      />
+      <Stack.Screen
         name="PickupOtp"
         component={PickupOtpScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Pickup OTP' }}
+        options={{ presentation: 'modal', headerShown: true, title: 'Pickup OTP', headerBackVisible: false, gestureEnabled: false }}
       />
       <Stack.Screen
         name="DeliveryOtp"
         component={DeliveryOtpScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Delivery OTP' }}
+        options={{ presentation: 'modal', headerShown: true, title: 'Delivery OTP', headerBackVisible: false, gestureEnabled: false }}
       />
       <Stack.Screen
         name="Wallet"
         component={WalletScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Wallet' }}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="Ledger"
         component={LedgerScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Ledger' }}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="PayoutRequests"
         component={PayoutRequestsScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Payout' }}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="PayoutHistory"
+        component={PayoutHistoryScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="PayoutDetail"
+        component={PayoutDetailScreen}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="DeliveryNotifications"
         component={DeliveryNotificationsScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Notifications' }}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="DeliveryProfile"
         component={DeliveryProfileScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Profile' }}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="DeliverySettings"
         component={DeliverySettingsScreen}
-        options={{ presentation: 'modal', headerShown: true, title: 'Settings' }}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="DeliveryBankDetails"
+        component={DeliveryBankDetailsScreen}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="Kyc"
@@ -101,6 +128,11 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
       <Stack.Screen
         name="Incentives"
         component={IncentivesScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="CashDeposit"
+        component={CashDepositScreen}
         options={{ presentation: 'modal', headerShown: false }}
       />
     </Stack.Navigator>

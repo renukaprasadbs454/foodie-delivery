@@ -18,6 +18,7 @@ import { BankAndBusinessDetailsScreen } from '../features/profile/screens/BankAn
 import { RestaurantLocationScreen } from '../features/profile/screens/RestaurantLocationScreen';
 import { RestaurantProfileScreen } from '../features/profile/screens/RestaurantProfileScreen';
 import { RestaurantSettingsScreen } from '../features/profile/screens/RestaurantSettingsScreen';
+import { SettlementHistoryScreen } from '../features/profile/screens/SettlementHistoryScreen';
 import { RestaurantReviewsScreen } from '../features/reviews/screens/RestaurantReviewsScreen';
 import type {
   MainTabParamList,
@@ -134,6 +135,11 @@ function ProfileStackNavigator() {
         name="RestaurantSettings"
         component={RestaurantSettingsScreen}
         options={{ title: 'Settings' }}
+      />
+      <ProfileStack.Screen
+        name="SettlementHistory"
+        component={SettlementHistoryScreen}
+        options={{ title: 'Payment & Settlements' }}
       />
       <ProfileStack.Screen
         name="RestaurantDocuments"

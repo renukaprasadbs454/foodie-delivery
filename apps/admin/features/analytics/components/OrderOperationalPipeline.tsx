@@ -25,6 +25,7 @@ export function OrderOperationalPipeline({ totalOrders }: OrderOperationalPipeli
     { id: 'PENDING', label: 'Pending', count: Math.round((totalOrders ?? 324) * 0.08), icon: '⏳', color: '#D97706', bgColor: '#FEF3C7', borderColor: '#FDE68A' },
     { id: 'CONFIRMED', label: 'Confirmed', count: Math.round((totalOrders ?? 324) * 0.12), icon: '✅', color: '#2563EB', bgColor: '#EFF6FF', borderColor: '#BFDBFE' },
     { id: 'PROCESSING', label: 'Packaging', count: Math.round((totalOrders ?? 324) * 0.06), icon: '👨‍🍳', color: '#7C3AED', bgColor: '#F3E8FF', borderColor: '#DDD6FE' },
+    { id: 'READY_FOR_PICKUP', label: 'Ready for Pickup', count: Math.round((totalOrders ?? 324) * 0.05), icon: '🛍️', color: '#4338CA', bgColor: '#E0E7FF', borderColor: '#C7D2FE' },
     { id: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', count: Math.round((totalOrders ?? 324) * 0.09), icon: '🛵', color: '#EA580C', bgColor: '#FFEDD5', borderColor: '#FDBA74' },
     { id: 'DELIVERED', label: 'Delivered', count: Math.round((totalOrders ?? 324) * 0.61), icon: '🎉', color: '#166534', bgColor: '#DCFCE7', borderColor: '#86EFAC' },
     { id: 'CANCELED', label: 'Canceled', count: Math.round((totalOrders ?? 324) * 0.03), icon: '❌', color: '#DC2626', bgColor: '#FEE2E2', borderColor: '#FCA5A5' },

@@ -30,6 +30,8 @@ import {
   type AnalyticsDateRange,
 } from '../types';
 
+import { RoleLandingHub } from '@/components/RoleLandingHub';
+
 function toUnwrappedApiError(err: unknown): {
   code: string;
   message: string;
@@ -141,6 +143,9 @@ export function DashboardPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Role Activation & Management Hub */}
+      <RoleLandingHub />
+
       {/* Top Banner Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>

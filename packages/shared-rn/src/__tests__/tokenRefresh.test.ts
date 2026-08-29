@@ -60,7 +60,7 @@ describe('tokenRefresh coalescing', () => {
     };
 
     const args = {
-      baseUrl: 'https://api.foodie.example.com',
+      baseUrl: 'https://api.foodie.kwiko.org',
       refreshToken: asRefreshToken('refresh-old'),
       callbacks,
       fetchImpl,
@@ -105,7 +105,7 @@ describe('tokenRefresh coalescing', () => {
     };
 
     const result = await performTokenRefresh({
-      baseUrl: 'https://api.foodie.example.com',
+      baseUrl: 'https://api.foodie.kwiko.org',
       refreshToken: asRefreshToken('refresh-old'),
       callbacks,
       fetchImpl,

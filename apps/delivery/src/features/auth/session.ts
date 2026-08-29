@@ -46,5 +46,9 @@ export async function logoutDelivery(
   }
   await clearRefreshToken();
   dispatch(clearCredentials());
-  dispatch(baseApi.util.resetApiState());
+  // CRITICAL FIX: Give React a tick to unmount MainNavigator before wiping API cache, 
+  // otherwise RTK Query's active subscriptions instantly refetch with the old token zombie-style.
+  setTimeout(() => {
+    dispatch(baseApi.util.resetApiState());
+  }, 500);
 }

@@ -36,6 +36,8 @@ function sanitizeContext(context?: LogContext): LogContext | undefined {
 /** Compile-time / lint surface: never pass branded tokens into logger. */
 export type ForbiddenLogValue = AccessToken | RefreshToken;
 
+declare const process: { env?: { NODE_ENV?: string } } | undefined;
+
 const defaultSink: LoggerSink = {
   log(level, message, context) {
     const payload = sanitizeContext(context);
@@ -50,7 +52,7 @@ const defaultSink: LoggerSink = {
         console.warn(line);
         break;
       case 'DEBUG':
-        if (typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production') {
+        if (typeof __DEV__ !== 'undefined' ? __DEV__ : (typeof process !== 'undefined' && process.env?.NODE_ENV !== 'production')) {
           console.debug(line);
         }
         break;

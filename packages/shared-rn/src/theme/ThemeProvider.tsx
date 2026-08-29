@@ -13,10 +13,22 @@ export type ThemeContextValue = {
   toggleMode: () => void;
 };
 
-export const ThemeContext = createContext<ThemeContextValue | null>(null);
+const defaultThemeTokens = createAppTheme('light', {
+  accent: '#14532D',
+  accentMuted: '#F59E0B',
+});
+
+const defaultThemeContextValue: ThemeContextValue = {
+  mode: 'light',
+  tokens: defaultThemeTokens,
+  setMode: () => { },
+  toggleMode: () => { },
+};
+
+export const ThemeContext = createContext<ThemeContextValue>(defaultThemeContextValue);
 
 export type ThemeProviderProps = {
-  children: ReactNode;
+  children?: any;
   initialMode?: ColorMode;
   /**
    * App-specific accent / color overrides (Blueprint §19.2).

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, View } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { FlatList, RefreshControl, View, StatusBar, Animated, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   EmptyState,
@@ -12,174 +13,167 @@ import type { OrdersStackParamList } from '../../../navigation/types';
 import { OrderListItem } from '../components/OrderListItem';
 import { OrderListSkeleton } from '../components/OrderListSkeleton';
 import { useMyOrdersFeed } from '../hooks/useMyOrdersFeed';
-import { ORDER_SORT_WHITELIST, isOrderSort, type OrderSort } from '../types';
+import { useAddCartItemMutation } from '../../../api/endpoints/cartApi';
 
 type Props = NativeStackScreenProps<OrdersStackParamList, 'MyOrders'>;
 
-const STATUS_FILTERS = [
-  '',
-  'CONFIRMED',
-  'PREPARING',
-  'OUT_FOR_DELIVERY',
-  'DELIVERED',
-  'CANCELLED',
-] as const;
-
-/**
- * P2-CUS-06 My Orders — paginated history; non-terminal → LiveOrderTracking.
- */
 export function MyOrdersScreen({ navigation }: Props) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
-  const [sort, setSort] = useState<OrderSort>('placedAt');
-  const [status, setStatus] = useState('');
+  const [addCartItem] = useAddCartItemMutation();
 
   const feed = useMyOrdersFeed({
-    sort,
-    status: status || undefined,
+    sort: 'placedAt',
   });
+
+  const scaleValue = useRef(new Animated.Value(0.95)).current;
+  const fadeValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     trackAnalyticsEvent('customer_my_orders_viewed');
     trackAnalyticsEvent('orders_list_loaded');
+    Animated.parallel([
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeValue, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      })
+    ]).start();
   }, []);
 
   return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: tokens.color.background,
-        padding: tokens.spacing.md,
-        gap: tokens.spacing.md,
-      }}
-    >
-      <Text variant="heading1" accessibilityRole="header">
-        My orders
-      </Text>
-      {!isConnected ? (
-        <Text variant="caption" color={tokens.color.warning}>
-          Offline — showing cached history when available.
-        </Text>
-      ) : null}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#14532D' }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor="#14532D" barStyle="light-content" />
+      <Animated.View
+        style={{
+          flex: 1,
+          backgroundColor: '#F2F2F7',
+          opacity: fadeValue,
+          transform: [{ scale: scaleValue }],
+        }}
+      >
+        {/* Curved Header */}
+        <View style={{
+          paddingTop: 36,
+          paddingBottom: 24,
+          paddingHorizontal: 20,
+          backgroundColor: '#14532D',
+          borderBottomLeftRadius: 32,
+          borderBottomRightRadius: 32,
+          shadowColor: '#14532D',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.15,
+          shadowRadius: 10,
+          elevation: 5
+        }}>
+          <Text style={{ color: '#FCD34D', fontSize: 32, fontWeight: '900', letterSpacing: -0.5 }}>
+            My Orders
+          </Text>
+          <Text style={{ color: '#A7F3D0', fontSize: 13, marginTop: 4, fontWeight: '600' }}>
+            Check order status and reorder meals instantly
+          </Text>
+        </View>
 
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
-        {ORDER_SORT_WHITELIST.map((option) => (
-          <Pressable
-            key={option}
-            onPress={() => {
-              if (!isOrderSort(option)) return;
-              setSort(option);
-              trackAnalyticsEvent('filter_changed', { sort: option });
-            }}
-            accessibilityRole="button"
-            accessibilityLabel={`Sort by ${option}`}
-            style={{
-              paddingHorizontal: tokens.spacing.md,
-              paddingVertical: tokens.spacing.sm,
-              borderRadius: tokens.radius.md,
-              backgroundColor:
-                sort === option ? tokens.color.accent : tokens.color.surface,
-              borderWidth: 1,
-              borderColor: tokens.color.border,
-            }}
-          >
-            <Text
-              variant="label"
-              color={
-                sort === option
-                  ? tokens.color.textInverse
-                  : tokens.color.textPrimary
-              }
-            >
-              {option}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: tokens.spacing.sm }}>
-        {STATUS_FILTERS.map((option) => {
-          const label = option || 'All';
-          const active = status === option;
-          return (
-            <Pressable
-              key={label}
-              onPress={() => {
-                setStatus(option);
-                trackAnalyticsEvent('filter_changed', { status: label });
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={`Filter ${label}`}
-              style={{
-                paddingHorizontal: tokens.spacing.md,
-                paddingVertical: tokens.spacing.sm,
-                borderRadius: tokens.radius.md,
-                backgroundColor: active
-                  ? tokens.color.accent
-                  : tokens.color.surface,
-                borderWidth: 1,
-                borderColor: tokens.color.border,
-              }}
-            >
-              <Text
-                variant="label"
-                color={
-                  active ? tokens.color.textInverse : tokens.color.textPrimary
-                }
-              >
-                {label}
+        <View style={{ flex: 1, paddingHorizontal: 16, paddingTop: 16 }}>
+          {!isConnected ? (
+            <View style={{ backgroundColor: '#FEF2F2', marginBottom: 12, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#FCA5A5' }}>
+              <Text style={{ color: '#DC2626', fontWeight: '800', fontSize: 13 }}>
+                Offline — showing cached history.
               </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+            </View>
+          ) : null}
 
-      {feed.isLoading ? (
-        <OrderListSkeleton />
-      ) : (
-        <FlatList
-          data={feed.items}
-          keyExtractor={(item) => item.orderId}
-          contentContainerStyle={{ gap: tokens.spacing.md, paddingBottom: 48 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={feed.isFetching && feed.items.length > 0}
-              onRefresh={() => {
-                void feed.refetch();
-              }}
-            />
-          }
-          onEndReached={() => feed.onLoadMore()}
-          onEndReachedThreshold={0.4}
-          ListEmptyComponent={
-            <EmptyState
-              title="No orders yet"
-              description="Browse restaurants to place your first order."
-              accessibilityLabel="Orders empty"
-              actionLabel="Browse"
-              onAction={() => {
-                const parent = navigation.getParent();
-                if (parent) {
-                  parent.navigate('BrowseTab' as never);
-                }
-              }}
-            />
-          }
-          renderItem={({ item }) => (
-            <OrderListItem
-              order={item}
-              onPress={() => {
-                trackAnalyticsEvent('order_row_tapped', {
-                  orderId: item.orderId,
-                });
-                navigation.navigate('LiveOrderTracking', {
-                  orderId: item.orderId,
-                });
-              }}
+          {feed.isLoading ? (
+            <OrderListSkeleton />
+          ) : (
+            <FlatList
+              data={feed.items}
+              keyExtractor={(item) => item.orderId}
+              contentContainerStyle={{ gap: 12, paddingBottom: 48 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={feed.isFetching && feed.items.length > 0}
+                  onRefresh={() => { void feed.refetch(); }}
+                  tintColor="#FCD34D"
+                />
+              }
+              onEndReached={() => feed.onLoadMore()}
+              onEndReachedThreshold={0.4}
+              ListEmptyComponent={
+                <View style={{ marginTop: 60, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 64, marginBottom: 16 }}>📦</Text>
+                  <Text style={{ textAlign: 'center', color: '#14532D', fontWeight: '900', fontSize: 18, marginBottom: 8 }}>
+                    No Orders Yet
+                  </Text>
+                  <Text style={{ textAlign: 'center', color: '#6B7280', fontSize: 14, marginHorizontal: 32, marginBottom: 24 }}>
+                    Good food is waiting! Discover top local cuisines and place your first order.
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      const parent = navigation.getParent();
+                      if (parent) {
+                        parent.navigate('BrowseTab' as never);
+                      } else {
+                        navigation.navigate('Home' as any);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: '#14532D',
+                      paddingHorizontal: 24,
+                      paddingVertical: 12,
+                      borderRadius: 24,
+                      borderWidth: 1.5,
+                      borderColor: '#FCD34D',
+                    }}
+                  >
+                    <Text style={{ color: '#FCD34D', fontWeight: '800' }}>Browse Restaurants</Text>
+                  </Pressable>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <OrderListItem
+                  order={item}
+                  onPress={() => {
+                    trackAnalyticsEvent('order_row_tapped', {
+                      orderId: item.orderId,
+                    });
+                    navigation.navigate('LiveOrderTracking', {
+                      orderId: item.orderId,
+                    });
+                  }}
+                  onReorder={() => {
+                    addCartItem({
+                      menuItemId: `${item.restaurantId || 'mock-resto-1'}-item-mock`,
+                      quantity: 1,
+                      notes: 'Reorder from history'
+                    }).then(() => {
+                      const parent = navigation.getParent();
+                      if (parent) {
+                        parent.navigate('CartTab' as never);
+                      } else {
+                        navigation.navigate('Cart' as any);
+                      }
+                    });
+                  }}
+                  onRate={() => {
+                    navigation.navigate('Reviews', {
+                      mode: 'submit',
+                      orderId: item.orderId,
+                      restaurantId: item.restaurantId || 'mock-resto-1'
+                    });
+                  }}
+                />
+              )}
             />
           )}
-        />
-      )}
-    </View>
+        </View>
+      </Animated.View>
+    </SafeAreaView>
   );
 }

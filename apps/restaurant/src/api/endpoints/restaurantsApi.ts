@@ -84,9 +84,9 @@ export const restaurantsApi = baseApi.injectEndpoints({
       invalidatesTags: (result) =>
         result?.restaurantId
           ? [
-              { type: 'Restaurant', id: result.restaurantId },
-              { type: 'Restaurant', id: 'LIST' },
-            ]
+            { type: 'Restaurant', id: result.restaurantId },
+            { type: 'Restaurant', id: 'LIST' },
+          ]
           : [{ type: 'Restaurant', id: 'LIST' }],
     }),
     getRestaurantReviews: builder.query<
@@ -157,6 +157,19 @@ export const restaurantsApi = baseApi.injectEndpoints({
       },
       invalidatesTags: [{ type: 'Restaurant', id: 'LIST' }],
     }),
+    resubmitRestaurant: builder.mutation<RestaurantDetail, void>({
+      query: () => ({
+        url: '/api/v1/restaurants/me/resubmit',
+        method: 'POST',
+      }),
+      invalidatesTags: (result) =>
+        result?.restaurantId
+          ? [
+            { type: 'Restaurant', id: result.restaurantId },
+            { type: 'Restaurant', id: 'LIST' },
+          ]
+          : [{ type: 'Restaurant', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -168,4 +181,5 @@ export const {
   useGetRestaurantReviewsQuery,
   useUploadRestaurantDocumentMutation,
   useUploadRestaurantImagesMutation,
+  useResubmitRestaurantMutation,
 } = restaurantsApi;

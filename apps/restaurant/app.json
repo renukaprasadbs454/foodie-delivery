@@ -52,8 +52,11 @@
       "expo-document-picker"
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:8080",
-      "wsUrl": "http://localhost:8080/ws"
+      "apiBaseUrl": "http://localhost:8082",
+      "wsUrl": "http://localhost:8082/ws",
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000002"
+      }
     }
   }
 }

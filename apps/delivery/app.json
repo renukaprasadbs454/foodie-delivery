@@ -60,8 +60,11 @@
       ]
     ],
     "extra": {
-      "apiBaseUrl": "http://localhost:8080",
-      "wsUrl": "http://localhost:8080/ws"
+      "apiBaseUrl": "https://api.foodie.kwiko.org",
+      "wsUrl": "wss://api.foodie.kwiko.org/ws",
+      "eas": {
+        "projectId": "00000000-0000-0000-0000-000000000001"
+      }
     }
   }
 }

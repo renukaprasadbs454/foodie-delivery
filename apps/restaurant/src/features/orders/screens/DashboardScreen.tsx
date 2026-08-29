@@ -130,8 +130,8 @@ export function DashboardScreen({ navigation }: Props) {
   const completedOrdersCount =
     apiOrders && apiOrders.length > 0
       ? apiOrders.filter((o) =>
-          ['DELIVERED', 'COMPLETED', 'READY_FOR_PICKUP'].includes(o.status),
-        ).length
+        ['DELIVERED', 'COMPLETED', 'READY_FOR_PICKUP'].includes(o.status),
+      ).length
       : isUsingMock
         ? mockSummary.completedOrdersCount
         : 0;
@@ -139,9 +139,9 @@ export function DashboardScreen({ navigation }: Props) {
   const totalRevenue =
     apiOrders && apiOrders.length > 0
       ? apiOrders.reduce((acc, o) => {
-          const val = typeof o.totalAmount === 'number' ? o.totalAmount : Number(o.totalAmount) || 0;
-          return acc + val;
-        }, 0)
+        const val = typeof o.totalAmount === 'number' ? o.totalAmount : Number(o.totalAmount) || 0;
+        return acc + val;
+      }, 0)
       : isUsingMock
         ? mockSummary.grossRevenue
         : 0;
@@ -474,6 +474,17 @@ export function DashboardScreen({ navigation }: Props) {
               }}
             />
             <Button
+              label="💰 Settlements"
+              accessibilityLabel="Open settlement history"
+              variant="secondary"
+              style={{ flex: 1, minWidth: 140 }}
+              onPress={() => {
+                navigation.getParent()?.navigate('ProfileTab', {
+                  screen: 'SettlementHistory',
+                });
+              }}
+            />
+            <Button
               label="⭐ Reviews"
               accessibilityLabel="Open reviews"
               variant="secondary"
@@ -559,9 +570,9 @@ export function DashboardScreen({ navigation }: Props) {
                     <Text variant="caption" color={tokens.color.textSecondary}>
                       {order.placedAt
                         ? new Date(order.placedAt).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
                         : 'Just now'}
                     </Text>
                   </View>

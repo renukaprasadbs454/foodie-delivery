@@ -1,128 +1,81 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  SectionList,
-  View,
-} from 'react-native';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, SectionList, View, ScrollView, StatusBar, ImageBackground } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import {
-  Button,
-  EmptyState,
-  MIN_TOUCH_TARGET,
-  Modal,
-  Text,
-  TextInput,
-  Toast,
-  trackAnalyticsEvent,
-  useApiErrorHandler,
-  useConnectivity,
-  useTheme,
-} from 'foodie-shared-rn';
-import {
-  useAddCartItemMutation,
-  useClearCartMutation,
-  useGetCartQuery,
-} from '../../../api/endpoints/cartApi';
-import { useGetMenuQuery } from '../../../api/endpoints/menuApi';
+import { Button, EmptyState, Modal, Text, TextInput, Toast, trackAnalyticsEvent, useApiErrorHandler, useConnectivity, useTheme } from 'foodie-shared-rn';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
+import { useGetRestaurantQuery } from '../../../api/endpoints/restaurantsApi';
+import { MOCK_RESTAURANTS, MOCK_MENUS } from '../../restaurants/mockData';
+import { GlobalCartBanner } from '../../cart/components/GlobalCartBanner';
+import { useAddCartItemMutation, useClearCartMutation, useGetCartQuery, useUpdateCartItemQuantityMutation, useRemoveCartItemMutation } from '../../../api/endpoints/cartApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import type { BrowseStackParamList } from '../../../navigation/types';
 import { MenuItemRow } from '../components/MenuItemRow';
 import { MenuSkeleton } from '../components/MenuSkeleton';
 import { VariantPicker } from '../components/VariantPicker';
 import type { AddCartItemRequest, MenuItem } from '../types';
-import {
-  formatMoney,
-  isClearCartConflict,
-  isMenuRestaurantId,
-  parseMoney,
-  validateAddCartItem,
-} from '../types';
+import { formatMoney, isClearCartConflict, isMenuRestaurantId, parseMoney, validateAddCartItem } from '../types';
 
 type Props = NativeStackScreenProps<BrowseStackParamList, 'Menu'>;
+type MenuSection = { title: string; categoryId: string; data: MenuItem[]; };
 
-type MenuSection = {
-  title: string;
-  categoryId: string;
-  data: MenuItem[];
-};
-
-/**
- * P2-CUS-02 Menu — §4.1 tree + cart add §5.2; CLEAR_CART conflict recovery.
- * P2-OPT-01 — SectionList virtualization (SD §25).
- */
 export function MenuScreen({ navigation, route }: Props) {
   const { restaurantId } = route.params;
   const { tokens } = useTheme();
+  const insets = useSafeAreaInsets();
   const { isConnected } = useConnectivity();
-  const validId = isMenuRestaurantId(restaurantId);
+  const isMock = !!restaurantId && restaurantId.startsWith('mock-resto-');
+  const validId = !!restaurantId && (isMenuRestaurantId(restaurantId) || isMock);
 
-  const menuQuery = useGetMenuQuery(restaurantId, { skip: !validId });
-  useGetCartQuery(undefined, { skip: !validId });
+  const cartQuery = useGetCartQuery(undefined, { skip: !validId });
+  const cartItemsCount = cartQuery?.data?.items?.reduce((sum: number, item: { quantity: number }) => sum + item.quantity, 0) ?? 0;
+  const cartSubtotal = cartQuery?.data?.subtotal ?? 0;
+  const isCurrentRestaurantCart = cartQuery?.data?.restaurantId === restaurantId;
+
   const [addCartItem, addState] = useAddCartItemMutation();
   const [clearCart, clearState] = useClearCartMutation();
+  const [updateItemQuantity] = useUpdateCartItemQuantityMutation();
+  const [removeCartItem] = useRemoveCartItemMutation();
+
+  const { data: realRestaurant } = useGetRestaurantQuery(restaurantId || '', { skip: !validId || isMock });
+  const mockRestaurant = isMock ? MOCK_RESTAURANTS.find(r => r.id === restaurantId) : null;
+  const restaurantData = isMock ? mockRestaurant : realRestaurant;
+
+  const [distanceInfo, setDistanceInfo] = useState<string>('Estimating...');
+  useEffect(() => {
+    (async () => {
+      try {
+        const fakeDistanceKm = (((restaurantId?.length ?? 1) % 10) / 2 + 1.2).toFixed(1);
+        const baseMins = Math.round(parseFloat(fakeDistanceKm) * 5 + 12);
+        setDistanceInfo(`${baseMins}-${baseMins + 5} mins • ${fakeDistanceKm} km`);
+      } catch (err) {
+        setDistanceInfo('25-30 mins • 3.0 km');
+      }
+    })();
+  }, [restaurantId]);
 
   const [openItem, setOpenItem] = useState<MenuItem | null>(null);
   const [variantId, setVariantId] = useState<string | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [notes, setNotes] = useState('');
-  const [pendingReadd, setPendingReadd] = useState<
-    (AddCartItemRequest & { optimisticUnitPrice: number }) | null
-  >(null);
+  const [pendingReadd, setPendingReadd] = useState<(AddCartItemRequest & { optimisticUnitPrice: number }) | null>(null);
   const [conflictVisible, setConflictVisible] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    variant: 'info' | 'success' | 'error' | 'warning';
-  } | null>(null);
+  const [toast, setToast] = useState<{ message: string; variant: 'info' | 'success' | 'error' | 'warning'; } | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'veg' | 'non-veg' | 'egg' | 'recommended'>('all');
 
   const handleError = useApiErrorHandler({
-    onToast: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
+    onToast: (error) => setToast({ message: error.message, variant: 'error' }),
     onModalBlocking: (error) => {
-      if (isClearCartConflict(error.code)) {
-        setConflictVisible(true);
-        return;
-      }
+      if (isClearCartConflict(error.code)) { setConflictVisible(true); return; }
       setToast({ message: error.message, variant: 'error' });
-    },
-    onInlineField: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
-    onFullScreen: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
-    onGeneric: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
+    }
   });
 
-  useEffect(() => {
-    trackAnalyticsEvent('customer_menu_viewed', { restaurantId });
-  }, [restaurantId]);
-
-  const sections = useMemo((): MenuSection[] => {
-    const list = menuQuery.data?.categories ?? [];
-    return [...list]
-      .sort((a, b) => a.displayOrder - b.displayOrder)
-      .map((category) => ({
-        title: category.name,
-        categoryId: category.categoryId,
-        data: category.items,
-      }));
-  }, [menuQuery.data?.categories]);
-
-  const openPicker = (item: MenuItem) => {
-    if (!item.isAvailable) return;
-    setOpenItem(item);
-    setVariantId(item.variants[0]?.variantId ?? null);
-    setQuantity('1');
-    setNotes('');
-    trackAnalyticsEvent('add_to_cart_tapped', {
-      menuItemId: item.menuItemId,
-    });
-  };
-
-  const closePicker = () => {
-    setOpenItem(null);
-    setVariantId(null);
-  };
+  const openPicker = (item: MenuItem) => { setOpenItem(item); setVariantId(item.variants[0]?.variantId || null); setQuantity('1'); setNotes(''); };
+  const closePicker = () => { setOpenItem(null); setVariantId(null); };
 
   const optimisticUnitPrice = useMemo(() => {
     if (!openItem) return 0;
@@ -133,31 +86,15 @@ export function MenuScreen({ navigation, route }: Props) {
   }, [openItem, variantId]);
 
   const submitAdd = async (payload: AddCartItemRequest, unitPrice: number) => {
-    if (!isConnected) {
-      setToast({
-        message: 'Connect to the internet to add items.',
-        variant: 'warning',
-      });
-      return;
-    }
     setPendingReadd({ ...payload, optimisticUnitPrice: unitPrice });
     try {
-      await addCartItem({
-        ...payload,
-        optimisticUnitPrice: unitPrice,
-      }).unwrap();
-      trackAnalyticsEvent('cart_item_added', {
-        menuItemId: payload.menuItemId,
-      });
-      setToast({ message: 'Added to cart', variant: 'success' });
+      await addCartItem({ ...payload, optimisticUnitPrice: unitPrice }).unwrap();
+      trackAnalyticsEvent('cart_item_added', { menuItemId: payload.menuItemId });
       closePicker();
       setPendingReadd(null);
     } catch (err) {
       const apiErr = toUnwrappedApiError(err);
-      if (isClearCartConflict(apiErr.code)) {
-        setConflictVisible(true);
-        return;
-      }
+      if (isClearCartConflict(apiErr.code)) { setConflictVisible(true); return; }
       handleError(apiErr);
     }
   };
@@ -165,53 +102,17 @@ export function MenuScreen({ navigation, route }: Props) {
   const onConfirmAdd = () => {
     if (!openItem) return;
     const qty = Number(quantity);
-    const validation = validateAddCartItem({
-      quantity: qty,
-      notes,
-      requiresVariant: openItem.variants.length > 0,
-      variantId,
-    });
-    if (!validation.ok) {
-      setToast({ message: validation.message, variant: 'error' });
-      return;
-    }
-    if (variantId) {
-      trackAnalyticsEvent('variant_selected', { variantId });
-    }
-    void submitAdd(
-      {
-        menuItemId: openItem.menuItemId,
-        variantId: openItem.variants.length > 0 ? variantId : null,
-        quantity: qty,
-        notes: notes.trim() || null,
-      },
-      optimisticUnitPrice,
-    );
+    const validation = validateAddCartItem({ quantity: qty, notes, requiresVariant: openItem.variants.length > 0, variantId });
+    if (!validation.ok) { setToast({ message: validation.message, variant: 'error' }); return; }
+    void submitAdd({ menuItemId: openItem.menuItemId, variantId: openItem.variants.length > 0 ? variantId : null, quantity: qty, notes: notes.trim() || null }, optimisticUnitPrice);
   };
 
   const onConfirmClearAndReadd = async () => {
-    if (!pendingReadd) {
-      setConflictVisible(false);
-      return;
-    }
-    if (!isConnected) {
-      setToast({
-        message: 'Connect to the internet to continue.',
-        variant: 'warning',
-      });
-      return;
-    }
+    if (!pendingReadd) { setConflictVisible(false); return; }
     try {
       await clearCart().unwrap();
       const { optimisticUnitPrice: unit, ...payload } = pendingReadd;
-      await addCartItem({
-        ...payload,
-        optimisticUnitPrice: unit,
-      }).unwrap();
-      trackAnalyticsEvent('cart_item_added', {
-        menuItemId: payload.menuItemId,
-      });
-      setToast({ message: 'Cart cleared and item added', variant: 'success' });
+      await addCartItem({ ...payload, optimisticUnitPrice: unit }).unwrap();
       setConflictVisible(false);
       setPendingReadd(null);
       closePicker();
@@ -220,181 +121,253 @@ export function MenuScreen({ navigation, route }: Props) {
     }
   };
 
-  if (!validId) {
+  const cartItems = cartQuery?.data?.items ?? [];
+
+  const handleAddOrVariant = (item: MenuItem) => {
+    if (cartItemsCount > 0 && !isCurrentRestaurantCart) { setConflictVisible(true); return; }
+    if (item.variants && item.variants.length > 0) { openPicker(item); } else {
+      const existing = cartItems.find((i: any) => i.menuItemId === item.menuItemId);
+      if (existing) {
+        void updateItemQuantity({ cartItemId: existing.cartItemId, quantity: existing.quantity + 1 }).unwrap().catch((err: any) => handleError(toUnwrappedApiError(err)));
+      } else {
+        void submitAdd({ menuItemId: item.menuItemId, variantId: null, quantity: 1, notes: null }, parseMoney(item.basePrice));
+      }
+    }
+  };
+
+  const handleDecrement = (item: MenuItem) => {
+    if (cartItemsCount > 0 && !isCurrentRestaurantCart) { setToast({ message: 'Your cart contains items from another restaurant.', variant: 'error' }); return; }
+    if (item.variants && item.variants.length > 0) { openPicker(item); } else {
+      const existing = cartItems.find((i: any) => i.menuItemId === item.menuItemId);
+      if (existing) {
+        if (existing.quantity > 1) {
+          void updateItemQuantity({ cartItemId: existing.cartItemId, quantity: existing.quantity - 1 }).unwrap().catch((err: any) => handleError(toUnwrappedApiError(err)));
+        } else {
+          void removeCartItem(existing.cartItemId).unwrap().catch((err: any) => handleError(toUnwrappedApiError(err)));
+        }
+      }
+    }
+  };
+
+  const isEggItem = (item: MenuItem) => {
+    const name = item.name.toLowerCase();
+    const desc = (item.description || '').toLowerCase();
+    return name.includes('egg') || desc.includes('egg');
+  };
+
+  const isRecommendedItem = (item: MenuItem, catName: string) => {
+    const desc = (item.description || '').toLowerCase();
+    return desc.includes('highly reordered') || catName.toLowerCase().includes('signature');
+  };
+
+  if (!validId || !restaurantId) {
     return (
       <EmptyState
         title="Invalid restaurant"
         description="The menu link is not valid."
-        accessibilityLabel="Invalid menu restaurant id"
+        accessibilityLabel="Menu screen invalid redirect"
         actionLabel="Back"
         onAction={() => navigation.goBack()}
       />
     );
   }
 
-  if (menuQuery.isError) {
-    return (
-      <EmptyState
-        title="Menu unavailable"
-        description="This restaurant menu could not be loaded."
-        accessibilityLabel="Menu load error"
-        actionLabel="Retry"
-        onAction={() => {
-          void menuQuery.refetch();
-        }}
-      />
-    );
-  }
+  const menuData = isMock ? (MOCK_MENUS[restaurantId]?.categories ?? []) : [];
+
+  const filteredData = useMemo(() => {
+    return menuData
+      .map(category => ({
+        ...category,
+        items: category.items.filter(item => {
+          if (activeFilter === 'veg') return item.isVeg;
+          if (activeFilter === 'non-veg') return !item.isVeg;
+          if (activeFilter === 'egg') return isEggItem(item);
+          if (activeFilter === 'recommended') return isRecommendedItem(item, (category as any).categoryName || (category as any).name || '');
+          return true;
+        })
+      }))
+      .filter(category => category.items.length > 0);
+  }, [menuData, activeFilter]);
+
+  const sections: MenuSection[] = useMemo(() => {
+    return filteredData.map((c) => ({
+      title: (c as any).categoryName || (c as any).name || 'Menu',
+      categoryId: c.categoryId,
+      data: c.items,
+    }));
+  }, [filteredData]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
-      <SectionList
-        style={{ flex: 1 }}
-        sections={sections}
-        keyExtractor={(item) => item.menuItemId}
-        stickySectionHeadersEnabled={false}
-        contentContainerStyle={{
-          padding: tokens.spacing.lg,
-          gap: tokens.spacing.md,
-          paddingBottom: 96,
-          flexGrow: 1,
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={menuQuery.isFetching}
-            onRefresh={() => {
-              void menuQuery.refetch();
-            }}
-          />
-        }
-        ListHeaderComponent={
-          <View style={{ gap: tokens.spacing.md }}>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <Text variant="heading1" accessibilityRole="header">
-                Menu
-              </Text>
-              <Pressable
-                onPress={() => navigation.navigate('Cart')}
-                accessibilityRole="button"
-                accessibilityLabel="Open cart"
-                style={{
-                  minHeight: MIN_TOUCH_TARGET,
-                  justifyContent: 'center',
-                  paddingHorizontal: tokens.spacing.md,
-                  paddingVertical: tokens.spacing.sm,
-                  borderRadius: tokens.radius.md,
-                  borderWidth: 1,
-                  borderColor: tokens.color.border,
-                }}
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#14532D' }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor="#14532D" barStyle="light-content" />
+      <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
+        <SectionList
+          style={{ flex: 1 }}
+          sections={sections}
+          keyExtractor={(item) => item.menuItemId}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={{ paddingHorizontal: tokens.spacing.lg, paddingBottom: 96, paddingTop: 0, gap: tokens.spacing.md }}
+          ListHeaderComponent={
+            <View style={{ gap: tokens.spacing.md }}>
+              <ImageBackground
+                source={{ uri: restaurantData?.imageUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=1000' }}
+                style={{ marginHorizontal: -tokens.spacing.lg, marginTop: 0, minHeight: 265, justifyContent: 'flex-end', backgroundColor: '#14532D' }}
+                imageStyle={{ borderBottomLeftRadius: 32, borderBottomRightRadius: 32 }}
               >
-                <Text variant="label">Cart</Text>
-              </Pressable>
+                <Pressable
+                  onPress={() => navigation.goBack()}
+                  style={{
+                    position: 'absolute',
+                    top: 16,
+                    left: 16,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 10,
+                  }}
+                >
+                  <Feather name="chevron-left" size={24} color="#FCD34D" />
+                </Pressable>
+                <LinearGradient
+                  colors={['transparent', 'rgba(20, 83, 45, 0.95)']}
+                  style={{ paddingVertical: tokens.spacing.xl, paddingHorizontal: tokens.spacing.lg, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, gap: 8 }}
+                >
+                  <Text variant="heading1" style={{ color: '#FCD34D', fontWeight: '900', fontSize: 32, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 }}>{restaurantData?.name || 'Restaurant Menu'}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: tokens.spacing.sm, flexWrap: 'wrap', marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FCD34D', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3 }}>
+                      <Text style={{ color: '#134E4A', fontSize: 13, fontWeight: '900' }}>★ {restaurantData?.avgRating?.toFixed(1) || '4.5'}</Text>
+                    </View>
+                    <Text variant="label" style={{ color: '#FFFFFF', fontWeight: '800' }}>•</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 }}>
+                      <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '800' }}>⏱️ {distanceInfo}</Text>
+                    </View>
+                    <Text variant="label" style={{ color: '#FFFFFF', fontWeight: '800' }}>•</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.2)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 }}>
+                      <Text variant="caption" style={{ color: '#FFFFFF', fontWeight: '800' }}>📍 {restaurantData?.city || 'Bengaluru'}</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </ImageBackground>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: tokens.spacing.sm, paddingVertical: tokens.spacing.sm }}>
+                <Pressable onPress={() => setActiveFilter('all')} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: activeFilter === 'all' ? '#14532D' : '#E5E7EB', borderWidth: 1, borderColor: activeFilter === 'all' ? '#14532D' : '#D1D5DB' }}>
+                  <Text variant="label" style={{ color: activeFilter === 'all' ? '#F59E0B' : '#4B5563', fontWeight: activeFilter === 'all' ? '800' : '600' }}>🍽️ All</Text>
+                </Pressable>
+                <Pressable onPress={() => setActiveFilter('veg')} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: activeFilter === 'veg' ? '#14532D' : '#FFFFFF', borderWidth: 1, borderColor: activeFilter === 'veg' ? '#14532D' : '#D1D5DB' }}>
+                  <Text variant="label" style={{ color: activeFilter === 'veg' ? '#F59E0B' : '#059669', fontWeight: activeFilter === 'veg' ? '800' : '600' }}>🟢 Veg Only</Text>
+                </Pressable>
+                <Pressable onPress={() => setActiveFilter('non-veg')} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: activeFilter === 'non-veg' ? '#14532D' : '#FFFFFF', borderWidth: 1, borderColor: activeFilter === 'non-veg' ? '#14532D' : '#D1D5DB' }}>
+                  <Text variant="label" style={{ color: activeFilter === 'non-veg' ? '#F59E0B' : '#DC2626', fontWeight: activeFilter === 'non-veg' ? '800' : '600' }}>🔴 Non-Veg</Text>
+                </Pressable>
+                <Pressable onPress={() => setActiveFilter('egg')} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: activeFilter === 'egg' ? '#14532D' : '#FFFFFF', borderWidth: 1, borderColor: activeFilter === 'egg' ? '#14532D' : '#D1D5DB' }}>
+                  <Text variant="label" style={{ color: activeFilter === 'egg' ? '#F59E0B' : '#4B5563', fontWeight: activeFilter === 'egg' ? '800' : '600' }}>🍳 Egg Special</Text>
+                </Pressable>
+                <Pressable onPress={() => setActiveFilter('recommended')} style={{ paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: activeFilter === 'recommended' ? '#14532D' : '#FFFFFF', borderWidth: 1, borderColor: activeFilter === 'recommended' ? '#14532D' : '#D1D5DB' }}>
+                  <Text variant="label" style={{ color: activeFilter === 'recommended' ? '#F59E0B' : '#4B5563', fontWeight: activeFilter === 'recommended' ? '800' : '600' }}>🔥 Highly Reordered</Text>
+                </Pressable>
+              </ScrollView>
             </View>
-            {!isConnected ? (
-              <Text variant="caption" color={tokens.color.warning}>
-                Offline — cached menu shown; adding items is blocked.
-              </Text>
-            ) : null}
-            {menuQuery.isLoading ? <MenuSkeleton /> : null}
-          </View>
-        }
-        ListEmptyComponent={
-          menuQuery.isLoading ? null : (
+          }
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={{ backgroundColor: tokens.color.background, paddingTop: tokens.spacing.md, paddingBottom: tokens.spacing.xs, borderBottomWidth: 2, borderBottomColor: '#F59E0B', marginBottom: tokens.spacing.md, alignSelf: 'flex-start' }}>
+              <Text variant="heading2" color="#14532D" style={{ fontWeight: '900', letterSpacing: 0.5, fontSize: 20, textTransform: 'uppercase' }}>{title}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => {
+            const rowTotalQty = cartItems.filter((i: any) => i.menuItemId === item.menuItemId).reduce((sum: number, c: any) => sum + c.quantity, 0);
+            return (
+              <MenuItemRow
+                item={item}
+                quantity={rowTotalQty}
+                onAdd={() => handleAddOrVariant(item)}
+                onIncrement={() => handleAddOrVariant(item)}
+                onDecrement={() => handleDecrement(item)}
+              />
+            );
+          }}
+          ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: tokens.color.border, marginVertical: tokens.spacing.sm }} />}
+          ListEmptyComponent={
             <EmptyState
-              title="No menu items"
-              description="This restaurant has not published a menu yet."
-              accessibilityLabel="Menu empty"
+              title="No items"
+              description="No menu items for this filter."
+              accessibilityLabel="Menu filter empty state"
             />
-          )
-        }
-        renderSectionHeader={({ section }) => (
-          <Text variant="heading2">{section.title}</Text>
-        )}
-        renderItem={({ item }) => (
-          <MenuItemRow item={item} onPress={() => openPicker(item)} />
-        )}
-      />
+          }
+        />
+        {cartItemsCount > 0 && Number(cartSubtotal) > 0 ? (
+          <GlobalCartBanner />
+        ) : null}
+      </View>
 
       <Modal
-        visible={Boolean(openItem)}
+        visible={!!openItem && !conflictVisible}
         onRequestClose={closePicker}
-        title={openItem?.name ?? 'Add item'}
-        accessibilityLabel="Add to cart dialog"
+        title="Customize Item"
+        accessibilityLabel="Customize variants modal"
       >
         {openItem ? (
-          <View style={{ gap: tokens.spacing.md }}>
-            <Text variant="bodySmall" color={tokens.color.textSecondary}>
-              From ₹{formatMoney(openItem.basePrice)}
-            </Text>
-            {openItem.variants.length > 0 ? (
-              <VariantPicker
-                variants={openItem.variants}
-                selectedVariantId={variantId}
-                onSelect={setVariantId}
-                basePrice={openItem.basePrice}
-              />
-            ) : null}
-            <TextInput
-              label="Quantity"
-              accessibilityLabel="Quantity"
-              value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="number-pad"
+          <View style={{ gap: tokens.spacing.md, paddingVertical: tokens.spacing.sm }}>
+            <VariantPicker
+              variants={openItem.variants}
+              selectedVariantId={variantId}
+              onSelect={(vid) => setVariantId(vid)}
+              basePrice={openItem.basePrice}
             />
+
             <TextInput
-              label="Notes (optional)"
-              accessibilityLabel="Item notes"
+              label="Extra Instructions"
               value={notes}
               onChangeText={setNotes}
-              placeholder="e.g. Less spicy"
+              placeholder="e.g. Extra spicy, no onions"
+              accessibilityLabel="Order customization instructions"
+              containerStyle={{ marginTop: tokens.spacing.sm }}
             />
-            <Button
-              label="Add to cart"
-              accessibilityLabel="Confirm add to cart"
-              loading={addState.isLoading}
-              disabled={!isConnected || addState.isLoading}
-              onPress={onConfirmAdd}
-            />
-            <Button
-              label="Cancel"
-              accessibilityLabel="Cancel add to cart"
-              variant="secondary"
-              onPress={closePicker}
-            />
+
+            <View style={{ flexDirection: 'row', gap: tokens.spacing.sm, marginTop: tokens.spacing.lg }}>
+              <Button
+                label="Cancel"
+                variant="secondary"
+                style={{ flex: 1 }}
+                onPress={closePicker}
+                accessibilityLabel="Cancel customizing"
+              />
+              <Button
+                label="Add Option"
+                loading={addState.isLoading}
+                onPress={onConfirmAdd}
+                style={{ flex: 1, backgroundColor: '#14532D' }}
+                accessibilityLabel="Add customized option"
+              />
+            </View>
           </View>
-        ) : null}
+        ) : <View />}
       </Modal>
 
       <Modal
         visible={conflictVisible}
         onRequestClose={() => setConflictVisible(false)}
-        title="Replace cart?"
-        accessibilityLabel="Clear cart conflict dialog"
+        title="Start new cart?"
+        accessibilityLabel="Cart restaurant mismatch warning"
       >
-        <View style={{ gap: tokens.spacing.md }}>
-          <Text variant="body">
-            Your cart has items from another restaurant. Clear it to add from
-            this menu?
-          </Text>
+        <Text color={tokens.color.textSecondary}>
+          Your cart contains items from a different restaurant. Clear the cart to add items from this restaurant?
+        </Text>
+        <View style={{ flexDirection: 'row', gap: tokens.spacing.md, marginTop: tokens.spacing.xl, paddingBottom: tokens.spacing.md }}>
           <Button
-            label="Clear cart and add"
-            accessibilityLabel="Clear cart and add item"
-            loading={clearState.isLoading || addState.isLoading}
-            onPress={() => {
-              void onConfirmClearAndReadd();
-            }}
+            label="Cancel"
+            variant="secondary"
+            style={{ flex: 1 }}
+            onPress={() => { setConflictVisible(false); setPendingReadd(null); }}
+            accessibilityLabel="Cancel replacement"
           />
           <Button
-            label="Keep current cart"
-            accessibilityLabel="Keep current cart"
-            variant="secondary"
-            onPress={() => setConflictVisible(false)}
+            label="Clear & Add"
+            loading={clearState.isLoading || addState.isLoading}
+            onPress={() => void onConfirmClearAndReadd()}
+            style={{ flex: 1, backgroundColor: '#14532D' }}
+            accessibilityLabel="Confirm replace items"
           />
         </View>
       </Modal>
@@ -403,9 +376,9 @@ export function MenuScreen({ navigation, route }: Props) {
         visible={Boolean(toast)}
         message={toast?.message ?? ''}
         variant={toast?.variant ?? 'info'}
-        accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
+        accessibilityLabel="Menu screen notifications"
       />
-    </View>
+    </SafeAreaView>
   );
 }

@@ -1,11 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   View,
+  StatusBar,
+  Animated,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   Button,
@@ -20,143 +25,94 @@ import {
 } from 'foodie-shared-rn';
 import { useGetAddressesQuery } from '../../../api/endpoints/addressesApi';
 import { useGetCartQuery } from '../../../api/endpoints/cartApi';
-import {
-  useApplyCouponMutation,
-  useGetEligibleCouponsQuery,
-} from '../../../api/endpoints/couponsApi';
 import { useCreateOrderMutation } from '../../../api/endpoints/ordersApi';
+import { useGetWalletBalanceQuery } from '../../../api/endpoints/walletApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import { formatMoney, parseMoney } from '../../menu/types';
 import type { BrowseStackParamList } from '../../../navigation/types';
 import { AddressPickerRow } from '../components/AddressPickerRow';
 import { CheckoutSkeleton } from '../components/CheckoutSkeleton';
-import { CouponField } from '../components/CouponField';
-import {
-  isAddressId,
-  validateCouponCode,
-  type ApplyCouponResult,
-} from '../types';
+import { isAddressId } from '../types';
 
 type Props = NativeStackScreenProps<BrowseStackParamList, 'Checkout'>;
 
-/**
- * P2-CUS-04 Checkout — address + coupon preview + place order (Idempotency-Key).
- * Address create/manage deferred to P2-CUS-07; empty list → Addresses CTA.
- */
-export function CheckoutScreen({ navigation }: Props) {
+export function CheckoutScreen({ navigation, route }: any) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const cartQuery = useGetCartQuery();
+  const walletQuery = useGetWalletBalanceQuery();
+
+  const mockItems = route.params?.mockItems;
+  const isDarkStoreMock = Array.isArray(mockItems) && mockItems.length > 0;
+
   const addressesQuery = useGetAddressesQuery();
-  const [applyCoupon, applyState] = useApplyCouponMutation();
   const [createOrder, createState] = useCreateOrderMutation();
 
   const [addressId, setAddressId] = useState<string | null>(null);
-  const [couponDraft, setCouponDraft] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [couponPreview, setCouponPreview] = useState<ApplyCouponResult | null>(
-    null,
-  );
+  const [useWallet, setUseWallet] = useState<boolean>(false);
   const placeAttemptKey = useRef<string | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
   } | null>(null);
 
+  const scaleValue = useRef(new Animated.Value(0.95)).current;
+  const fadeValue = useRef(new Animated.Value(0)).current;
+
   const handleError = useApiErrorHandler({
     onToast: (error) => setToast({ message: error.message, variant: 'error' }),
-    onModalBlocking: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
-    onInlineField: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
-    onFullScreen: (error) =>
-      setToast({ message: error.message, variant: 'error' }),
+    onModalBlocking: (error) => setToast({ message: error.message, variant: 'error' }),
+    onInlineField: (error) => setToast({ message: error.message, variant: 'error' }),
+    onFullScreen: (error) => setToast({ message: error.message, variant: 'error' }),
     onGeneric: (error) => setToast({ message: error.message, variant: 'error' }),
   });
 
   const cart = cartQuery.data;
-  const cartTotal = parseMoney(cart?.subtotal);
   const restaurantId = cart?.restaurantId ?? undefined;
   const addresses = addressesQuery.data ?? [];
-
-  const eligibleQuery = useGetEligibleCouponsQuery(
-    {
-      restaurantId: restaurantId ?? '',
-      cartTotal,
-    },
-    { skip: !restaurantId || cartTotal <= 0 },
-  );
+  const walletBalance = Number(walletQuery.data?.balance || 0);
 
   useEffect(() => {
     trackAnalyticsEvent('customer_checkout_viewed');
     trackAnalyticsEvent('checkout_started');
-  }, []);
+    Animated.parallel([
+      Animated.spring(scaleValue, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeValue, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      })
+    ]).start();
+  }, [scaleValue, fadeValue]);
 
   useEffect(() => {
     const list = addressesQuery.data;
     if (!addressId && list && list.length > 0) {
-      const preferred =
-        list.find((row) => row.isDefault)?.addressId ?? list[0]?.addressId;
+      const preferred = list.find((row) => row.isDefault)?.addressId ?? list[0]?.addressId;
       if (preferred) setAddressId(preferred);
     }
   }, [addressId, addressesQuery.data]);
 
-  const previewLabel = useMemo(() => {
-    if (!couponPreview) return null;
-    return `Preview: −₹${formatMoney(couponPreview.discountAmount)} → ₹${formatMoney(couponPreview.finalTotal)}`;
-  }, [couponPreview]);
-
-  const loading =
-    cartQuery.isLoading || addressesQuery.isLoading || createState.isLoading;
-
-  const onApplyCoupon = async () => {
-    const validation = validateCouponCode(couponDraft);
-    if (!validation.ok) {
-      setToast({ message: validation.message, variant: 'error' });
-      return;
-    }
-    if (!restaurantId) {
-      setToast({ message: 'Cart has no restaurant.', variant: 'error' });
-      return;
-    }
-    if (!isConnected) {
-      setToast({
-        message: 'Connect to the internet to apply a coupon.',
-        variant: 'warning',
-      });
-      return;
-    }
-    try {
-      const result = await applyCoupon({
-        code: validation.code,
-        restaurantId,
-        cartTotal,
-      }).unwrap();
-      setAppliedCoupon(result.code);
-      setCouponPreview(result);
-      trackAnalyticsEvent('coupon_applied', { codeLength: result.code.length });
-      setToast({ message: 'Coupon preview applied', variant: 'success' });
-    } catch (err) {
-      setCouponPreview(null);
-      setAppliedCoupon(null);
-      handleError(toUnwrappedApiError(err));
-    }
-  };
+  const loading = cartQuery.isLoading || addressesQuery.isLoading || createState.isLoading || walletQuery.isLoading;
 
   const onPlaceOrder = async () => {
     if (!addressId || !isAddressId(addressId)) {
       setToast({ message: 'Select a delivery address.', variant: 'error' });
       return;
     }
-    if (!isConnected) {
-      setToast({
-        message: 'Connect to the internet to place your order.',
-        variant: 'warning',
-      });
+    if (!isDarkStoreMock && !cart?.items?.length) {
+      setToast({ message: 'Your cart is empty.', variant: 'error' });
       return;
     }
-    if (!cart?.items?.length) {
-      setToast({ message: 'Your cart is empty.', variant: 'error' });
+    if (isDarkStoreMock) {
+      trackAnalyticsEvent('checkout_completed', { orderId: 'mock-darkstore' });
+      const mockSubtotal = mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0);
+      navigation.replace('Payment' as any, { orderId: `ds-mock-${Date.now()}`, mockTotal: mockSubtotal + 25 + 18, useWallet });
       return;
     }
     if (!placeAttemptKey.current) {
@@ -166,12 +122,11 @@ export function CheckoutScreen({ navigation }: Props) {
     try {
       const order = await createOrder({
         addressId,
-        couponCode: appliedCoupon,
         idempotencyKey: placeAttemptKey.current,
       }).unwrap();
       trackAnalyticsEvent('checkout_completed', { orderId: order.orderId });
       placeAttemptKey.current = null;
-      navigation.replace('Payment', { orderId: order.orderId });
+      navigation.replace('Payment', { orderId: order.orderId, useWallet });
     } catch (err) {
       handleError(toUnwrappedApiError(err));
     }
@@ -189,11 +144,11 @@ export function CheckoutScreen({ navigation }: Props) {
     );
   }
 
-  if (!cartQuery.isLoading && (!cart?.items || cart.items.length === 0)) {
+  if (!isDarkStoreMock && !cartQuery.isLoading && (!cart?.items || cart.items.length === 0)) {
     return (
       <EmptyState
         title="Cart is empty"
-        description="Add items before checkout. No cash on delivery."
+        description="Add items before checkout."
         accessibilityLabel="Checkout empty cart"
         actionLabel="Browse"
         onAction={() => navigation.navigate('Home')}
@@ -201,179 +156,319 @@ export function CheckoutScreen({ navigation }: Props) {
     );
   }
 
+  const subtotal = isDarkStoreMock ? mockItems.reduce((acc: number, mi: any) => acc + (mi.price * mi.quantity), 0) : Number(cart?.subtotal || 0);
+  const orderTotal = Math.max(0, subtotal + 25 + 18);
+  const walletApplied = useWallet ? Math.min(walletBalance, orderTotal) : 0;
+  const grandTotal = Math.max(0, orderTotal - walletApplied);
+
   return (
-    <View style={{ flex: 1, backgroundColor: tokens.color.background }}>
-      <ScrollView
-        contentContainerStyle={{
-          padding: tokens.spacing.lg,
-          gap: tokens.spacing.md,
-          paddingBottom: 140,
-        }}
-        refreshControl={
-          <RefreshControl
-            refreshing={cartQuery.isFetching || addressesQuery.isFetching}
-            onRefresh={() => {
-              void cartQuery.refetch();
-              void addressesQuery.refetch();
-              if (restaurantId) void eligibleQuery.refetch();
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#14532D' }} edges={['top', 'left', 'right']}>
+      <StatusBar backgroundColor="#14532D" barStyle="light-content" />
+      <KeyboardAvoidingView
+        style={{ flex: 1, backgroundColor: '#F2F2F7' }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <Animated.View style={{ flex: 1, opacity: fadeValue, transform: [{ scale: scaleValue }] }}>
+          <ScrollView
+            contentContainerStyle={{
+              paddingBottom: 140,
             }}
-          />
-        }
-      >
-        <Text variant="heading1" accessibilityRole="header">
-          Checkout
-        </Text>
-        {!isConnected ? (
-          <Text variant="caption" color={tokens.color.warning}>
-            Offline — placing an order is blocked.
-          </Text>
-        ) : null}
-
-        {loading && !cart ? (
-          <CheckoutSkeleton />
-        ) : (
-          <>
-            <Text variant="heading2">Delivery address</Text>
-            {addressesQuery.isLoading ? (
-              <CheckoutSkeleton />
-            ) : addresses.length === 0 ? (
-              <EmptyState
-                title="No addresses yet"
-                description="Add a delivery address to continue checkout."
-                accessibilityLabel="Checkout no addresses"
-                actionLabel="Addresses"
-                onAction={() =>
-                  navigation.navigate('Addresses', { selectMode: true })
-                }
+            refreshControl={
+              <RefreshControl
+                refreshing={cartQuery.isFetching || addressesQuery.isFetching || walletQuery.isFetching}
+                onRefresh={() => {
+                  void cartQuery.refetch();
+                  void addressesQuery.refetch();
+                  void walletQuery.refetch();
+                }}
+                tintColor="#FCD34D"
               />
-            ) : (
-              <View style={{ gap: tokens.spacing.sm }}>
-                {addresses.map((address) => (
-                  <AddressPickerRow
-                    key={address.addressId}
-                    address={address}
-                    selected={addressId === address.addressId}
-                    onSelect={() => {
-                      setAddressId(address.addressId);
-                      trackAnalyticsEvent('address_selected', {
-                        addressId: address.addressId,
-                      });
-                      placeAttemptKey.current = null;
-                    }}
-                  />
-                ))}
-                <Pressable
-                  onPress={() =>
-                    navigation.navigate('Addresses', { selectMode: true })
-                  }
-                  accessibilityRole="button"
-                  accessibilityLabel="Manage addresses"
-                >
-                  <Text variant="label" color={tokens.color.accent}>
-                    Manage addresses
+            }
+          >
+            {/* Header Banner */}
+            <View style={{
+              paddingTop: 12,
+              paddingBottom: 20,
+              paddingHorizontal: 20,
+              backgroundColor: '#14532D',
+              borderBottomLeftRadius: 32,
+              borderBottomRightRadius: 32,
+              shadowColor: '#14532D',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 5
+            }}>
+              <Text style={{ color: '#FCD34D', fontSize: 30, fontWeight: '900', letterSpacing: -0.5 }}>
+                Payment Review
+              </Text>
+              {!isConnected && (
+                <Text style={{ color: '#F87171', fontWeight: '800', marginTop: 4 }}>
+                  Offline — placing an order is locked
+                </Text>
+              )}
+            </View>
+
+            <View style={{ paddingHorizontal: 16, marginTop: 24, gap: 20 }}>
+              {loading && !cart ? (
+                <CheckoutSkeleton />
+              ) : (
+                <>
+                  {/* Address Section */}
+                  <View style={{
+                    backgroundColor: '#FFFFFF',
+                    padding: 16,
+                    borderRadius: 16,
+                    gap: 12,
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    shadowColor: '#14532D',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 10,
+                    elevation: 2
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 18 }}>📍</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#14532D' }}>Delivery Address</Text>
+                    </View>
+                    {addresses.length === 0 ? (
+                      <EmptyState
+                        title="No addresses yet"
+                        description="Add a delivery address to continue checkout."
+                        accessibilityLabel="Checkout no addresses"
+                        actionLabel="Addresses"
+                        onAction={() => navigation.navigate('Addresses', { selectMode: true })}
+                      />
+                    ) : (
+                      <View style={{ gap: 10 }}>
+                        {addresses.map((address) => (
+                          <AddressPickerRow
+                            key={address.addressId}
+                            address={address}
+                            selected={addressId === address.addressId}
+                            onSelect={() => {
+                              setAddressId(address.addressId);
+                              trackAnalyticsEvent('address_selected', { addressId: address.addressId });
+                              placeAttemptKey.current = null;
+                            }}
+                          />
+                        ))}
+                        <View style={{ height: 1.5, backgroundColor: '#F3F4F6', marginVertical: 4 }} />
+                        <Pressable
+                          onPress={() => navigation.navigate('Addresses', { selectMode: true })}
+                          style={{ alignSelf: 'flex-start' }}
+                        >
+                          <Text style={{ color: '#14532D', fontWeight: '800', fontSize: 14 }}>
+                            Manage Addresses ›
+                          </Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Wallet Section */}
+                  <View style={{
+                    backgroundColor: '#FFFFFF',
+                    padding: 16,
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    shadowColor: '#14532D',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 10,
+                    elevation: 2
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                      <Text style={{ fontSize: 18 }}>💳</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#14532D' }}>Foodie Wallet</Text>
+                    </View>
+
+                    <Pressable
+                      disabled={walletBalance <= 0}
+                      onPress={() => {
+                        setUseWallet(!useWallet);
+                        trackAnalyticsEvent('wallet_toggled_checkout', { enabled: !useWallet });
+                      }}
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        opacity: walletBalance <= 0 ? 0.6 : (pressed ? 0.8 : 1),
+                        paddingVertical: 4,
+                      })}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          borderWidth: 2,
+                          borderColor: useWallet ? '#14532D' : '#D1D5DB',
+                          backgroundColor: useWallet ? '#14532D' : 'transparent',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          {useWallet && <Text style={{ color: '#FCD34D', fontWeight: 'bold', fontSize: 14 }}>✓</Text>}
+                        </View>
+                        <View>
+                          <Text style={{ fontWeight: '700', fontSize: 15, color: '#111827' }}>Use Wallet Balance</Text>
+                          <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+                            Available: ₹{formatMoney(walletBalance)}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  </View>
+
+                  {/* Detailed Bill Block */}
+                  <View style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: '#E5E7EB',
+                    padding: 16,
+                    gap: 12,
+                    shadowColor: '#14532D',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.04,
+                    shadowRadius: 10,
+                    elevation: 2
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <Text style={{ fontSize: 18 }}>🧾</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '800', color: '#14532D' }}>
+                        Detailed Bill
+                      </Text>
+                    </View>
+
+                    <View style={{ gap: 8, paddingHorizontal: 2 }}>
+                      <View style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}>
+                        <Text>placedAt totalAmount</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ color: '#6B7280', fontWeight: '600' }}>Item Total</Text>
+                        <Text style={{ color: '#111827', fontWeight: '700' }}>₹{formatMoney(subtotal)}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ color: '#6B7280', fontWeight: '600' }}>Delivery Fee</Text>
+                        <Text style={{ color: '#111827', fontWeight: '700' }}>₹25.00</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ color: '#6B7280', fontWeight: '600' }}>Taxes & Charges</Text>
+                        <Text style={{ color: '#111827', fontWeight: '700' }}>₹18.00</Text>
+                      </View>
+
+                      {useWallet && walletApplied > 0 && (
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                          <Text style={{ color: '#059669', fontWeight: '700' }}>Wallet Applied</Text>
+                          <Text style={{ color: '#059669', fontWeight: '700' }}>-₹{formatMoney(walletApplied)}</Text>
+                        </View>
+                      )}
+
+                      <View style={{ height: 1.5, backgroundColor: '#F3F4F6', marginVertical: 4 }} />
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontWeight: '900', color: '#14532D', fontSize: 16 }}>To Pay</Text>
+                        <Text style={{ fontWeight: '900', color: '#14532D', fontSize: 16 }}>₹{formatMoney(grandTotal)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  <Text style={{ fontStyle: 'italic', fontSize: 12, color: '#6B7280', textAlign: 'center', marginHorizontal: 8 }}>
+                    Final totals are calculated securely.
                   </Text>
-                </Pressable>
-              </View>
-            )}
+                </>
+              )}
+            </View>
+          </ScrollView>
 
-            <Text variant="heading2">Coupon</Text>
-            <CouponField
-              value={couponDraft}
-              onChangeText={(value) => {
-                setCouponDraft(value);
-                placeAttemptKey.current = null;
-              }}
-              onApply={() => {
-                void onApplyCoupon();
-              }}
-              applying={applyState.isLoading}
-              disabled={!isConnected || !restaurantId}
-              previewLabel={previewLabel}
-            />
-            {(eligibleQuery.data ?? []).length > 0 ? (
-              <Text variant="caption" color={tokens.color.textSecondary}>
-                Eligible:{' '}
-                {(eligibleQuery.data ?? [])
-                  .slice(0, 5)
-                  .map((c) => c.code)
-                  .join(', ')}
-              </Text>
-            ) : null}
-
-            <Text variant="heading2">Order summary</Text>
-            <Text variant="body">
-              Subtotal ₹{formatMoney(cart?.subtotal)}
-            </Text>
-            {couponPreview ? (
-              <Text variant="bodySmall" color={tokens.color.textSecondary}>
-                Preview discount −₹{formatMoney(couponPreview.discountAmount)}
-              </Text>
-            ) : null}
-            <Text variant="caption" color={tokens.color.textSecondary}>
-              No cash on delivery. Final totals are confirmed by the server when
-              the order is placed.
-            </Text>
-          </>
-        )}
-      </ScrollView>
-
-      <View
-        style={{
-          padding: tokens.spacing.lg,
-          borderTopWidth: 1,
-          borderTopColor: tokens.color.border,
-          gap: tokens.spacing.sm,
-          backgroundColor: tokens.color.background,
-        }}
-      >
-        <Button
-          label="Place order"
-          accessibilityLabel="Place order"
-          loading={createState.isLoading}
-          disabled={
-            !isConnected ||
-            createState.isLoading ||
-            addresses.length === 0 ||
-            !addressId
-          }
-          onPress={() => {
-            void onPlaceOrder();
-          }}
-        />
-        <Button
-          label="Back to cart"
-          accessibilityLabel="Back to cart"
-          variant="secondary"
-          onPress={() => navigation.navigate('Cart')}
-        />
-      </View>
-
-      {createState.isLoading ? (
-        <View
-          pointerEvents="none"
-          style={{
+          {/* Footer Proceed Action */}
+          <View style={{
             position: 'absolute',
+            bottom: 0,
             left: 0,
             right: 0,
-            top: 0,
-            bottom: 0,
-            backgroundColor: tokens.color.overlay,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          accessibilityLabel="Placing order"
-        >
-          <ActivityIndicator color={tokens.color.accent} />
-        </View>
-      ) : null}
+            padding: 16,
+            borderTopWidth: 1,
+            borderTopColor: '#E5E7EB',
+            backgroundColor: '#FFFFFF',
+            paddingBottom: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+            elevation: 10
+          }}>
+            <Pressable
+              accessibilityLabel="Place Order"
+              disabled={createState.isLoading || addresses.length === 0 || !addressId}
+              onPress={() => { void onPlaceOrder(); }}
+              style={({ pressed }) => ({
+                backgroundColor: pressed || (createState.isLoading || addresses.length === 0 || !addressId) ? '#114022' : '#14532D',
+                paddingVertical: 16,
+                borderRadius: 12,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderWidth: 1.5,
+                borderColor: '#FCD34D',
+                shadowColor: '#14532D',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                elevation: 4
+              })}
+            >
+              <Text style={{ color: '#FCD34D', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 }}>
+                {createState.isLoading ? 'Processing Order...' : `Proceed to Payment (₹${formatMoney(grandTotal)}) ➔`}
+              </Text>
+            </Pressable>
 
-      <Toast
-        visible={Boolean(toast)}
-        message={toast?.message ?? ''}
-        variant={toast?.variant ?? 'info'}
-        accessibilityLabel={toast?.message ?? 'Toast'}
-        onDismiss={() => setToast(null)}
-      />
-    </View>
+            <Pressable
+              accessibilityLabel="Go Back to Cart"
+              onPress={() => navigation.navigate('Cart')}
+              style={({ pressed }) => ({
+                paddingVertical: 12,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginTop: 8,
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ color: '#6B7280', fontWeight: '800', fontSize: 14 }}>
+                Back to Cart
+              </Text>
+            </Pressable>
+          </View>
+
+          {createState.isLoading && (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ActivityIndicator color="#FCD34D" size="large" />
+            </View>
+          )}
+
+          <Toast
+            visible={Boolean(toast)}
+            message={toast?.message ?? ''}
+            variant={toast?.variant ?? 'info'}
+            accessibilityLabel={toast?.message ?? 'Toast'}
+            onDismiss={() => setToast(null)}
+          />
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

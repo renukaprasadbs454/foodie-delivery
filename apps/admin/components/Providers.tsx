@@ -77,15 +77,19 @@ class RootErrorBoundary extends React.Component<
   }
 }
 
+import { PermissionProvider } from '@/context/PermissionContext';
+
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <RootErrorBoundary>
       <Provider store={store}>
         <ThemeProvider initialMode="light" applyToDocument>
-          <ConnectivityBridge>
-            <ConnectivityBanner />
-            <BootstrapGate>{children}</BootstrapGate>
-          </ConnectivityBridge>
+          <PermissionProvider>
+            <ConnectivityBridge>
+              <ConnectivityBanner />
+              <BootstrapGate>{children}</BootstrapGate>
+            </ConnectivityBridge>
+          </PermissionProvider>
         </ThemeProvider>
       </Provider>
     </RootErrorBoundary>

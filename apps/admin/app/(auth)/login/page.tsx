@@ -45,7 +45,6 @@ export default function LoginPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ fontSize: 24, backgroundColor: 'rgba(16, 185, 129, 0.2)', padding: '6px 10px', borderRadius: 10 }}>🍔</span>
             <div>
               <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>
                 Foodie <span style={{ color: '#F59E0B' }}>Admin</span>
@@ -55,9 +54,6 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-          <span style={{ fontSize: 22 }} title="Admin Security Console">
-            🍔
-          </span>
         </div>
 
         {/* Form Body Container */}

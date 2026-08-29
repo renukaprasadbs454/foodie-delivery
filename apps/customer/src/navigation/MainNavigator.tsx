@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Text } from 'react-native';
 import { CartScreen } from '../features/cart/screens/CartScreen';
 import { CheckoutScreen } from '../features/checkout/screens/CheckoutScreen';
 import { PaymentScreen } from '../features/payment/screens/PaymentScreen';
@@ -32,9 +33,14 @@ const NotificationsStack =
   createNativeStackNavigator<NotificationsStackParamList>();
 const ProfileStack = createNativeStackNavigator<ProfileStackParamList>();
 
+import { DarkStoreScreen } from '../features/darkStore/screens/DarkStoreScreen';
+import { DarkStoreSubCategoryScreen } from '../features/darkStore/screens/DarkStoreSubCategoryScreen';
+import { DarkStoreItemsScreen } from '../features/darkStore/screens/DarkStoreItemsScreen';
+import { DarkStoreSearchScreen } from '../features/darkStore/screens/DarkStoreSearchScreen';
+
 function BrowseStackNavigator() {
   return (
-    <BrowseStack.Navigator>
+    <BrowseStack.Navigator screenOptions={{ headerShown: false }}>
       <BrowseStack.Screen
         name="Home"
         component={HomeScreen}
@@ -85,13 +91,33 @@ function BrowseStackNavigator() {
         component={ReviewsScreen}
         options={{ title: 'Reviews' }}
       />
+      <BrowseStack.Screen
+        name="DarkStore"
+        component={DarkStoreScreen as any}
+        options={{ title: 'Dark Store' }}
+      />
+      <BrowseStack.Screen
+        name="DarkStoreSubCategory"
+        component={DarkStoreSubCategoryScreen as any}
+        options={{ title: 'Category' }}
+      />
+      <BrowseStack.Screen
+        name="DarkStoreItems"
+        component={DarkStoreItemsScreen as any}
+        options={{ title: 'Items' }}
+      />
+      <BrowseStack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{ title: 'Notifications' }}
+      />
     </BrowseStack.Navigator>
   );
 }
 
 function OrdersStackNavigator() {
   return (
-    <OrdersStack.Navigator>
+    <OrdersStack.Navigator screenOptions={{ headerShown: false }}>
       <OrdersStack.Screen
         name="MyOrders"
         component={MyOrdersScreen}
@@ -116,21 +142,60 @@ function OrdersStackNavigator() {
   );
 }
 
-function NotificationsStackNavigator() {
+const DarkStoreStack = createNativeStackNavigator<any>();
+
+function DarkStoreStackNavigator() {
   return (
-    <NotificationsStack.Navigator>
-      <NotificationsStack.Screen
-        name="Notifications"
-        component={NotificationsScreen}
-        options={{ title: 'Notifications' }}
+    <DarkStoreStack.Navigator screenOptions={{ headerShown: false }}>
+      <DarkStoreStack.Screen
+        name="DarkStore"
+        component={DarkStoreScreen as any}
+        options={{ title: 'Dark Store' }}
       />
-    </NotificationsStack.Navigator>
+      <DarkStoreStack.Screen
+        name="DarkStoreSubCategory"
+        component={DarkStoreSubCategoryScreen as any}
+        options={{ title: 'Category' }}
+      />
+      <DarkStoreStack.Screen
+        name="DarkStoreItems"
+        component={DarkStoreItemsScreen as any}
+        options={{ title: 'Items' }}
+      />
+      <DarkStoreStack.Screen
+        name="DarkStoreSearch"
+        component={DarkStoreSearchScreen as any}
+        options={{ title: 'Search' }}
+      />
+      <DarkStoreStack.Screen
+        name="Cart"
+        component={CartScreen as any}
+        options={{ title: 'Cart' }}
+      />
+      <DarkStoreStack.Screen
+        name="Checkout"
+        component={CheckoutScreen as any}
+        options={{ title: 'Checkout' }}
+      />
+      <DarkStoreStack.Screen
+        name="Payment"
+        component={PaymentScreen as any}
+        options={{ title: 'Payment' }}
+      />
+      <DarkStoreStack.Screen
+        name="Addresses"
+        component={AddressesScreen as any}
+        options={{ title: 'Addresses' }}
+      />
+    </DarkStoreStack.Navigator>
   );
 }
 
+import { WalletScreen } from '../features/wallet/screens/WalletScreen';
+
 function ProfileStackNavigator() {
   return (
-    <ProfileStack.Navigator>
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
       <ProfileStack.Screen
         name="Profile"
         component={ProfileScreen}
@@ -140,6 +205,11 @@ function ProfileStackNavigator() {
         name="Addresses"
         component={AddressesScreen}
         options={{ title: 'Addresses' }}
+      />
+      <ProfileStack.Screen
+        name="Wallet"
+        component={WalletScreen}
+        options={{ title: 'Wallet' }}
       />
       <ProfileStack.Screen
         name="Settings"
@@ -155,27 +225,93 @@ function ProfileStackNavigator() {
  */
 export function MainNavigator() {
   return (
-    <Tab.Navigator screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarActiveTintColor: '#14532D', // Primary Dark Green for active tab
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarStyle: {
+          borderTopWidth: 1.5,
+          borderTopColor: '#E5E7EB',
+          backgroundColor: '#FFFFFF',
+          height: 80,
+          paddingBottom: 16,
+          paddingTop: 12,
+          shadowColor: '#14532D',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 10,
+          elevation: 8,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '700',
+        },
+        tabBarIcon: ({ focused }) => {
+          let emoji = '🏠';
+          if (route.name === 'BrowseTab') emoji = '🏠';
+          else if (route.name === 'OrdersTab') emoji = '📋';
+          else if (route.name === 'DarkStoreTab') emoji = '🛍️';
+          else if (route.name === 'ProfileTab') emoji = '👤';
+
+          return (
+            <Text
+              style={{
+                fontSize: 20,
+                opacity: focused ? 1 : 0.65,
+              }}
+            >
+              {emoji}
+            </Text>
+          );
+        },
+      })}
+    >
       <Tab.Screen
         name="BrowseTab"
         component={BrowseStackNavigator}
         options={{ title: 'Home' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('BrowseTab', { screen: 'Home' });
+          },
+        })}
+      />
+      <Tab.Screen
+        name="DarkStoreTab"
+        component={DarkStoreStackNavigator as any}
+        options={{ title: 'Dark Store' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('DarkStoreTab', { screen: 'DarkStore' });
+          },
+        })}
       />
       <Tab.Screen
         name="OrdersTab"
         component={OrdersStackNavigator}
         options={{ title: 'Orders' }}
-      />
-      <Tab.Screen
-        name="NotificationsTab"
-        component={NotificationsStackNavigator}
-        options={{ title: 'Notifications' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('OrdersTab', { screen: 'MyOrders' });
+          },
+        })}
       />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStackNavigator}
         options={{ title: 'Profile' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('ProfileTab', { screen: 'Profile' });
+          },
+        })}
       />
     </Tab.Navigator>
   );
 }
+

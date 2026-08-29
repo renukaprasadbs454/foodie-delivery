@@ -16,6 +16,27 @@ export type IdempotentMutationArg = {
   [key: string]: unknown;
 };
 
+/** Helper to check if a status string represents a fetch/network transport error. */
+export function isTransportFetchStatus(status: number | string): boolean {
+  return (
+    typeof status === 'string' &&
+    ['FETCH_ERROR', 'PARSING_ERROR', 'TIMEOUT_ERROR', 'CUSTOM_ERROR'].includes(status)
+  );
+}
+
+/** Helper to safely extract an ApiEnvelope from an unknown response body. */
+export function parseEnvelopeFromUnknown(data: unknown): ApiEnvelope<unknown> | null {
+  if (
+    data &&
+    typeof data === 'object' &&
+    'success' in data &&
+    typeof (data as Record<string, unknown>).success === 'boolean'
+  ) {
+    return data as ApiEnvelope<unknown>;
+  }
+  return null;
+}
+
 /**
  * Admin createBaseApi config — Blueprint §7.4.
  * baseUrl points at Next.js BFF `/api/*`, not the backend directly.
@@ -121,7 +142,7 @@ export function createBaseApi<TagTypes extends string = string>(
       };
     }
 
-    const envelope = result.data as ApiEnvelope<unknown>;
+    const envelope = parseEnvelopeFromUnknown(result.data);
     const requestId = envelope?.meta?.requestId;
     recordRequestId(requestId);
 
@@ -197,7 +218,7 @@ export function createBaseApi<TagTypes extends string = string>(
               meta: retryResult.meta,
             };
           }
-          const retryEnvelope = retryResult.data as ApiEnvelope<unknown>;
+          const retryEnvelope = parseEnvelopeFromUnknown(retryResult.data);
           recordRequestId(retryEnvelope?.meta?.requestId);
           if (retryEnvelope?.success) {
             return { data: retryEnvelope.data, meta: retryResult.meta };

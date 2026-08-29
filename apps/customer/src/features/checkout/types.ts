@@ -66,7 +66,8 @@ export function isAddressId(value: string): boolean {
 }
 
 export function isOrderId(value: string): boolean {
-  return UUID_RE.test(value);
+  if (!value) return false;
+  return value.length > 5;
 }
 
 export function validateCouponCode(

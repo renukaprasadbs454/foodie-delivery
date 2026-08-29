@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { Text, useTheme } from 'foodie-shared-rn';
+import { FontAwesome } from '@expo/vector-icons';
 
 type Props = {
   value: number;
@@ -11,7 +12,6 @@ type Props = {
   editable?: boolean;
 };
 
-/** 1–5 star control — UI-API StarRating. */
 export function StarRating({
   value,
   onChange,
@@ -22,10 +22,10 @@ export function StarRating({
   const { tokens } = useTheme();
 
   return (
-    <View style={{ gap: tokens.spacing.xs }}>
-      <Text variant="label">{label}</Text>
+    <View style={{ gap: 8, marginVertical: 4 }}>
+      <Text style={{ fontSize: 15, fontWeight: '800', color: '#14532D' }}>{label}</Text>
       <View
-        style={{ flexDirection: 'row', gap: tokens.spacing.sm }}
+        style={{ flexDirection: 'row', gap: 12 }}
         accessibilityLabel={accessibilityLabel}
       >
         {[1, 2, 3, 4, 5].map((star) => {
@@ -39,28 +39,23 @@ export function StarRating({
               accessibilityLabel={`${star} star${star === 1 ? '' : 's'}`}
               accessibilityState={{ selected }}
               style={{
-                width: 48,
-                height: 48,
-                borderRadius: tokens.radius.sm,
+                padding: 4,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: selected
-                  ? tokens.color.accent
-                  : tokens.color.surface,
-                borderWidth: 1,
-                borderColor: tokens.color.border,
+                transform: [{ scale: selected ? 1.1 : 1 }]
               }}
             >
-              <Text
-                variant="label"
-                color={
-                  selected
-                    ? tokens.color.textInverse
-                    : tokens.color.textSecondary
-                }
-              >
-                {star}
-              </Text>
+              <FontAwesome
+                name={selected ? 'star' : 'star-o'}
+                size={38}
+                color={selected ? '#FCD34D' : '#9CA3AF'}
+                style={selected ? {
+                  shadowColor: '#FCD34D',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.8,
+                  shadowRadius: 4,
+                } : undefined}
+              />
             </Pressable>
           );
         })}

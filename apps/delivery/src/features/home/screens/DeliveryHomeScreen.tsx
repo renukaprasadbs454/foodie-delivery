@@ -3,14 +3,18 @@ import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshC
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
+import { Image } from 'react-native';
 import {
   Text,
   trackAnalyticsEvent,
   useConnectivity,
 } from 'foodie-shared-rn';
-import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation } from '../../../api/endpoints/deliveryApi';
+import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation, useUploadDeliveryProfileImageMutation } from '../../../api/endpoints/deliveryApi';
 import { useGetWalletLedgerQuery } from '../../../api/endpoints/walletApi';
 import { useGetOrderQuery } from '../../../api/endpoints/ordersApi';
 import { useAppSelector, useAppDispatch } from '../../../store/hooks';
@@ -27,6 +31,7 @@ import { useAcceptAssignmentMutation } from '../../../api/endpoints/deliveryApi'
 import { toUnwrappedApiError } from '../../auth/apiError';
 import { addRejectedOffer } from '../availabilitySlice';
 import { Toast } from 'foodie-shared-rn';
+import { BottomNav } from '../../../navigation/BottomNav';
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 
@@ -51,6 +56,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   const [setAvailability, availabilityState] = useSetAvailabilityMutation();
   const [verifyFace] = useVerifyFaceForOnlineMutation();
+  const [uploadImage, uploadState] = useUploadDeliveryProfileImageMutation();
 
   // Camera / selfie state
   const [isCameraVisible, setIsCameraVisible] = useState(false);
@@ -242,19 +248,60 @@ export function DeliveryHomeScreen({ navigation }: Props) {
     }
     // Going offline — no selfie needed
     try {
-      await setAvailability({ isOnline: false }).unwrap();
+      const result = await setAvailability({ isOnline: false }).unwrap();
       dispatch(setIsOnline(false));
     } catch (e) {
       alert('Failed to update availability. Please try again.');
     }
   };
 
+  const handlePickPhoto = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setToast({ message: 'Uploading photo...', variant: 'info' });
+        await uploadImage({
+          uri: asset.uri,
+          mimeType: 'image/jpeg',
+          fileName: 'profile.jpg',
+        }).unwrap();
+        setToast({ message: 'Profile photo updated!', variant: 'success' });
+        profileQuery.refetch();
+      }
+    } catch (e: any) {
+      setToast({ message: 'Failed to upload photo.', variant: 'error' });
+    }
+  };
+
+  let finalImgUri = profileQuery.data?.profileImageUrl ?? null;
+  if (finalImgUri) {
+    const apiBaseUrl = Constants.expoConfig?.extra?.apiBaseUrl as string | undefined;
+    if (finalImgUri.includes('localhost') && apiBaseUrl) {
+      const hostMatch = apiBaseUrl.match(/:\/\/(.[^:/]+)/);
+      if (hostMatch && hostMatch[1]) {
+        finalImgUri = finalImgUri.replace('localhost', hostMatch[1]);
+      }
+    } else if (finalImgUri.startsWith('/') && apiBaseUrl) {
+      finalImgUri = `${apiBaseUrl.replace(/\/$/, '')}${finalImgUri}`;
+    }
+  }
+
   if (loading) return <View style={{ flex: 1, backgroundColor: THEME_BG }}><DeliveryHomeSkeleton /></View>;
 
   return (
     <View style={styles.container}>
-      {/* Absolute Dark Top Arch matching Login Screen */}
-      <View style={[styles.topArch, { height: 260 + insets.top }]} />
+      {/* iOS-style dark green gradient arch */}
+      <LinearGradient
+        colors={['#0F3E22', '#14532D', '#1B6A3A']}
+        style={[styles.topArch, { height: 280 + insets.top }]}
+      />
 
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
@@ -269,7 +316,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
               setIsRefreshing(false);
             }}
             tintColor="#FFF"
-            colors={['#F59E0B']}
+            colors={['#FCD34D']}
           />
         }
       >
@@ -285,18 +332,22 @@ export function DeliveryHomeScreen({ navigation }: Props) {
             </View>
             <Text style={styles.name}>{profileQuery.data?.name ? profileQuery.data.name.split(' ')[0] : 'Partner'}</Text>
           </View>
-          <Pressable
-            style={styles.profileButton}
-            onPress={() => navigation.navigate('DeliveryProfile')}
-          >
-            <Feather name="user" size={24} color="#FFF" />
-          </Pressable>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <Pressable
+              style={styles.bellButton}
+              onPress={() => navigation.navigate('DeliveryNotifications' as any)}
+            >
+              <Feather name="bell" size={24} color="#FFF" />
+              <View style={styles.bellDot} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Central Premium Status Card */}
         <View style={[styles.statusCard, isOnline && styles.statusCardOnline]}>
           <View style={styles.statusHeaderRow}>
-            <View style={[styles.statusIndicator, { backgroundColor: isOnline ? '#14532D' : '#A0AEC0' }]} />
+            <View style={[styles.statusIndicator, { backgroundColor: isOnline ? '#10B981' : '#A0AEC0' }]} />
             <Text style={styles.statusText}>{isOnline ? 'ONLINE & READY' : 'CURRENTLY OFFLINE'}</Text>
           </View>
 
@@ -412,27 +463,27 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         <Text style={styles.menuTitle}>Dashboard Options</Text>
         <View style={styles.menuGrid}>
           <Pressable style={styles.menuFeatureCard} onPress={() => navigation.navigate('DeliveryOffers' as any)}>
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-              <Feather name="map" size={26} color={THEME_PRIMARY} />
+            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(252, 211, 77, 0.12)' }]}>
+              <Feather name="map" size={28} color="#FCD34D" />
             </View>
             <Text style={styles.menuItemTitle}>Offers</Text>
             <Text style={styles.menuItemSubtitle}>Nearby Shifts</Text>
           </Pressable>
 
           <Pressable style={styles.menuFeatureCard} onPress={() => navigation.navigate('Wallet' as any)}>
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(20, 83, 45, 0.1)' }]}>
-              <Feather name="dollar-sign" size={26} color="#14532D" />
+            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+              <Feather name="credit-card" size={28} color="#10B981" />
             </View>
             <Text style={styles.menuItemTitle}>Payouts</Text>
             <Text style={styles.menuItemSubtitle}>Balance</Text>
           </Pressable>
 
-          <Pressable style={styles.menuFeatureCard} onPress={() => navigation.navigate('DeliveryNotifications' as any)}>
-            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(56, 189, 248, 0.1)' }]}>
-              <Feather name="bell" size={26} color="#38bdf8" />
+          <Pressable style={styles.menuFeatureCard} onPress={() => navigation.navigate('CashDeposit' as any)}>
+            <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(251,191,36,0.12)' }]}>
+              <Feather name="package" size={28} color="#D97706" />
             </View>
-            <Text style={styles.menuItemTitle}>Alerts</Text>
-            <Text style={styles.menuItemSubtitle}>Updates</Text>
+            <Text style={styles.menuItemTitle}>COD Cash</Text>
+            <Text style={styles.menuItemSubtitle}>Deposit</Text>
           </Pressable>
         </View>
 
@@ -444,6 +495,8 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
+
+
 
       {isCameraVisible && (
         <View style={styles.cameraModal}>
@@ -466,6 +519,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
           </View>
         </View>
       )}
+      <BottomNav />
     </View>
   );
 }
@@ -485,7 +539,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -514,11 +568,31 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    overflow: 'hidden',
+  },
+  bellButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+    borderWidth: 1,
+    borderColor: THEME_DARK,
   },
   statusCard: {
     backgroundColor: THEME_CARD,
@@ -530,10 +604,12 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
     marginBottom: 40,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   statusCardOnline: {
     borderWidth: 2,
-    borderColor: '#14532D',
+    borderColor: '#10B981',
   },
   statusHeaderRow: {
     flexDirection: 'row',
@@ -669,7 +745,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#14532D',
+    backgroundColor: '#10B981',
     marginRight: 10,
   },
   toggleButtonTextOnline: {
@@ -746,13 +822,13 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 24,
     marginBottom: 32,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 8 },
+    shadowColor: '#1A202C',
+    shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.2,
-    shadowRadius: 12,
+    shadowRadius: 16,
     elevation: 8,
     borderWidth: 1,
-    borderColor: '#323438',
+    borderColor: '#3730A3',
   },
   activeTopRow: {
     flexDirection: 'row',
@@ -978,4 +1054,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  bottomNavContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 12, // account for home indicator
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    elevation: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  bottomNavItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  bottomNavText: {
+    fontSize: 12,
+    marginTop: 4,
+    color: '#718096',
+    fontWeight: '600',
+  }
 });

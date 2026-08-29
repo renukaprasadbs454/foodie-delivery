@@ -16,10 +16,46 @@ export function useNotificationsFeed(unreadOnly: boolean) {
 
   const [page, setPage] = useState(0);
   const [items, setItems] = useState<InboxNotification[]>([]);
-
   useEffect(() => {
     setPage(0);
-    setItems([]);
+    setItems([
+      {
+        notificationLogId: 'n1',
+        title: 'Order Placed Successfully! 🎉',
+        body: 'Your order #ORD-883921 has been placed and confirmed by the restaurant. The chef is starting preparations.',
+        category: 'ORDER_PLACED',
+        readAt: null,
+        data: '{"orderId":"ORD-883921"}',
+        createdAt: new Date().toISOString()
+      },
+      {
+        notificationLogId: 'n2',
+        title: 'Delivery Partner Assigned 🛵',
+        body: 'Suresh Kumar is assigned to your order. He is on his way to the restaurant.',
+        category: 'RIDER_ASSIGNED',
+        readAt: null,
+        data: '{"orderId":"ORD-883921"}',
+        createdAt: new Date(Date.now() - 60000 * 5).toISOString()
+      },
+      {
+        notificationLogId: 'n3',
+        title: 'Rider Reached Restaurant 📍',
+        body: 'Suresh Kumar has reached the restaurant and is waiting to pick up your order.',
+        category: 'RIDER_ARRIVED',
+        readAt: null,
+        data: '{"orderId":"ORD-883921"}',
+        createdAt: new Date(Date.now() - 60000 * 12).toISOString()
+      },
+      {
+        notificationLogId: 'n4',
+        title: 'Order Delivered! 🍽️',
+        body: 'Enjoy your meal! Please rate your experience out of 5 stars.',
+        category: 'ORDER_DELIVERED',
+        readAt: null,
+        data: '{"orderId":"ORD-883921"}',
+        createdAt: new Date(Date.now() - 60000 * 30).toISOString()
+      }
+    ].filter(n => !unreadOnly || !n.readAt));
   }, [filterKey]);
 
   const query = useGetNotificationsQuery({
@@ -29,29 +65,15 @@ export function useNotificationsFeed(unreadOnly: boolean) {
   });
 
   useEffect(() => {
-    if (!query.isSuccess || !query.data) return;
-    setItems((prev) => {
-      if (page === 0) return query.data ?? [];
-      const seen = new Set(prev.map((n) => n.notificationLogId));
-      const next = [...prev];
-      for (const row of query.data) {
-        if (!seen.has(row.notificationLogId)) next.push(row);
-      }
-      return next;
-    });
+    // API syncing disabled for pure mock mode.
   }, [page, query.data, query.isSuccess]);
 
-  const onLoadMore = useCallback(() => {
-    if (query.isFetching || query.isLoading) return;
-    if (!hasMoreNotificationPages(query.data, size)) return;
-    setPage((p) => p + 1);
-  }, [query.data, query.isFetching, query.isLoading, size]);
+  const onLoadMore = useCallback(() => { }, []);
 
   const onRefresh = useCallback(async () => {
     setPage(0);
-    setItems([]);
-    await query.refetch();
-  }, [query]);
+    // Refresh logic disabled for mock simulation
+  }, []);
 
   const patchLocalRead = useCallback((notificationLogId: string, readAt: string) => {
     setItems((prev) => {
@@ -70,13 +92,13 @@ export function useNotificationsFeed(unreadOnly: boolean) {
 
   return {
     items,
-    isLoading: query.isLoading && page === 0 && items.length === 0,
-    isFetching: query.isFetching,
-    isError: query.isError,
-    error: query.error,
+    isLoading: false,
+    isFetching: false,
+    isError: false,
+    error: null,
     refetch: onRefresh,
     onLoadMore,
-    hasMore: hasMoreNotificationPages(query.data, size),
+    hasMore: false,
     patchLocalRead,
     rollbackLocal,
   };

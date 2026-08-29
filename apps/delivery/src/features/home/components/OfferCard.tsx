@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { Button, Text, useTheme } from 'foodie-shared-rn';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import type { DeliveryOffer } from '../types';
 import { formatDistanceKm } from '../types';
 
@@ -35,9 +36,13 @@ export function OfferCard({
         <View style={styles.titleContainer}>
           <Text style={styles.restaurantTitle} numberOfLines={1}>{offer.restaurantName}</Text>
           <Text style={styles.addressSubtitle} numberOfLines={2}>{offer.pickupAddress}</Text>
+          <View style={styles.distanceBadge}>
+            <Ionicons name="navigate-circle" size={14} color="#14532D" />
+            <Text style={styles.distanceText}>{formatDistanceKm(offer.estimatedDistance)} away</Text>
+          </View>
         </View>
         <View style={styles.priceContainer}>
-          <Text style={styles.priceLabel}>Payout</Text>
+          <Text style={styles.priceLabel}>Earn</Text>
           <Text style={styles.priceAmount}>₹120</Text>
         </View>
       </View>
@@ -45,29 +50,25 @@ export function OfferCard({
       <View style={styles.divider} />
 
       <View style={styles.bottomRow}>
-        <View style={styles.statBox}>
-          <Text style={styles.statLabel}>Distance</Text>
-          <Text style={styles.statValue}>{formatDistanceKm(offer.estimatedDistance)}</Text>
-        </View>
         <View style={styles.buttonRow}>
           {onReject && (
             <Button
-              label="Reject"
+              label="Decline"
               accessibilityLabel={`Reject offer from ${offer.restaurantName}`}
               disabled={acceptDisabled || accepting}
               onPress={onReject}
               variant="secondary"
-              style={[styles.acceptButtonOverride, { backgroundColor: 'transparent', borderColor: '#E2E8F0', borderWidth: 1, marginRight: 8, elevation: 0, shadowOpacity: 0 }]}
+              style={[styles.rejectButton, { flex: 1, marginRight: 12 }]}
             />
           )}
           <Button
-            label={accepting ? '...' : 'Accept'}
+            label={accepting ? 'Accepting...' : 'Accept Delivery'}
             accessibilityLabel={`Accept offer from ${offer.restaurantName}`}
             loading={accepting}
             disabled={acceptDisabled}
             onPress={onAccept}
             variant="primary"
-            style={styles.acceptButtonOverride}
+            style={[styles.acceptButton, { flex: onReject ? 2 : 1 }]}
           />
         </View>
       </View>
@@ -81,37 +82,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 20,
     shadowColor: '#1A202C',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
   topRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
   iconSpaced: {
     marginRight: 16,
   },
   restaurantIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 107, 53, 0.2)',
+    borderColor: 'rgba(239, 68, 68, 0.2)',
   },
   restaurantIconText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#EF4444',
   },
   titleContainer: {
     flex: 1,
@@ -127,22 +128,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#718096',
     fontWeight: '500',
+    marginBottom: 8,
+  },
+  distanceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  distanceText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#14532D',
+    marginLeft: 4,
   },
   priceContainer: {
-    alignItems: 'flex-end',
-    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
   priceLabel: {
     fontSize: 11,
-    color: '#A0AEC0',
-    fontWeight: '700',
+    color: '#10B981',
+    fontWeight: '800',
     textTransform: 'uppercase',
+    marginBottom: 2,
   },
   priceAmount: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
     color: '#14532D',
   },
@@ -152,41 +172,33 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
   },
   buttonRow: {
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    width: '100%',
   },
-  statBox: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#A0AEC0',
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1A202C',
-  },
-  acceptButtonOverride: {
-    height: 48,
-    paddingHorizontal: 24,
+  rejectButton: {
+    height: 56,
     borderRadius: 16,
-    backgroundColor: '#F59E0B',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 4,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  acceptButtonTextOverride: {
-    fontSize: 15,
-    fontWeight: '800',
-  }
+  acceptButton: {
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#14532D',
+    shadowColor: '#14532D',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 });

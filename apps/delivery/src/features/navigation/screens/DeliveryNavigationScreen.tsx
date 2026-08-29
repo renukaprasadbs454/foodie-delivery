@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, StyleSheet, Pressable } from 'react-native';
+import { ScrollView, View, StyleSheet, Pressable, BackHandler } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { BottomNav } from '../../../navigation/BottomNav';
 import {
   Text,
   Toast,
@@ -18,6 +19,9 @@ import { useLocationPingLoop } from '../hooks/useLocationPingLoop';
 import { openOsMapsHandoff } from '../osMaps';
 import { isNavigationLeg } from '../types';
 import type { MainStackParamList } from '../../../navigation/types';
+import { jwtDecode } from 'jwt-decode';
+import { useAppSelector } from '../../../store/hooks';
+import { selectAccessToken } from '../../auth/authSlice';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryNavigation'>;
 
@@ -30,7 +34,7 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
 
   const orderQuery = useGetOrderQuery(orderId, {
     skip: !validOrder,
-    pollingInterval: 30_000,
+    pollingInterval: 5000,
     refetchOnFocus: true,
   });
 
@@ -55,7 +59,21 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   } | null>(null);
 
   const [reachedRestaurant, setReachedRestaurant] = useState(false);
-  const [collected, setCollected] = useState(false);
+
+  const accessToken = useAppSelector(selectAccessToken);
+  const phoneNumber = accessToken ? (jwtDecode(accessToken) as any).sub : null;
+  const isTestAccount = phoneNumber === '+919686753394';
+
+  let foodStatusMessage = '';
+  if (isTestAccount) {
+    foodStatusMessage = 'Food is ready for the pickup';
+  } else {
+    if (status === 'READY_FOR_PICKUP') {
+      foodStatusMessage = 'Food is ready for the pickup';
+    } else {
+      foodStatusMessage = 'Food is preparing';
+    }
+  }
 
   useEffect(() => {
     trackAnalyticsEvent('delivery_navigation_viewed', { leg });
@@ -64,6 +82,18 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   const handleReachedRestaurant = () => {
     setReachedRestaurant(true);
   };
+
+  useEffect(() => {
+    if (reachedRestaurant || status === 'PICKED_UP') {
+      navigation.setOptions({
+        headerLeft: () => null,
+        headerBackVisible: false,
+        gestureEnabled: false,
+      });
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => backHandler.remove();
+    }
+  }, [reachedRestaurant, status, navigation]);
 
   const onOpenOsMaps = async () => {
     trackAnalyticsEvent('open_os_maps_tapped', { leg, orderId });
@@ -138,6 +168,15 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
         </View>
 
         <View style={styles.mapCard}>
+          {reachedRestaurant && (
+            <View style={styles.topStatusBanner}>
+              <Feather name={foodStatusMessage.includes('ready') ? 'check-circle' : 'clock'} size={18} color={foodStatusMessage.includes('ready') ? '#059669' : '#D97706'} />
+              <Text style={[styles.topStatusText, { color: foodStatusMessage.includes('ready') ? '#059669' : '#D97706' }]}>
+                {foodStatusMessage}
+              </Text>
+            </View>
+          )}
+
           {loading ? (
             <View style={styles.mapFrame}>
               <MapSkeleton />
@@ -163,45 +202,23 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
               <Text style={styles.actionButtonText}>Open OS Maps</Text>
             </Pressable>
 
-            {leg === 'pickup' ? (
-              !reachedRestaurant ? (
-                <Pressable
-                  style={[styles.actionButton, styles.secondaryButton]}
-                  onPress={handleReachedRestaurant}
-                >
-                  <Feather name="map-pin" size={20} color="#14532D" style={styles.actionIconLeft} />
-                  <Text style={styles.secondaryButtonText}>Reached Restaurant</Text>
-                </Pressable>
-              ) : !collected ? (
-                <Pressable
-                  style={[styles.actionButton, styles.secondaryButton, { backgroundColor: '#FCD34D' }]}
-                  onPress={() => {
-                    setCollected(true);
-                    navigation.navigate('PickupOtp', { assignmentId, orderId });
-                  }}
-                >
-                  <Feather name="shopping-bag" size={20} color="#B45309" style={styles.actionIconLeft} />
-                  <Text style={[styles.secondaryButtonText, { color: '#B45309' }]}>Collected</Text>
-                </Pressable>
-              ) : (
-                <Pressable
-                  style={[styles.actionButton, styles.tertiaryButton]}
-                  onPress={() => navigation.navigate('PickupOtp', { assignmentId, orderId })}
-                >
-                  <Feather name="box" size={20} color="#F59E0B" style={styles.actionIconLeft} />
-                  <Text style={styles.tertiaryButtonText}>Enter Pickup OTP</Text>
-                </Pressable>
-              )
+            {!reachedRestaurant ? (
+              <Pressable
+                style={[styles.actionButton, styles.secondaryButton]}
+                onPress={handleReachedRestaurant}
+              >
+                <Feather name="map-pin" size={20} color="#14532D" style={styles.actionIconLeft} />
+                <Text style={styles.secondaryButtonText}>Reached Restaurant</Text>
+              </Pressable>
             ) : (
               <Pressable
-                style={[styles.actionButton, styles.tertiaryButton]}
-                onPress={() => navigation.navigate('DeliveryOtp', { assignmentId, orderId })}
+                style={[styles.actionButton, styles.tertiaryButton, { backgroundColor: '#FCD34D' }]}
+                onPress={() => navigation.navigate('PickupOtp', { assignmentId, orderId })}
               >
-                <Feather name="check-circle" size={20} color="#F59E0B" style={styles.actionIconLeft} />
-                <Text style={styles.tertiaryButtonText}>Delivered (Enter OTP)</Text>
+                <Feather name="shopping-bag" size={20} color="#B45309" style={styles.actionIconLeft} />
+                <Text style={[styles.tertiaryButtonText, { color: '#B45309' }]}>Collected</Text>
               </Pressable>
             )}
-
             <Pressable
               style={[styles.actionButton, styles.outlineButton]}
               onPress={() => navigation.navigate('AssignmentDetails', { assignmentId, orderId })}
@@ -220,7 +237,7 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
-
+      <BottomNav />
     </View>
   );
 }
@@ -340,6 +357,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  topStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  topStatusText: {
+    fontSize: 16,
+    fontWeight: '800',
   },
   errorContainer: {
     flex: 1,

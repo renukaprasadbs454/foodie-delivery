@@ -16,11 +16,9 @@ export function middleware(request: NextRequest) {
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   const hasAuth = Boolean(accessToken || refreshToken);
 
-  // If visiting /login while authenticated, redirect to Dashboard /
-  if (hasAuth && pathname === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
+  // Allow visiting /login freely so users can switch admin role personas
+  if (pathname === '/login') {
+    return NextResponse.next();
   }
 
   // If visiting protected routes while unauthenticated, redirect to /login
@@ -45,5 +43,9 @@ export const config = {
     '/reviews/:path*',
     '/analytics/:path*',
     '/audit-log/:path*',
+    '/darkstore-admin/:path*',
+    '/finance-admin/:path*',
+    '/support-admin/:path*',
+    '/restaurant-admin/:path*',
   ],
 };

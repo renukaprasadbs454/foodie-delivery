@@ -9,7 +9,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       initialMode="light"
       themeOverride={() => theme}
     >
-      {children as never}
+      {children}
     </SharedThemeProvider>
   );
 }

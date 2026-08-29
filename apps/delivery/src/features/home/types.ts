@@ -51,8 +51,15 @@ export type OrderDetail = {
   orderNumber: string;
   status: string;
   customerId?: string;
+  customerName?: string;
+  customerPhone?: string;
+  deliveryAddress?: string;
   restaurantId?: string;
+  restaurantName?: string;
+  restaurantPhone?: string;
+  restaurantAddress?: string;
   addressId?: string;
+  estimatedDistance?: number;
   subtotal: number | string;
   deliveryFee: number | string;
   discountAmount: number | string;

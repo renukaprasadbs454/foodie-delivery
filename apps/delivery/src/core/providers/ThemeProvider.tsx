@@ -8,7 +8,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       initialMode="light"
       themeOverride={(mode: ColorMode) => createDeliveryTheme(mode)}
     >
-      {children as never}
+      {children}
     </SharedThemeProvider>
   );
 }

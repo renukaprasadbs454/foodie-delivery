@@ -28,6 +28,7 @@ export const baseApi = createBaseApi({
     'Coupon',
     'Order',
     'Notification',
+    'WalletBalance',
   ] as const,
   getAccessToken: (state: unknown): string | null =>
     selectAccessToken(state as AuthRoot),

@@ -5,6 +5,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../../navigation/types';
 import { useGetWalletLedgerQuery } from '../../../api/endpoints/walletApi';
+import { BottomNav } from '../../../navigation/BottomNav';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -79,9 +80,11 @@ export function IncentivesScreen({ navigation }: Props) {
 
     return (
         <View style={styles.container}>
+            <View style={[styles.topArch, { height: 180 }]} />
+
             <View style={styles.appBar}>
                 <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Feather name="arrow-left" size={24} color="#1A202C" />
+                    <Feather name="arrow-left" size={24} color="#FFFFFF" />
                 </Pressable>
                 <Text style={styles.appTitle}>Extra Earning Offers</Text>
             </View>
@@ -150,7 +153,7 @@ export function IncentivesScreen({ navigation }: Props) {
                         </View>
                         <View style={styles.divider} />
                         <View style={styles.statRow}>
-                            <Feather name="dollar-sign" size={24} color="#10B981" />
+                            <Feather name="dollar-sign" size={24} color="#14532D" />
                             <View style={styles.statInfo}>
                                 <Text style={styles.statValue}>₹{incentiveToday.toFixed(2)}</Text>
                                 <Text style={styles.statLabel}>Incentives Earned</Text>
@@ -172,6 +175,7 @@ export function IncentivesScreen({ navigation }: Props) {
                     </Text>
                 </View>
             </ScrollView>
+            <BottomNav />
         </View>
     );
 }
@@ -179,30 +183,44 @@ export function IncentivesScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F5F7FA',
+    },
+    topArch: {
+        position: 'absolute',
+        top: 0,
+        width: '100%',
+        backgroundColor: '#14532D',
     },
     appBar: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingTop: 60,
-        paddingBottom: 16,
+        paddingBottom: 24,
         paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF',
     },
     backButton: {
-        padding: 8,
-        marginRight: 8,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
     },
     appTitle: {
-        fontSize: 20,
+        fontSize: 24,
         fontWeight: '800',
-        color: '#1A202C',
+        color: '#FFFFFF',
     },
     // ── Calendar Strip ──
     calendarStrip: {
         borderBottomWidth: 1,
         borderBottomColor: '#E2E8F0',
         backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        paddingTop: 8,
+        marginTop: -16,
     },
     calendarContent: {
         paddingHorizontal: 8,
@@ -218,10 +236,10 @@ const styles = StyleSheet.create({
         position: 'relative',
     },
     dayCellSelected: {
-        backgroundColor: '#FF5722',
+        backgroundColor: '#F59E0B',
     },
     dayCellToday: {
-        backgroundColor: '#FFF3EE',
+        backgroundColor: '#FFFBEB',
     },
     dayName: {
         fontSize: 12,
@@ -233,7 +251,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     dayNameToday: {
-        color: '#FF5722',
+        color: '#F59E0B',
         fontWeight: '700',
     },
     dayNameFuture: {
@@ -248,7 +266,7 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
     dayNumberToday: {
-        color: '#FF5722',
+        color: '#F59E0B',
     },
     dayNumberFuture: {
         color: '#CBD5E0',
