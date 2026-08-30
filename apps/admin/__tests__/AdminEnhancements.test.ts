@@ -12,7 +12,7 @@ describe('6amMart Admin Panel Navigation & Role Configuration', () => {
     expect(businessItems.map(i => i.href)).toEqual(['/members', '/users', '/customers', '/restaurants', '/delivery-partners', '/other', '/location', '/social-media']);
     expect(orderItems.map(i => i.href)).toEqual(['/orders']);
     expect(financeItems.map(i => i.href)).toEqual(['/coupons', '/payments']);
-    expect(systemItems.map(i => i.href)).toEqual(['/approvals', '/reviews', '/audit-log', '/settings']);
+    expect(systemItems.map(i => i.href)).toEqual(['/reviews', '/audit-log', '/settings']);
   });
 
   it('includes icons and badges on 6amMart navigation items', () => {
@@ -47,15 +47,20 @@ describe('6amMart Admin Panel Navigation & Role Configuration', () => {
 
   it('correctly filters categorized navigation for different roles', () => {
     const superAdminNav = filterNavForRole('SUPER_ADMIN');
-    expect(superAdminNav.length).toBe(18);
+    expect(superAdminNav.length).toBe(17);
 
     const supportNav = filterNavForRole('SUPPORT');
     expect(supportNav.map(i => i.href)).toEqual([
       '/',
       '/dashboard',
       '/analytics',
+      '/members',
       '/users',
       '/customers',
+      '/restaurants',
+      '/delivery-partners',
+      '/other',
+      '/location',
       '/social-media',
       '/orders',
       '/reviews',

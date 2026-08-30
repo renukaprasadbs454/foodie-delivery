@@ -13,16 +13,10 @@ export type AdminLoginIdentity = {
   role: AdminRole;
 };
 
-export type AdminUserProfile = {
-  adminUserId: string;
-  userCredentialId: string;
-  fullName: string;
-  role: AdminRole;
-  profileImageKey?: string | null;
-  restaurantId?: string | null;
-  permissions?: string[];
-};
-
+/**
+ * P2-AUTH-04 / GAP-API-13 — Admin auth BFF endpoints.
+ * Login sets httpOnly cookies via BFF; logout + refresh are cookie/BFF only.
+ */
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<AdminLoginIdentity, AdminLoginRequest>({
@@ -40,20 +34,7 @@ export const authApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Auth'],
     }),
-    getAdminMe: builder.query<AdminUserProfile, void>({
-      query: () => ({
-        url: '/api/bff/admin/users/me',
-        method: 'GET',
-      }),
-      transformResponse: (response: any) => {
-        if (response && response.data) {
-          return response.data;
-        }
-        return response;
-      },
-      providesTags: ['Auth'],
-    }),
   }),
 });
 
-export const { useLoginMutation, useLogoutMutation, useGetAdminMeQuery } = authApi;
+export const { useLoginMutation, useLogoutMutation } = authApi;
