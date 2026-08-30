@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState } from 'react';
 import {
   Button,
   Text,
@@ -28,9 +27,9 @@ function loginErrorMessage(code: string | undefined): string {
     case 'VALIDATION_FAILED':
       return 'Please check email and password formatting, then try again.';
     case 'NETWORK_ERROR':
-      return 'Network connection error. Check your network and try again.';
+      return 'Network connection error or backend server offline. Try again.';
     default:
-      return 'Sign-in failed. Please try again.';
+      return 'Sign-in failed. Please check your credentials and backend server connection.';
   }
 }
 
@@ -39,10 +38,6 @@ interface AdminLoginFormProps {
   initialPassword?: string;
 }
 
-/**
- * P2-AUTH-04 Admin Login — UI-API AdminLogin.
- * Connected to BFF POST /api/auth/login (GAP-API-13 closed).
- */
 export function AdminLoginForm({
   initialEmail = 'admin@foodie.local',
   initialPassword = 'ChangeMe@123',
@@ -50,7 +45,6 @@ export function AdminLoginForm({
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const dispatch = useAppDispatch();
-  const router = useRouter();
   const [login, { isLoading }] = useLoginMutation();
   const [selectedRole, setSelectedRole] = useState<string>('SUPER_ADMIN');
   const [email, setEmail] = useState(initialEmail);
@@ -116,17 +110,7 @@ export function AdminLoginForm({
       setPassword(target.pass);
       setEmailError(undefined);
       setPasswordError(undefined);
-      localStorage.setItem('foodie_admin_role', roleKey);
-      sessionStorage.setItem('foodie_admin_role', roleKey);
     }
-  };
-
-  const handleFillRole = (roleKey: string, demoEmail: string, demoPass: string) => {
-    handleRoleSelect(roleKey);
-    setToast({
-      message: `Auto-filled ${roleKey} credentials (${demoEmail})`,
-      variant: 'info',
-    });
   };
 
   const onSubmit = async (event: React.FormEvent) => {
@@ -148,29 +132,15 @@ export function AdminLoginForm({
       setEmailError('Enter a valid admin email address (e.g. admin@foodie.local).');
       valid = false;
     }
+
     if (!isNonEmptyPassword(password)) {
       setPasswordError('Password is required.');
       valid = false;
     }
     if (!valid) return;
 
-    // Detect role from email or selected dropdown
-    let activeRole = selectedRole;
-    const lowerEmail = email.toLowerCase();
-    if (lowerEmail.includes('darkstore')) activeRole = 'DARKSTORE_ADMIN';
-    else if (lowerEmail.includes('finance')) activeRole = 'FINANCE_ADMIN';
-    else if (lowerEmail.includes('ops')) activeRole = 'OPERATIONS_ADMIN';
-    else if (lowerEmail.includes('manager')) activeRole = 'RESTAURANT_MANAGER';
-    else if (lowerEmail.includes('support')) activeRole = 'SUPPORT_AGENT';
-    else if (lowerEmail.includes('auditor')) activeRole = 'AUDITOR';
-
-    localStorage.setItem('foodie_admin_role', activeRole);
-    sessionStorage.setItem('foodie_admin_role', activeRole);
-
     trackAnalyticsEvent('login_submitted');
     trackAnalyticsEvent('admin_auth_attempted');
-
-    const redirectPath = getHomeRouteForRole(activeRole);
 
     try {
       const identity = await login({
@@ -179,25 +149,27 @@ export function AdminLoginForm({
         deviceInfo: 'Admin Panel',
       }).unwrap();
 
+      const backendRole = identity.role || selectedRole;
+
       dispatch(
         setSession({
           userId: identity.userId,
-          role: (identity.role || activeRole) as any,
+          role: backendRole as any,
           userType: 'ADMIN',
         }),
       );
-      trackAnalyticsEvent('admin_auth_succeeded', { role: identity.role || activeRole });
+
+      trackAnalyticsEvent('admin_auth_succeeded', { role: backendRole });
+      const redirectPath = getHomeRouteForRole(backendRole);
       window.location.href = redirectPath;
-    } catch (error) {
-      // In dev mode when offline or demo credentials tested, allow sign-in with active role profile
-      dispatch(
-        setSession({
-          userId: '44444444-4444-4444-4444-444444444001',
-          role: activeRole as any,
-          userType: 'ADMIN',
-        }),
-      );
-      window.location.href = redirectPath;
+    } catch (err: any) {
+      trackAnalyticsEvent('admin_auth_failed');
+      const errorCode = err?.data?.error?.code || err?.error;
+      const message = err?.data?.error?.message || loginErrorMessage(errorCode);
+      setToast({
+        message,
+        variant: 'error',
+      });
     }
   };
 
@@ -219,11 +191,11 @@ export function AdminLoginForm({
           Sign In to Admin Panel
         </Text>
         <Text variant="body" color={tokens.color.textSecondary} style={{ fontSize: 13, lineHeight: 1.5 }}>
-          Select your administrative role below to log in and open your role-specific dashboard.
+          Select an admin role account below to auto-fill development credentials, or enter custom email & password.
         </Text>
       </div>
 
-      {/* Primary Role Selector Dropdown */}
+      {/* Role Selection Dropdown */}
       <div
         style={{
           display: 'flex',
@@ -246,7 +218,7 @@ export function AdminLoginForm({
             letterSpacing: '0.5px',
           }}
         >
-          Select Admin Role Persona:
+          Select Admin Role Preset:
         </label>
         <select
           id="admin-role-select"
@@ -349,4 +321,3 @@ export function AdminLoginForm({
     </form>
   );
 }
-
