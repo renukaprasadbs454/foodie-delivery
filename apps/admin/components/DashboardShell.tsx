@@ -1,38 +1,62 @@
 'use client';
 
-import React, { type ReactNode } from 'react';
+import React, { useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { EmptyState } from 'foodie-shared-web';
+import { Button, EmptyState, Text } from 'foodie-shared-web';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { selectAdminRole, selectUserId } from '@/features/auth/authSlice';
+import {
+  clearSession,
+  selectAdminRole,
+  selectUserId,
+  setSession,
+} from '@/features/auth/authSlice';
+import { useGetAdminMeQuery } from '@/api/endpoints/authApi';
 import { logoutAdmin } from '@/features/auth/session';
-import { filterNavForRole, type NavCategory, type NavItem } from '@/lib/routeGuards';
+import {
+  filterNavForRole,
+  getHomeRouteForRole,
+  isRouteAllowedForRole,
+} from '@/lib/routeGuards';
 import { AdminHeaderBar } from '@/components/AdminHeaderBar';
 import { AiAssistantWidget } from '@/components/AiAssistantWidget';
 import { AdminFooter } from '@/components/AdminFooter';
 
-/**
- * Dashboard chrome — 6amMart Multi-Vendor Executive Design.
- */
 export function DashboardShell({ children }: { children: ReactNode }) {
-  const role = useAppSelector(selectAdminRole);
-  const userId = useAppSelector(selectUserId);
-  const nav = filterNavForRole(role);
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
+  const role = useAppSelector(selectAdminRole);
+  const userId = useAppSelector(selectUserId);
   const [loggingOut, setLoggingOut] = React.useState(false);
 
-  // Granular client-side RBAC URL protection
-  React.useEffect(() => {
-    import('@/lib/routeGuards').then(({ isRouteAllowedForRole, getHomeRouteForRole }) => {
-      if (role && !isRouteAllowedForRole(pathname, role)) {
-        const targetHome = getHomeRouteForRole(role);
-        router.replace(targetHome);
+  // Fetch current authenticated user profile from backend ME API
+  const { data: meProfile, isError: isMeError, error: meError } = useGetAdminMeQuery(undefined, {
+    skip: false,
+  });
+
+  useEffect(() => {
+    if (meProfile) {
+      dispatch(
+        setSession({
+          userId: meProfile.adminUserId,
+          role: meProfile.role,
+          userType: 'ADMIN',
+          fullName: meProfile.fullName,
+          permissions: meProfile.permissions || [],
+        }),
+      );
+    } else if (isMeError) {
+      const status = (meError as any)?.status;
+      if (status === 401 || status === 403) {
+        dispatch(clearSession());
+        router.replace('/login');
       }
-    });
-  }, [pathname, role, router]);
+    }
+  }, [meProfile, isMeError, meError, dispatch, router]);
+
+  const nav = filterNavForRole(role);
+  const isAllowedRoute = isRouteAllowedForRole(pathname, role);
 
   // Compact Hover-to-Peek Panel state
   const [isCompact, setIsCompact] = React.useState(false);
@@ -134,7 +158,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             ) : null}
 
             {/* Navigation Links */}
-            <nav aria-label="Admin" style={{ flex: 1, overflowY: 'auto' }}>
+            <nav aria-label="Admin Navigation" style={{ flex: 1, overflowY: 'auto' }}>
               <ul
                 style={{
                   listStyle: 'none',
@@ -223,8 +247,47 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             onToggleCompact={() => setIsCompact((prev) => !prev)}
           />
 
-          {/* Page Content Container */}
-          <main style={{ padding: '28px 32px', flex: 1, backgroundColor: '#F8FAFC' }}>{children}</main>
+          {/* Page Content Container / 403 Forbidden Gate */}
+          <main style={{ padding: '28px 32px', flex: 1, backgroundColor: '#F8FAFC' }}>
+            {!isAllowedRoute ? (
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 400,
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 16,
+                  padding: 40,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+                <Text as="h2" variant="heading1" style={{ fontSize: 22, fontWeight: 800, color: '#991B1B', marginBottom: 8 }}>
+                  403 — Access Restricted
+                </Text>
+                <Text variant="body" style={{ color: '#475569', maxWidth: 460, marginBottom: 24, fontSize: 14 }}>
+                  Your administrative account ({role || 'UNASSIGNED'}) is not authorized to access <strong>{pathname}</strong>.
+                </Text>
+                <Button
+                  label={`Go to ${role ? role : 'Home'} Dashboard`}
+                  aria-label={`Navigate to ${role ? role : 'Home'} dashboard`}
+                  onClick={() => router.push(getHomeRouteForRole(role))}
+                  style={{
+                    backgroundColor: '#0F3D21',
+                    color: '#FFFFFF',
+                    padding: '10px 20px',
+                    fontWeight: 700,
+                    borderRadius: 8,
+                  }}
+                />
+              </div>
+            ) : (
+              children
+            )}
+          </main>
         </div>
       </div>
 
@@ -246,4 +309,3 @@ export function FoundationPlaceholder({ title }: { title: string }) {
     />
   );
 }
-
