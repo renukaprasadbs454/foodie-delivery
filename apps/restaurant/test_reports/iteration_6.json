@@ -1,0 +1,23 @@
+{
+  "summary": "Multi-role (owner/employee/kitchen) tested end-to-end. All 6 pytest cases pass (auth/onboarding/restaurant/team/PIN rotation/staff login+RBAC). All 14 Playwright scenarios pass: unauth login shows both buttons; fresh-owner onboarding form renders and submits; onboarded owner sees full nav + Owner Toolkit + Realtime Controls; Team page copy/toggle/add/remove/rotate all work; employee staff login lands on /orders with restricted sidebar and hard-gate redirects /payouts and /team to /orders; kitchen staff login lands on /kitchen with only nav-kitchen, /orders redirects to /kitchen; role label 'Kitchen crew' correct; logout returns to /login.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_multirole.py",
+    "/app/test_reports/pytest/multirole.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py stores employee_pin_plain/kitchen_pin_plain in the DB alongside hashes so the owner Team page can show them. This is convenient but weakens defence-in-depth: a DB leak reveals every staff PIN. Consider hashing only and re-issuing PINs on rotation (owner sees plain only on the rotation response).",
+    "App.js is 499 lines and packs Shell, all pages, auth, controls, and hub in one file. Split into src/pages/*, src/components/Shell.jsx, src/auth/* for maintainability.",
+    "StaffLoginPage.doLogin calls window.location.reload() after navigate — the navigate becomes a no-op due to the reload. Works because the reload rehydrates via /api/auth/me, but cleaner to just reload OR just navigate+refetch.",
+    "TeamPage `rest[`${role}_pin`]` relies on backend keys employee_pin/kitchen_pin — consistent, but no loading/error UI when PATCH/POST fail (silent fail on network errors)."
+  ],
+  "updated_files": ["/app/backend/tests/test_multirole.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Seeded via mongosh (see test_multirole.py::seed_owner and inline e2e seed). Owner sessions use role='owner'; staff sessions issued through /api/staff/login. Fresh e2e seed cookie flags: httpOnly, secure, sameSite=None, domain=partner-panel-2.preview.emergentagent.com.",
+  "seed_data_creation": "test_multirole.py seeds+cleans per-test owners prefixed 'test-owner-'. Frontend run used e2e-owner-onboarded / e2e-owner-fresh which were cleaned up after run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend endpoints: /api/onboarding, /api/restaurant (GET/PATCH), /api/team (POST) + /api/team/{id} (DELETE), /api/staff/lookup, /api/staff/login all working. Session cookie set with httpOnly+secure+samesite=none. RBAC enforced on owner-only endpoints (403 for staff cookies). Frontend Shell + RoleGate + HOME_ROUTE all wired correctly. If regression needed, re-run pytest and the Playwright script; no known flaky tests."
+}

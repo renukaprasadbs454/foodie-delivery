@@ -1,0 +1,45 @@
+{
+  "summary": "Frontend testing completed for countdowns and auto-rejection, role permissions, offers creation/preview, realtime controls, routes, and responsive overflow. Core flows passed, but selected-order detail does not refresh after timer auto-rejection.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Order detail / countdown auto-rejection",
+        "issue": "When the selected new order expires, its queue row changes to Rejected but the selected detail remains in the new state with the timer, progress, and Accept/Reject actions; rejected feedback is not shown.",
+        "selector": "[data-testid=order-detail-panel]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Order queue counts",
+        "issue": "New filter tab text and sidebar badge remain hardcoded as New (3) and 3 after orders are rejected or added, so displayed counts can disagree with queue state.",
+        "affected_selectors": ["[data-testid=order-filter-new]", "[data-testid=orders-badge]"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_3.json"],
+  "action_items": [
+    "Synchronize Orders.selected with the updated orders collection (or derive selected order by id) so timer auto-rejection updates the detail panel and removes its actions/timer.",
+    "Derive New filter and sidebar badge counts from current order state instead of hardcoded values.",
+    "Replace the intentionally MOCKED frontend-only service adapters before production use; no real persistence or API failure handling is present."
+  ],
+  "critical_code_review_comments": [
+    "Orders stores a copied selected order object; App's expiry timer only updates setOrders, so selected detail becomes stale after automatic rejection.",
+    "All domain state and integrations remain MOCKED in-memory and are not consumed from frontend/src/services/index.js."
+  ],
+  "updated_files": ["/app/test_reports/iteration_3.json"],
+  "success_rate": {
+    "backend": "not tested (frontend-only request)",
+    "frontend": "94%"
+  },
+  "seed_data_creation": "None; used existing mock data and fired temporary in-memory test orders.",
+  "retest_needed": true,
+  "should_call_test_agent_after_fix": true,
+  "context_for_next_testing_agent": "Login, countdown display, manual reject feedback, auto-rejection row state, role restrictions, menu edit disabling, offers create/preview, realtime gating/latency, routes, and 375/768/1024/1440 overflow were exercised. Re-test selected detail after expiry and dynamic counts after fixes.",
+  "rca of the issue": "In App.js the expiry interval calls setOrders with updated statuses. Orders initializes local selected from orders[0] and only updates selected inside its manual update handler; it does not reconcile selected when the orders prop changes. Therefore the row is rejected while Detail continues rendering the old selected object with status new."
+}

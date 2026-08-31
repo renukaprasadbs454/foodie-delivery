@@ -1,0 +1,28 @@
+{
+  "summary": "Iteration 7 hardening pass validated end-to-end. Backend: 7/7 pytest cases green (team POST returns {member, pin} with pin_hash only in DB and no plaintext pin field; GET /api/restaurant no longer exposes employee_pin/kitchen_pin and members carry no pin fields; staff/lookup+login correct pin succeeds and wrong pin returns 401; POST /api/team/{id}/rotate-pin returns fresh 4-digit pin, invalidates only that member's sessions, old pin fails and new pin works while member B session and PIN remain valid; POST /api/activity works for owner+staff and stores actor_name/actor_role/restaurant_id, missing restaurant_id on session -> 400; GET /api/activity RBAC — owner sees all restaurant events, staff sees only own; Owner allowlist — with OWNER_ALLOWED_EMAILS set, non-listed owner gets 403 on /api/onboarding and listed owner gets 200). Frontend: 11/11 flows green (owner onboarding, Team page code+copy+add member with pin-reveal-modal/value/copy/ack, removed testids confirmed gone, rotate-pin returns new pin in modal, staff sign-in on /staff-login using latest rotated PIN with toggle-staff-pin lands on /orders, employee accept fires logActivity, employee /api/activity returns only own events and /api/restaurant returns 403, owner /overview activity-feed shows employee 'accepted' entry, remove-member deletes row, and OWNER_ALLOWED_EMAILS non-match shows onboarding-blocked with onboarding-logout returning to /login). backend/.env was restored to default (no OWNER_ALLOWED_EMAILS) and backend restarted after tests.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_hardening.py",
+    "/app/test_reports/pytest/hardening.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "App.js is now 615 lines — routing, all pages, PinRevealModal, FeatureHub, Shell all in one file. Recommend splitting into src/pages/*, src/components/*, src/auth/*.",
+    "server.py rotate-pin flow deletes all user_sessions with user_id==member_id, which is correct — but the owner_email allowlist check reads the env at request-time via _allowed_owner_emails() which is good (no restart-hot-reload gotcha). Consider unifying with a startup-cached set for a tiny perf win.",
+    "StaffLoginPage.doLogin uses window.location.href = HOME_ROUTE[role] to hard-navigate after login, which forces a fresh /api/auth/me. Works, but a plain navigate + fetchMe would avoid a full reload.",
+    "FeatureHub polls /api/activity every 15s AND on every orderTick (orders state change). On busy tables, that could over-fetch; consider debouncing or a WebSocket if the activity feed becomes chatty.",
+    "POST /api/activity is fire-and-forget in the UI (errors swallowed). If the endpoint 400s (e.g., staff session missing restaurant_id) the owner would silently miss the event. Low-severity but worth surfacing a toast in the future."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_hardening.py",
+    "/app/backend/.env (temporarily during allowlist tests; restored to original 3-key form)"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Seeded via mongosh: users doc + user_sessions doc with role='owner'. Staff sessions issued through /api/staff/login. Cookie flags used for browser tests: session_token, domain=partner-panel-2.preview.emergentagent.com, httpOnly, secure, sameSite=None, path=/.",
+  "seed_data_creation": "test_hardening.py seeds 'test-owner-<uuid>' owners per-test with unique emails and cleans up (restaurants, team_members, activity_events, user_sessions, users). Frontend flow seeded 'e2e-owner-<uuid>' and 'e2e-blocked-<uuid>' with matching cleanup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend has new endpoints: POST /api/team returns {member, pin}, POST /api/team/{id}/rotate-pin returns {member_id, pin}, POST/GET /api/activity (RBAC by session role). GET /api/restaurant NO LONGER returns employee_pin/kitchen_pin — regression suite /app/backend/tests/test_multirole.py has stale assertions expecting those fields (still on disk, would fail if re-run); the current source of truth for regression is /app/backend/tests/test_hardening.py. Frontend new testids: pin-reveal-modal, pin-reveal-value, pin-reveal-copy, pin-reveal-ack, rotate-pin-<id>, toggle-staff-pin, activity-feed, activity-<id>, refresh-activity-button, onboarding-blocked, onboarding-logout. Owner allowlist requires backend restart after .env change — always restore to no OWNER_ALLOWED_EMAILS key before finishing. If flakiness appears in the shift-handover feed test, wait 1-2s after posting activity because FeatureHub polls on a 15s interval (use refresh-activity-button to force fresh fetch).",
+  "rca of the issue": "N/A — no defects found. The one initial frontend failure (allowlist-blocked-flow) was a self-test bug: inline python-in-bash escape didn't restart backend with the OWNER_ALLOWED_EMAILS var, so onboarding still succeeded. Retested with a direct .env rewrite + supervisorctl restart backend and the blocked screen appeared correctly and Sign out navigated to /login."
+}
