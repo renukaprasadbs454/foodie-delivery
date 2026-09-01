@@ -126,7 +126,7 @@ export function CheckoutScreen({ navigation, route }: any) {
       }).unwrap();
       trackAnalyticsEvent('checkout_completed', { orderId: order.orderId });
       placeAttemptKey.current = null;
-      navigation.replace('Payment', { orderId: order.orderId, useWallet });
+      navigation.replace('Payment', { orderId: order.orderId, useWallet, mockTotal: grandTotal });
     } catch (err) {
       handleError(toUnwrappedApiError(err));
     }

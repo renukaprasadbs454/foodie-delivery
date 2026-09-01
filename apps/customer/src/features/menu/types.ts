@@ -36,6 +36,7 @@ export type FullMenu = {
 export type CartItem = {
   cartItemId: string;
   menuItemId: string;
+  name?: string;
   variantId?: string | null;
   quantity: number;
   notes?: string | null;
@@ -53,6 +54,7 @@ export type Cart = {
 /** §5.2 AddCartItemRequest */
 export type AddCartItemRequest = {
   menuItemId: string;
+  name?: string;
   variantId?: string | null;
   quantity: number;
   notes?: string | null;

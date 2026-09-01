@@ -29,7 +29,7 @@ function AuthenticatedNavigator() {
     }
   }, [data, isLoading, isFetching, dispatch]);
 
-  if (isLoading || isFetching) {
+  if (isLoading) {
     return <SplashScreen />;
   }
 

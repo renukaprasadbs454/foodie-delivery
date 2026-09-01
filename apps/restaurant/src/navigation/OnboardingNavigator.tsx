@@ -1,7 +1,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAppSelector } from '../store/hooks';
-import { selectRestaurantId } from '../features/onboarding/restaurantOnboardingSlice';
+import { useGetRestaurantProfileQuery } from '../api/endpoints/restaurantsApi';
 import { RestaurantRegistrationScreen } from '../features/onboarding/screens/RestaurantRegistrationScreen';
 import { RestaurantDocumentsScreen } from '../features/onboarding/screens/RestaurantDocumentsScreen';
 import { RestaurantImagesScreen } from '../features/onboarding/screens/RestaurantImagesScreen';
@@ -15,8 +15,8 @@ const Stack = createNativeStackNavigator<OnboardingStackParamList>();
  * Initial route: Pending when restaurantId known (returning PENDING session).
  */
 export function OnboardingNavigator() {
-  const restaurantId = useAppSelector(selectRestaurantId);
-  const initialRouteName = restaurantId
+  const { data } = useGetRestaurantProfileQuery();
+  const initialRouteName = data?.restaurantId
     ? 'PendingApproval'
     : 'RestaurantRegistration';
 

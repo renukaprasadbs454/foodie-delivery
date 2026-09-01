@@ -114,16 +114,20 @@ export const restaurantsApi = baseApi.injectEndpoints({
     }),
     uploadRestaurantDocument: builder.mutation<
       RestaurantDocumentUploadResult,
-      { docType: RestaurantDocType; uri: string; mimeType: string; fileName: string }
+      { docType: RestaurantDocType; uri: string; mimeType: string; fileName: string; fileObj?: any }
     >({
-      query: ({ docType, uri, mimeType, fileName }) => {
+      query: ({ docType, uri, mimeType, fileName, fileObj }) => {
         const formData = new FormData();
         formData.append('docType', docType);
-        formData.append('file', {
-          uri,
-          type: mimeType,
-          name: fileName,
-        } as unknown as Blob);
+        if (fileObj) {
+          formData.append('file', fileObj);
+        } else {
+          formData.append('file', {
+            uri,
+            type: mimeType,
+            name: fileName,
+          } as unknown as Blob);
+        }
         return {
           url: '/api/v1/restaurants/me/documents',
           method: 'POST',
@@ -139,16 +143,21 @@ export const restaurantsApi = baseApi.injectEndpoints({
         uri: string;
         mimeType: string;
         fileName: string;
+        fileObj?: any;
       }
     >({
-      query: ({ imageType, uri, mimeType, fileName }) => {
+      query: ({ imageType, uri, mimeType, fileName, fileObj }) => {
         const formData = new FormData();
         formData.append('imageType', imageType);
-        formData.append('file', {
-          uri,
-          type: mimeType,
-          name: fileName,
-        } as unknown as Blob);
+        if (fileObj) {
+          formData.append('file', fileObj);
+        } else {
+          formData.append('file', {
+            uri,
+            type: mimeType,
+            name: fileName,
+          } as unknown as Blob);
+        }
         return {
           url: '/api/v1/restaurants/me/images',
           method: 'POST',

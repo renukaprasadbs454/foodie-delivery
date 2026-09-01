@@ -280,7 +280,7 @@ export function CartScreen({ navigation, route }: Props) {
               <View style={{ backgroundColor: '#F2F2F7', paddingHorizontal: 16, paddingTop: index === 0 ? 16 : 8 }}>
                 <CartItemRow
                   item={item}
-                  name={menuItem?.name}
+                  name={menuItem?.name || item.name}
                   isVeg={menuItem?.isVeg}
                   onIncrement={() => onUpdateQuantity(item.cartItemId, item.quantity + 1)}
                   onDecrement={() => onUpdateQuantity(item.cartItemId, item.quantity - 1)}

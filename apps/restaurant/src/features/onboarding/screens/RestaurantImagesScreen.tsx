@@ -57,7 +57,8 @@ export function RestaurantImagesScreen({ navigation }: Props) {
     trackAnalyticsEvent('restaurant_images_viewed');
   }, []);
 
-  const onPickAndUpload = async () => {
+  const onPickAndUpload = async (selectedImageType: RestaurantImageType) => {
+    setImageType(selectedImageType);
     if (!isConnected) {
       setToast({
         message: 'Connect to the internet to upload images.',
@@ -102,14 +103,15 @@ export function RestaurantImagesScreen({ navigation }: Props) {
     }
     try {
       await upload({
-        imageType,
+        imageType: selectedImageType,
         uri: asset.uri,
         mimeType,
-        fileName: asset.fileName ?? `${imageType.toLowerCase()}.jpg`,
+        fileName: asset.fileName ?? `${selectedImageType.toLowerCase()}.jpg`,
+        fileObj: (asset as any).file,
       }).unwrap();
-      trackAnalyticsEvent('image_uploaded', { imageType });
-      trackAnalyticsEvent('restaurant_image_uploaded', { imageType });
-      setToast({ message: `${imageType} uploaded successfully!`, variant: 'success' });
+      trackAnalyticsEvent('image_uploaded', { imageType: selectedImageType });
+      trackAnalyticsEvent('restaurant_image_uploaded', { imageType: selectedImageType });
+      setToast({ message: `${selectedImageType} uploaded successfully!`, variant: 'success' });
     } catch (error) {
       handleError(toUnwrappedApiError(error));
     }
@@ -151,8 +153,7 @@ export function RestaurantImagesScreen({ navigation }: Props) {
                 <Pressable
                   key={type}
                   onPress={() => {
-                    setImageType(type);
-                    setPreviewUri(null);
+                    void onPickAndUpload(type);
                   }}
                   style={[
                     styles.imageTypeChip,
@@ -192,25 +193,6 @@ export function RestaurantImagesScreen({ navigation }: Props) {
               </View>
             )}
           </View>
-
-          {/* Upload Button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryButtonPressed,
-              uploadState.isLoading && styles.buttonDisabled,
-            ]}
-            onPress={() => void onPickAndUpload()}
-            disabled={uploadState.isLoading}
-          >
-            {uploadState.isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryButtonText}>
-                📸 Select & Upload {imageType}
-              </Text>
-            )}
-          </Pressable>
         </View>
 
         {/* Continue Action */}

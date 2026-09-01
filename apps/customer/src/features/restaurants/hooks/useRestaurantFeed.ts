@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
+import { useGetRestaurantsQuery } from '../../../api/endpoints/restaurantsApi';
 import { MOCK_RESTAURANTS } from '../mockData';
-import type { RestaurantListParams } from '../types';
-import { DEFAULT_RESTAURANT_PAGE_SIZE } from '../types';
+import type { RestaurantListParams, RestaurantSummary } from '../types';
 
 type FeedArgs = Omit<RestaurantListParams, 'page' | 'size'> & {
   size?: number;
@@ -10,39 +10,24 @@ type FeedArgs = Omit<RestaurantListParams, 'page' | 'size'> & {
 };
 
 export function useRestaurantFeed(args: FeedArgs) {
-  const [isFetching, setIsFetching] = useState(false);
+  const queryResult = useGetRestaurantsQuery({
+    cuisineType: args.cuisineType,
+    search: args.search,
+    sort: args.sort,
+    lat: args.userLatitude,
+    lng: args.userLongitude,
+  });
 
-  const onRefresh = useCallback(async () => {
-    setIsFetching(true);
-    await new Promise(r => setTimeout(r, 800));
-    setIsFetching(false);
-  }, []);
-
-  const processedItems = [...MOCK_RESTAURANTS]
-    .filter(r => {
-      const matchCuisine = !args.cuisineType || (r.cuisineTypes || []).includes(args.cuisineType);
-      const matchSearch = !args.search || (r.name || '').toLowerCase().includes(args.search.toLowerCase());
-      return matchCuisine && matchSearch;
-    })
-    .sort((a, b) => {
-      if (args.sort === 'nearby') {
-        const lat = args.userLatitude ?? 12.9716;
-        const lng = args.userLongitude ?? 77.5946;
-        const distA = Math.hypot((Number(a.latitude) || 12.9716) - lat, (Number(a.longitude) || 77.5946) - lng);
-        const distB = Math.hypot((Number(b.latitude) || 12.9716) - lat, (Number(b.longitude) || 77.5946) - lng);
-        return distA - distB;
-      }
-      if (args.sort === 'createdAt') return b.id.localeCompare(a.id);
-      return (b.avgRating || 0) - (a.avgRating || 0);
-    });
+  const apiItems = queryResult.data;
+  const items: RestaurantSummary[] = (apiItems && apiItems.length > 0) ? apiItems : MOCK_RESTAURANTS;
 
   return {
-    items: processedItems,
-    isLoading: false,
-    isFetching,
-    isError: false,
-    error: null,
-    refetch: onRefresh,
+    items,
+    isLoading: queryResult.isLoading,
+    isFetching: queryResult.isFetching,
+    isError: queryResult.isError,
+    error: queryResult.error,
+    refetch: queryResult.refetch,
     onLoadMore: () => { },
     hasMore: false,
   };

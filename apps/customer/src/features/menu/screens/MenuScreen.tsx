@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { useGetRestaurantQuery } from '../../../api/endpoints/restaurantsApi';
+import { useGetMenuQuery } from '../../../api/endpoints/menuApi';
 import { MOCK_RESTAURANTS, MOCK_MENUS } from '../../restaurants/mockData';
 import { GlobalCartBanner } from '../../cart/components/GlobalCartBanner';
 import { useAddCartItemMutation, useClearCartMutation, useGetCartQuery, useUpdateCartItemQuantityMutation, useRemoveCartItemMutation } from '../../../api/endpoints/cartApi';
@@ -41,6 +42,7 @@ export function MenuScreen({ navigation, route }: Props) {
   const [removeCartItem] = useRemoveCartItemMutation();
 
   const { data: realRestaurant } = useGetRestaurantQuery(restaurantId || '', { skip: !validId || isMock });
+  const { data: realMenu } = useGetMenuQuery(restaurantId || '', { skip: !validId || isMock });
   const mockRestaurant = isMock ? MOCK_RESTAURANTS.find(r => r.id === restaurantId) : null;
   const restaurantData = isMock ? mockRestaurant : realRestaurant;
 
@@ -104,7 +106,7 @@ export function MenuScreen({ navigation, route }: Props) {
     const qty = Number(quantity);
     const validation = validateAddCartItem({ quantity: qty, notes, requiresVariant: openItem.variants.length > 0, variantId });
     if (!validation.ok) { setToast({ message: validation.message, variant: 'error' }); return; }
-    void submitAdd({ menuItemId: openItem.menuItemId, variantId: openItem.variants.length > 0 ? variantId : null, quantity: qty, notes: notes.trim() || null }, optimisticUnitPrice);
+    void submitAdd({ menuItemId: openItem.menuItemId, name: openItem.name, variantId: openItem.variants.length > 0 ? variantId : null, quantity: qty, notes: notes.trim() || null }, optimisticUnitPrice);
   };
 
   const onConfirmClearAndReadd = async () => {
@@ -130,7 +132,7 @@ export function MenuScreen({ navigation, route }: Props) {
       if (existing) {
         void updateItemQuantity({ cartItemId: existing.cartItemId, quantity: existing.quantity + 1 }).unwrap().catch((err: any) => handleError(toUnwrappedApiError(err)));
       } else {
-        void submitAdd({ menuItemId: item.menuItemId, variantId: null, quantity: 1, notes: null }, parseMoney(item.basePrice));
+        void submitAdd({ menuItemId: item.menuItemId, name: item.name, variantId: null, quantity: 1, notes: null }, parseMoney(item.basePrice));
       }
     }
   };
@@ -172,13 +174,28 @@ export function MenuScreen({ navigation, route }: Props) {
     );
   }
 
-  const menuData = isMock ? (MOCK_MENUS[restaurantId]?.categories ?? []) : [];
+  const rawCategories = isMock ? (MOCK_MENUS[restaurantId]?.categories ?? []) : (realMenu?.categories ?? []);
+  const menuData = rawCategories.map((c: any) => ({
+    categoryId: c.categoryId,
+    name: c.name || c.categoryName || 'Menu',
+    displayOrder: c.displayOrder ?? 1,
+    items: (c.items || []).map((i: any) => ({
+      menuItemId: i.menuItemId || i.id,
+      name: i.name,
+      description: i.description,
+      basePrice: i.basePrice,
+      isVeg: i.isVeg ?? (i.foodType === 'VEG'),
+      isAvailable: i.isAvailable ?? true,
+      imageUrl: i.imageUrl || i.imageS3Key,
+      variants: i.variants || [],
+    })),
+  }));
 
   const filteredData = useMemo(() => {
     return menuData
       .map(category => ({
         ...category,
-        items: category.items.filter(item => {
+        items: category.items.filter((item: any) => {
           if (activeFilter === 'veg') return item.isVeg;
           if (activeFilter === 'non-veg') return !item.isVeg;
           if (activeFilter === 'egg') return isEggItem(item);

@@ -56,7 +56,8 @@ export function RestaurantDocumentsScreen({ navigation }: Props) {
     trackAnalyticsEvent('restaurant_documents_viewed');
   }, []);
 
-  const onPickAndUpload = async () => {
+  const onPickAndUpload = async (selectedDocType: RestaurantDocType) => {
+    setDocType(selectedDocType);
     if (!isConnected) {
       setToast({
         message: 'Connect to the internet to upload documents.',
@@ -90,15 +91,16 @@ export function RestaurantDocumentsScreen({ navigation }: Props) {
     }
     try {
       await upload({
-        docType,
+        docType: selectedDocType,
         uri: asset.uri,
         mimeType,
-        fileName: asset.name || `${docType.toLowerCase()}.pdf`,
+        fileName: asset.name || `${selectedDocType.toLowerCase()}.pdf`,
+        fileObj: (asset as any).file,
       }).unwrap();
-      trackAnalyticsEvent('document_uploaded', { docType });
-      trackAnalyticsEvent('restaurant_document_uploaded', { docType });
-      setUploadedTypes((prev) => ({ ...prev, [docType]: true }));
-      setToast({ message: `${docType} uploaded successfully!`, variant: 'success' });
+      trackAnalyticsEvent('document_uploaded', { docType: selectedDocType });
+      trackAnalyticsEvent('restaurant_document_uploaded', { docType: selectedDocType });
+      setUploadedTypes((prev) => ({ ...prev, [selectedDocType]: true }));
+      setToast({ message: `${selectedDocType} uploaded successfully!`, variant: 'success' });
     } catch (error) {
       handleError(toUnwrappedApiError(error));
     }
@@ -140,7 +142,7 @@ export function RestaurantDocumentsScreen({ navigation }: Props) {
               return (
                 <Pressable
                   key={type}
-                  onPress={() => setDocType(type)}
+                  onPress={() => void onPickAndUpload(type)}
                   style={[
                     styles.docTypeChip,
                     selected && styles.docTypeChipSelected,
@@ -161,31 +163,12 @@ export function RestaurantDocumentsScreen({ navigation }: Props) {
 
           {/* Guidelines Box */}
           <View style={styles.infoBox}>
-            <Text style={styles.infoTitle}>📌 Requirements for {docType}:</Text>
+            <Text style={styles.infoTitle}>📌 Requirements for documents:</Text>
             <Text style={styles.infoText}>
               • Accepted Formats: PDF, PNG, JPG (Max 10 MB).{'\n'}
               • Must show legible license number, validity, and business address.
             </Text>
           </View>
-
-          {/* Upload CTA Button */}
-          <Pressable
-            style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.primaryButtonPressed,
-              uploadState.isLoading && styles.buttonDisabled,
-            ]}
-            onPress={() => void onPickAndUpload()}
-            disabled={uploadState.isLoading}
-          >
-            {uploadState.isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.primaryButtonText}>
-                📤 Choose & Upload {docType}
-              </Text>
-            )}
-          </Pressable>
         </View>
 
         {/* Navigation Action Buttons */}

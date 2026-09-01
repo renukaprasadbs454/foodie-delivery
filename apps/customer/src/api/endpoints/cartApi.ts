@@ -3,6 +3,7 @@ import type { AddCartItemRequest, Cart, CartItem } from '../../features/menu/typ
 import { parseMoney } from '../../features/menu/types';
 
 export type AddCartItemArg = AddCartItemRequest & {
+  name?: string;
   optimisticUnitPrice?: number;
 };
 
@@ -27,6 +28,7 @@ export const cartApi = baseApi.injectEndpoints({
         );
         if (existing) {
           existing.quantity += arg.quantity;
+          if (arg.name) existing.name = arg.name;
           if (arg.notes != null) existing.notes = arg.notes;
           const unit = parseMoney(existing.unitPrice);
           existing.lineTotal = unit * existing.quantity;
@@ -35,6 +37,7 @@ export const cartApi = baseApi.injectEndpoints({
           const provisional: CartItem = {
             cartItemId: `optimistic-${arg.menuItemId}-${variantKey ?? 'base'}`,
             menuItemId: arg.menuItemId,
+            name: arg.name,
             variantId: variantKey,
             quantity: arg.quantity,
             notes: arg.notes ?? null,

@@ -11,19 +11,41 @@ import { DEFAULT_RESTAURANT_PAGE_SIZE } from '../../features/restaurants/types';
 export { hasMoreRestaurantPages } from '../../features/restaurants/types';
 
 function normalizeRestaurantList(data: unknown): RestaurantSummary[] {
-  if (Array.isArray(data)) return data as RestaurantSummary[];
-  if (data && typeof data === 'object' && Array.isArray((data as { content?: unknown }).content)) {
-    return (data as { content: RestaurantSummary[] }).content;
+  let list: any[] = [];
+  if (Array.isArray(data)) {
+    list = data;
+  } else if (data && typeof data === 'object') {
+    const obj = data as any;
+    if (Array.isArray(obj.content)) list = obj.content;
+    else if (obj.data && Array.isArray(obj.data.content)) list = obj.data.content;
+    else if (obj.data && Array.isArray(obj.data)) list = obj.data;
   }
-  return [];
+
+  return list.map((item) => ({
+    id: item.id || item.restaurantId || 'mock-resto-1',
+    name: item.name || 'Foodie Restaurant',
+    description: item.description || 'Delicious food delivered fast & fresh',
+    cuisineTypes: item.cuisineTypes || ['Indian', 'Multi-cuisine'],
+    avgRating: item.avgRating !== undefined && item.avgRating !== null ? Number(item.avgRating) : 4.5,
+    ratingCount: item.ratingCount ?? 120,
+    imageUrl: item.imageUrl || item.coverImageKey || item.logoImageKey || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=600',
+    city: item.city || 'Bengaluru',
+    latitude: item.latitude ? Number(item.latitude) : 12.9716,
+    longitude: item.longitude ? Number(item.longitude) : 77.5946,
+  }));
 }
 
 function normalizeReviewList(data: unknown): RestaurantReview[] {
-  if (Array.isArray(data)) return data as RestaurantReview[];
-  if (data && typeof data === 'object' && Array.isArray((data as { content?: unknown }).content)) {
-    return (data as { content: RestaurantReview[] }).content;
+  let list: any[] = [];
+  if (Array.isArray(data)) {
+    list = data;
+  } else if (data && typeof data === 'object') {
+    const obj = data as any;
+    if (Array.isArray(obj.content)) list = obj.content;
+    else if (obj.data && Array.isArray(obj.data.content)) list = obj.data.content;
+    else if (obj.data && Array.isArray(obj.data)) list = obj.data;
   }
-  return [];
+  return list;
 }
 
 export const restaurantsApi = baseApi.injectEndpoints({
@@ -61,8 +83,8 @@ export const restaurantsApi = baseApi.injectEndpoints({
     }),
     getRestaurant: builder.query<RestaurantPublicProfile, string>({
       queryFn: async (restaurantId, _queryApi, _extraOptions, baseQuery) => {
-        // Fallback for non-UUID strings or mock IDs to prevent backend 500 errors
-        if (!restaurantId || !restaurantId.includes('-') || restaurantId.length < 20) {
+        // Fallback for non-UUID strings, mock IDs, or default dummy UUIDs to prevent backend 404/500 errors
+        if (!restaurantId || !restaurantId.includes('-') || restaurantId.length < 20 || restaurantId.startsWith('00000000-') || restaurantId.startsWith('mock-')) {
           return {
             data: {
               id: restaurantId || '00000000-0000-0000-0000-000000000101',

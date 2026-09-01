@@ -35,7 +35,7 @@ type Phase =
   | 'webview_checkout';
 
 export function PaymentScreen({ navigation, route }: Props) {
-  const { orderId, useWallet } = route.params as { orderId: string; useWallet?: boolean };
+  const { orderId, useWallet, mockTotal } = route.params as { orderId: string; useWallet?: boolean; mockTotal?: number };
   const isDarkStoreMock = orderId.startsWith('ds-mock-');
   const validId = isDarkStoreMock ? true : isOrderId(orderId);
 
@@ -57,6 +57,8 @@ export function PaymentScreen({ navigation, route }: Props) {
     skip: !validId,
     pollingInterval: awaiting ? 2000 : 0,
   });
+
+  const targetAmount = mockTotal ?? (orderQuery?.data?.totalAmount ? parseMoney(orderQuery.data.totalAmount) : undefined);
 
   const handleError = useApiErrorHandler({
     onToast: (error) => setToast({ message: error.message, variant: 'error' }),
@@ -129,6 +131,7 @@ export function PaymentScreen({ navigation, route }: Props) {
         orderId,
         idempotencyKey: attemptKey.current,
         useWallet,
+        amount: targetAmount,
       }).unwrap();
 
       if (initiationData.status === 'CAPTURED') {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,15 +7,17 @@ import {
   Text,
   TextInput,
   View,
+  Platform,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as Location from 'expo-location';
 import {
   Toast,
   trackAnalyticsEvent,
   useApiErrorHandler,
   useConnectivity,
 } from 'foodie-shared-rn';
-import { useRegisterRestaurantMutation } from '../../../api/endpoints/restaurantsApi';
+import { useRegisterRestaurantMutation, restaurantsApi } from '../../../api/endpoints/restaurantsApi';
 import { useAppDispatch } from '../../../store/hooks';
 import { clearIsNewUser } from '../../auth/authSlice';
 import { toUnwrappedApiError } from '../../auth/apiError';
@@ -27,6 +29,8 @@ import {
   type CuisineType,
 } from '../types';
 import type { OnboardingStackParamList } from '../../../navigation/types';
+
+import MapView, { Marker, Region } from 'react-native-maps';
 
 type Props = NativeStackScreenProps<
   OnboardingStackParamList,
@@ -57,6 +61,52 @@ export function RestaurantRegistrationScreen({ navigation }: Props) {
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
   } | null>(null);
+
+  const [mapRegion, setMapRegion] = useState<{
+    latitude: number;
+    longitude: number;
+    latitudeDelta: number;
+    longitudeDelta: number;
+  }>({
+    latitude: 12.9716,
+    longitude: 77.5946,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
+  });
+  const [fetchingLocation, setFetchingLocation] = useState(false);
+  const mapRef = useRef<any>(null);
+
+  const fetchExactLocation = async () => {
+    setFetchingLocation(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setToast({ message: 'Location permission denied.', variant: 'error' });
+        setFetchingLocation(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const latStr = loc.coords.latitude.toString();
+      const lngStr = loc.coords.longitude.toString();
+      setLatitude(latStr);
+      setLongitude(lngStr);
+      setMapRegion(prev => ({ ...prev, latitude: loc.coords.latitude, longitude: loc.coords.longitude }));
+
+      const geocode = await Location.reverseGeocodeAsync({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      if (geocode.length > 0) {
+        const addr = geocode[0];
+        if (addr.city) setCity(addr.city);
+        if (addr.postalCode) setPincode(addr.postalCode);
+        if (addr.street) setLine1(addr.street);
+        if (addr.name && addr.name !== addr.street) setLine2(addr.name);
+      }
+      setToast({ message: 'Exact location fetched!', variant: 'success' });
+    } catch {
+      setToast({ message: 'Failed to fetch GPS location.', variant: 'warning' });
+    } finally {
+      setFetchingLocation(false);
+    }
+  };
 
   const handleError = useApiErrorHandler({
     onToast: (error) => setToast({ message: error.message, variant: 'error' }),
@@ -127,6 +177,26 @@ export function RestaurantRegistrationScreen({ navigation }: Props) {
       navigation.replace('RestaurantDocuments');
     } catch (error) {
       const unwrapped = toUnwrappedApiError(error);
+      if (unwrapped.status === 409 || Number(unwrapped.status) === 409) {
+        try {
+          const profileResponse = await dispatch(
+            restaurantsApi.endpoints.getRestaurantProfile.initiate(undefined, { forceRefetch: true })
+          ).unwrap();
+          if (profileResponse.restaurantId) {
+            dispatch(
+              setRestaurantCreated({
+                restaurantId: profileResponse.restaurantId,
+                status: profileResponse.status ?? 'PENDING',
+              }),
+            );
+            dispatch(clearIsNewUser());
+            navigation.replace('RestaurantDocuments');
+            return;
+          }
+        } catch (_) {
+          // Fall through to default error handling
+        }
+      }
       handleError(unwrapped);
     }
   };
@@ -253,9 +323,50 @@ export function RestaurantRegistrationScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* Form Card 2: Address */}
+        {/* Form Card 2: Address & Location Map */}
         <View style={styles.card}>
-          <Text style={styles.sectionHeader}>📍 Location & Address</Text>
+          <Text style={styles.sectionHeader}>📍 Location & Address Map</Text>
+
+          {/* Interactive Map Picker */}
+          <View style={{ height: 180, borderRadius: 14, overflow: 'hidden', borderColor: '#F59E0B', borderWidth: 2, marginVertical: 4 }}>
+            <MapView
+              ref={mapRef}
+              style={{ flex: 1 }}
+              region={mapRegion}
+              onRegionChangeComplete={(r) => {
+                setMapRegion(r);
+                setLatitude(r.latitude.toFixed(6));
+                setLongitude(r.longitude.toFixed(6));
+              }}
+            >
+              <Marker coordinate={{ latitude: mapRegion.latitude, longitude: mapRegion.longitude }} pinColor="#14532D" title="Restaurant Outlet" />
+            </MapView>
+            {fetchingLocation && (
+              <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#F59E0B" />
+                <Text style={{ color: '#F59E0B', fontWeight: '800', marginTop: 8 }}>Pinpointing Outlet Location...</Text>
+              </View>
+            )}
+          </View>
+
+          <Pressable
+            onPress={() => void fetchExactLocation()}
+            style={{
+              alignSelf: 'flex-start',
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: '#FEF3C7',
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#F59E0B'
+            }}
+          >
+            <Text style={{ fontSize: 16 }}>📍</Text>
+            <Text style={{ color: '#92400E', fontWeight: '800', fontSize: 13 }}>Detect GPS Outlet Location</Text>
+          </Pressable>
 
           <View style={styles.fieldGroup}>
             <Text style={styles.inputLabel}>Address Line 1 *</Text>
@@ -305,31 +416,7 @@ export function RestaurantRegistrationScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <View style={styles.inlineRow}>
-            <View style={[styles.fieldGroup, { flex: 1 }]}>
-              <Text style={styles.inputLabel}>Latitude *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="12.9716"
-                placeholderTextColor="#94A3B8"
-                value={latitude}
-                onChangeText={setLatitude}
-                keyboardType="decimal-pad"
-              />
-            </View>
 
-            <View style={[styles.fieldGroup, { flex: 1 }]}>
-              <Text style={styles.inputLabel}>Longitude *</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="77.5946"
-                placeholderTextColor="#94A3B8"
-                value={longitude}
-                onChangeText={setLongitude}
-                keyboardType="decimal-pad"
-              />
-            </View>
-          </View>
         </View>
 
         {/* Submit Action */}
