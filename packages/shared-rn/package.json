@@ -2,9 +2,9 @@
   "name": "foodie-shared-rn",
   "version": "0.1.0",
   "description": "Shared React Native foundation package for Foodie Customer, Restaurant, and Delivery apps",
-  "main": "dist/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
   "react-native": "src/index.ts",
   "files": [
     "dist",
@@ -12,9 +12,9 @@
   ],
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "react-native": "./src/index.ts",
-      "default": "./dist/index.js"
+      "default": "./src/index.ts"
     }
   },
   "scripts": {

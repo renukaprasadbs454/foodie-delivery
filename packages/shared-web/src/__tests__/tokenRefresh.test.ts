@@ -16,7 +16,9 @@ describe('admin token refresh', () => {
     let calls = 0;
     const fetchImpl: typeof fetch = async () => {
       calls += 1;
-      await new Promise((r) => setTimeout(r, 20));
+      await new Promise<void>((r) => {
+        setTimeout(r, 20);
+      });
       return {
         ok: true,
         json: async () => ({
