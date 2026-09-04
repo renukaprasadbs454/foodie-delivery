@@ -181,7 +181,7 @@ export function CustomerManagementStudio() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-            👥 Customer Operations & Support Desk
+             Customer Operations & Support Desk
           </h1>
           <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
             Manage customer profiles, account security block/unblock controls, and customer support tickets.
@@ -206,7 +206,7 @@ export function CustomerManagementStudio() {
               transition: 'all 0.15s ease',
             }}
           >
-            📋 Customer Directory ({totalCustomers})
+             Customer Directory ({totalCustomers})
           </button>
           <button
             type="button"
@@ -224,7 +224,7 @@ export function CustomerManagementStudio() {
               transition: 'all 0.15s ease',
             }}
           >
-            🎟️ Support Tickets ({tickets.filter((t) => t.status === 'OPEN').length} Open)
+             Support Tickets ({tickets.filter((t) => t.status === 'OPEN').length} Open)
           </button>
         </div>
       </div>
@@ -404,7 +404,7 @@ export function CustomerManagementStudio() {
                             cursor: 'pointer',
                           }}
                         >
-                          {cust.accountStatus === 'ACTIVE' ? '🚫 Suspend' : '✅ Re-activate'}
+                          {cust.accountStatus === 'ACTIVE' ? ' Suspend' : ' Re-activate'}
                         </button>
                       </td>
                     </tr>
@@ -418,7 +418,7 @@ export function CustomerManagementStudio() {
         /* TAB 2: SUPPORT TICKETS DESK */
         <div style={{ backgroundColor: '#FFFFFF', borderRadius: 16, border: '1px solid #E2E8F0', padding: 20 }}>
           <h3 style={{ fontSize: 16, fontWeight: 800, color: '#1E293B', margin: '0 0 16px' }}>
-            🎟️ Active Customer Support & Dispute Tickets
+             Active Customer Support & Dispute Tickets
           </h3>
 
           <div style={{ overflowX: 'auto' }}>
@@ -526,14 +526,14 @@ export function CustomerManagementStudio() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-                {selectedCustomer.accountStatus === 'ACTIVE' ? '🚫 Suspend Account' : '✅ Re-activate Account'}
+                {selectedCustomer.accountStatus === 'ACTIVE' ? ' Suspend Account' : ' Re-activate Account'}
               </h3>
               <button
                 type="button"
                 onClick={() => setSelectedCustomer(null)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 

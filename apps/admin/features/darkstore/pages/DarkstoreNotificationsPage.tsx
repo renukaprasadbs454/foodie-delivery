@@ -38,7 +38,7 @@ export function DarkstoreNotificationsPage() {
     <div style={{ padding: 24, maxWidth: 1000, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-          🔔 Darkstore Operational Alerts & Notifications
+           Darkstore Operational Alerts & Notifications
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
           Real-time alerts for incoming orders, inventory threshold breaches, and delivery partner handoff events.

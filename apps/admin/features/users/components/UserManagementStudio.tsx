@@ -176,7 +176,7 @@ export function UserManagementStudio() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-            👤 Members & Admin User Directory
+             Members & Admin User Directory
           </h1>
           <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>
             Provision, assign roles, manage system privileges, and monitor security status for platform staff.
@@ -202,7 +202,7 @@ export function UserManagementStudio() {
             transition: 'all 0.15s ease',
           }}
         >
-          <span>➕</span> Provision New Admin User
+          <span></span> Provision New Admin User
         </button>
       </div>
 
@@ -259,10 +259,10 @@ export function UserManagementStudio() {
               style={{ padding: '9px 12px', borderRadius: 10, border: '1px solid #CBD5E1', fontSize: 13, fontWeight: 600 }}
             >
               <option value="ALL">Role: All Roles</option>
-              <option value="SUPER_ADMIN">👑 Super Admin</option>
-              <option value="OPS">🛠️ Operations</option>
-              <option value="FINANCE">💳 Finance</option>
-              <option value="SUPPORT">🎧 Support Desk</option>
+              <option value="SUPER_ADMIN"> Super Admin</option>
+              <option value="OPS"> Operations</option>
+              <option value="FINANCE"> Finance</option>
+              <option value="SUPPORT"> Support Desk</option>
             </select>
 
             <select
@@ -397,7 +397,7 @@ export function UserManagementStudio() {
                               cursor: 'pointer',
                             }}
                           >
-                            ✏️ Edit Role
+                             Edit Role
                           </button>
 
                           <button
@@ -414,7 +414,7 @@ export function UserManagementStudio() {
                               cursor: 'pointer',
                             }}
                           >
-                            {user.accountStatus === 'ACTIVE' ? '🚫 Suspend' : '✅ Re-activate'}
+                            {user.accountStatus === 'ACTIVE' ? ' Suspend' : ' Re-activate'}
                           </button>
                         </div>
                       </td>
@@ -458,14 +458,14 @@ export function UserManagementStudio() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-                ➕ Provision New Administrative User
+                 Provision New Administrative User
               </h3>
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -597,14 +597,14 @@ export function UserManagementStudio() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-                ✏️ Update Role Privilege
+                 Update Role Privilege
               </h3>
               <button
                 type="button"
                 onClick={() => setSelectedUserForRole(null)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -621,10 +621,10 @@ export function UserManagementStudio() {
                 onChange={(e) => setTargetRole(e.target.value as AdminRole)}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, fontWeight: 700 }}
               >
-                <option value="SUPER_ADMIN">👑 Super Admin (Full Control)</option>
-                <option value="OPS">🛠️ Operations (Manage Merchants & Dispatch)</option>
-                <option value="FINANCE">💳 Finance (Payments & Refunds)</option>
-                <option value="SUPPORT">🎧 Support Desk (Tickets Only)</option>
+                <option value="SUPER_ADMIN"> Super Admin (Full Control)</option>
+                <option value="OPS"> Operations (Manage Merchants & Dispatch)</option>
+                <option value="FINANCE"> Finance (Payments & Refunds)</option>
+                <option value="SUPPORT"> Support Desk (Tickets Only)</option>
               </select>
             </div>
 
@@ -684,14 +684,14 @@ export function UserManagementStudio() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-                {selectedUserForStatus.accountStatus === 'ACTIVE' ? '🚫 Suspend User Account' : '✅ Re-activate User Account'}
+                {selectedUserForStatus.accountStatus === 'ACTIVE' ? ' Suspend User Account' : ' Re-activate User Account'}
               </h3>
               <button
                 type="button"
                 onClick={() => setSelectedUserForStatus(null)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 

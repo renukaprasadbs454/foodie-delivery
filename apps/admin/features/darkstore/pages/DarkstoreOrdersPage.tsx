@@ -370,7 +370,7 @@ export function DarkstoreOrdersPage() {
                         cursor: 'pointer',
                       }}
                     >
-                      Details 🔍
+                      Details 
                     </button>
                   </div>
                 </td>
@@ -402,7 +402,7 @@ export function DarkstoreOrdersPage() {
                 <li key={i.id} style={{ padding: '10px 14px', borderBottom: '1px solid #F3F4F6', display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                   <div>
                     <strong style={{ color: '#0F3D21' }}>{i.productName}</strong> ({i.sku})
-                    <div style={{ fontSize: 11, color: '#6B7280' }}>📍 Location: {i.shelfLocation}</div>
+                    <div style={{ fontSize: 11, color: '#6B7280' }}> Location: {i.shelfLocation}</div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div>Qty: {i.quantityRequested} | Picked: {i.quantityPicked}</div>

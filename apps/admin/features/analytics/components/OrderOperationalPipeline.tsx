@@ -22,14 +22,14 @@ export function OrderOperationalPipeline({ totalOrders }: OrderOperationalPipeli
 
   // 6amMart Order Pipeline Stages
   const stages: PipelineStage[] = [
-    { id: 'PENDING', label: 'Pending', count: Math.round((totalOrders ?? 324) * 0.08), icon: '⏳', color: '#D97706', bgColor: '#FEF3C7', borderColor: '#FDE68A' },
-    { id: 'CONFIRMED', label: 'Confirmed', count: Math.round((totalOrders ?? 324) * 0.12), icon: '✅', color: '#2563EB', bgColor: '#EFF6FF', borderColor: '#BFDBFE' },
-    { id: 'PROCESSING', label: 'Packaging', count: Math.round((totalOrders ?? 324) * 0.06), icon: '👨‍🍳', color: '#7C3AED', bgColor: '#F3E8FF', borderColor: '#DDD6FE' },
-    { id: 'READY_FOR_PICKUP', label: 'Ready for Pickup', count: Math.round((totalOrders ?? 324) * 0.05), icon: '🛍️', color: '#4338CA', bgColor: '#E0E7FF', borderColor: '#C7D2FE' },
-    { id: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', count: Math.round((totalOrders ?? 324) * 0.09), icon: '🛵', color: '#EA580C', bgColor: '#FFEDD5', borderColor: '#FDBA74' },
-    { id: 'DELIVERED', label: 'Delivered', count: Math.round((totalOrders ?? 324) * 0.61), icon: '🎉', color: '#166534', bgColor: '#DCFCE7', borderColor: '#86EFAC' },
-    { id: 'CANCELED', label: 'Canceled', count: Math.round((totalOrders ?? 324) * 0.03), icon: '❌', color: '#DC2626', bgColor: '#FEE2E2', borderColor: '#FCA5A5' },
-    { id: 'REFUNDED', label: 'Refunded', count: Math.round((totalOrders ?? 324) * 0.01), icon: '💸', color: '#4B5563', bgColor: '#F3F4F6', borderColor: '#E5E7EB' },
+    { id: 'PENDING', label: 'Pending', count: Math.round((totalOrders ?? 324) * 0.08), icon: '', color: '#D97706', bgColor: '#FEF3C7', borderColor: '#FDE68A' },
+    { id: 'CONFIRMED', label: 'Confirmed', count: Math.round((totalOrders ?? 324) * 0.12), icon: '', color: '#2563EB', bgColor: '#EFF6FF', borderColor: '#BFDBFE' },
+    { id: 'PROCESSING', label: 'Packaging', count: Math.round((totalOrders ?? 324) * 0.06), icon: '', color: '#7C3AED', bgColor: '#F3E8FF', borderColor: '#DDD6FE' },
+    { id: 'READY_FOR_PICKUP', label: 'Ready for Pickup', count: Math.round((totalOrders ?? 324) * 0.05), icon: '', color: '#4338CA', bgColor: '#E0E7FF', borderColor: '#C7D2FE' },
+    { id: 'OUT_FOR_DELIVERY', label: 'Out for Delivery', count: Math.round((totalOrders ?? 324) * 0.09), icon: '', color: '#EA580C', bgColor: '#FFEDD5', borderColor: '#FDBA74' },
+    { id: 'DELIVERED', label: 'Delivered', count: Math.round((totalOrders ?? 324) * 0.61), icon: '', color: '#166534', bgColor: '#DCFCE7', borderColor: '#86EFAC' },
+    { id: 'CANCELED', label: 'Canceled', count: Math.round((totalOrders ?? 324) * 0.03), icon: '', color: '#DC2626', bgColor: '#FEE2E2', borderColor: '#FCA5A5' },
+    { id: 'REFUNDED', label: 'Refunded', count: Math.round((totalOrders ?? 324) * 0.01), icon: '', color: '#4B5563', bgColor: '#F3F4F6', borderColor: '#E5E7EB' },
   ];
 
   return (
@@ -48,7 +48,7 @@ export function OrderOperationalPipeline({ totalOrders }: OrderOperationalPipeli
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 800, color: '#14532D', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>⚡ Live Order Operational Pipeline</span>
+            <span> Live Order Operational Pipeline</span>
             <span style={{ fontSize: 11, fontWeight: 700, backgroundColor: '#F0FDF4', color: '#166534', padding: '2px 8px', borderRadius: 12, border: '1px solid #BBF7D0' }}>
               Real-time Sync
             </span>
@@ -71,7 +71,7 @@ export function OrderOperationalPipeline({ totalOrders }: OrderOperationalPipeli
             cursor: 'pointer',
           }}
         >
-          View All Orders ➔
+          View All Orders 
         </button>
       </div>
 

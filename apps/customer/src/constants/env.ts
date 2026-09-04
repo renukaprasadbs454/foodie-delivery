@@ -28,12 +28,12 @@ if (Platform.OS === 'web') {
   }
 }
 
-const defaultApiBaseUrl = `http://${hostIp}:8082`;
-const defaultWsUrl = `ws://${hostIp}:8082/ws`;
+const defaultApiBaseUrl = 'https://api.foodie.kwiko.org';
+const defaultWsUrl = 'wss://api.foodie.kwiko.org/ws';
 
 export const ENV = {
-  apiBaseUrl: __DEV__ ? defaultApiBaseUrl : (process.env.EXPO_PUBLIC_API_BASE_URL ?? defaultApiBaseUrl),
-  wsUrl: __DEV__ ? defaultWsUrl : (process.env.EXPO_PUBLIC_WS_URL ?? defaultWsUrl),
+  apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? extra.apiBaseUrl ?? defaultApiBaseUrl,
+  wsUrl: process.env.EXPO_PUBLIC_WS_URL ?? extra.wsUrl ?? defaultWsUrl,
   googleWebClientId:
     process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ??
     extra.googleWebClientId ??

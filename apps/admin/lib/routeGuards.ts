@@ -162,14 +162,14 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', category: 'MAIN' },
   { href: '/analytics', label: 'Analytics', category: 'MAIN' },
   { href: '/members', label: 'Members', category: 'BUSINESS MANAGERS', highlighted: true, roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN'] },
-  { href: '/users', label: 'Users', category: 'BUSINESS MANAGERS', icon: '👤', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'FINANCE', 'FINANCE_ADMIN', 'SUPPORT', 'SUPPORT_AGENT'] },
+  { href: '/users', label: 'Users', category: 'BUSINESS MANAGERS', icon: '', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'FINANCE', 'FINANCE_ADMIN', 'SUPPORT', 'SUPPORT_AGENT'] },
   { href: '/customers', label: 'Customers', category: 'BUSINESS MANAGERS', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'SUPPORT', 'SUPPORT_AGENT'] },
-  { href: '/restaurants', label: 'Restaurants', category: 'BUSINESS MANAGERS', icon: '🍽️', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'RESTAURANT_MANAGER'] },
+  { href: '/restaurants', label: 'Restaurants', category: 'BUSINESS MANAGERS', icon: '', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'RESTAURANT_MANAGER'] },
   { href: '/delivery-partners', label: 'Delivery Partners', category: 'BUSINESS MANAGERS', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN'] },
   { href: '/other', label: 'Others', category: 'BUSINESS MANAGERS', highlighted: true, roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN'] },
   { href: '/location', label: 'Location Management', category: 'BUSINESS MANAGERS', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN'] },
-  { href: '/social-media', label: 'Social Media', category: 'BUSINESS MANAGERS', icon: '🌐', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'SUPPORT', 'SUPPORT_AGENT'] },
-  { href: '/orders', label: 'Orders', category: 'ORDER HUB', icon: '📦', badge: 'LIVE', permission: 'order.view', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'SUPPORT', 'SUPPORT_AGENT', 'RESTAURANT_MANAGER', 'AUDITOR'] },
+  { href: '/social-media', label: 'Social Media', category: 'BUSINESS MANAGERS', icon: '', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'SUPPORT', 'SUPPORT_AGENT'] },
+  { href: '/orders', label: 'Orders', category: 'ORDER HUB', icon: '', badge: 'LIVE', permission: 'order.view', roles: ['SUPER_ADMIN', 'OPS', 'OPERATIONS_ADMIN', 'SUPPORT', 'SUPPORT_AGENT', 'RESTAURANT_MANAGER', 'AUDITOR'] },
   {
     href: '/coupons',
     label: 'Coupons',
@@ -184,13 +184,6 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
     permission: 'payment.view',
     roles: ['FINANCE_ADMIN', 'OPERATIONS_ADMIN', 'SUPER_ADMIN', 'FINANCE', 'OPS'],
   },
-  {
-    href: '/approvals',
-    label: 'High-Risk Approvals',
-    category: 'SYSTEM',
-    permission: 'settlement.release',
-    roles: ['FINANCE_ADMIN', 'SUPER_ADMIN', 'FINANCE'],
-  },
   { href: '/reviews', label: 'Reviews & Complaints', category: 'SYSTEM' },
   {
     href: '/audit-log',
@@ -199,7 +192,7 @@ export const DASHBOARD_NAV: readonly NavItem[] = [
     permission: 'audit_log.view',
     roles: ['SUPER_ADMIN', 'FINANCE_ADMIN', 'FINANCE', 'AUDITOR'],
   },
-  { href: '/settings', label: 'Settings', category: 'SYSTEM', icon: '⚙️' },
+  { href: '/settings', label: 'Settings', category: 'SYSTEM', icon: '' },
 ] as const;
 
 export function filterNavForRole(role: string | null): NavItem[] {

@@ -454,7 +454,7 @@ export function ContactUsPage() {
                 onClick={() => setSelectedEnquiry(null)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 

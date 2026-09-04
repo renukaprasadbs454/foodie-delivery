@@ -26,7 +26,7 @@ export function DarkstoreProfilePage() {
     <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-          🏪 Darkstore Operating Profile
+           Darkstore Operating Profile
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
           Darkstore location, delivery radius, operating hours, and quick-commerce service boundaries.

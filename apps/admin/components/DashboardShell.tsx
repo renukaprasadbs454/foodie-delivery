@@ -20,7 +20,6 @@ import {
 } from '@/lib/routeGuards';
 import { AdminHeaderBar } from '@/components/AdminHeaderBar';
 import { AiAssistantWidget } from '@/components/AiAssistantWidget';
-import { AdminFooter } from '@/components/AdminFooter';
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch();
@@ -58,9 +57,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const nav = filterNavForRole(role);
   const isAllowedRoute = isRouteAllowedForRole(pathname, role);
 
-  // Compact Hover-to-Peek Panel state
+  // Sidebar collapsed state
   const [isCompact, setIsCompact] = React.useState(false);
-  const [isHovered, setIsHovered] = React.useState(false);
 
   const onLogout = async () => {
     setLoggingOut(true);
@@ -69,14 +67,15 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     setLoggingOut(false);
   };
 
-  const isExpanded = !isCompact || isHovered;
+  const isExpanded = !isCompact;
 
   return (
     <div
       style={{
         display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden',
         fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         backgroundColor: '#F8FAFC',
       }}
@@ -84,48 +83,47 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: isCompact ? '72px 1fr' : '270px 1fr',
-          transition: 'grid-template-columns 0.25s ease',
-          flex: 1,
+          gridTemplateColumns: isCompact ? '0px 1fr' : '270px 1fr',
+          transition: 'grid-template-columns 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          width: '100%',
+          height: '100vh',
+          overflow: 'hidden',
           position: 'relative',
         }}
       >
-        {/* Sidebar Navigation */}
+        {/* Sidebar Navigation — Fixed in place */}
         <aside
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
           style={{
-            position: isCompact && isHovered ? 'absolute' : 'relative',
+            position: 'sticky',
             top: 0,
-            bottom: 0,
             left: 0,
-            zIndex: isCompact && isHovered ? 50 : 10,
-            width: isExpanded ? 270 : 72,
+            height: '100vh',
+            maxHeight: '100vh',
+            zIndex: 40,
+            width: isCompact ? 0 : 270,
+            opacity: isCompact ? 0 : 1,
+            visibility: isCompact ? 'hidden' : 'visible',
             backgroundColor: '#0F3D21',
             color: '#FFFFFF',
-            padding: isExpanded ? '24px 16px' : '24px 10px',
+            padding: isCompact ? 0 : '24px 16px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            boxShadow: isCompact && isHovered ? '8px 0 24px rgba(0,0,0,0.3)' : '4px 0 16px rgba(0,0,0,0.1)',
-            borderRight: '1px solid rgba(255,255,255,0.05)',
-            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease, box-shadow 0.25s ease',
+            boxShadow: isCompact ? 'none' : '4px 0 16px rgba(0,0,0,0.1)',
+            borderRight: isCompact ? 'none' : '1px solid rgba(255,255,255,0.05)',
+            transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
             overflowX: 'hidden',
+            overflowY: 'auto',
+            pointerEvents: isCompact ? 'none' : 'auto',
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Brand Header */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: isExpanded ? 'space-between' : 'center' }}>
-                {isExpanded ? (
-                  <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
-                    Admin <span style={{ color: '#F59E0B' }}>Panel</span>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: 22 }} title="Admin Console">
-                    🍔
-                  </span>
-                )}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start' }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-0.5px', whiteSpace: 'nowrap' }}>
+                  Admin <span style={{ color: '#F59E0B' }}>Panel</span>
+                </div>
               </div>
             </div>
 
@@ -136,23 +134,19 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   backgroundColor: '#14532D',
                   border: '1px solid rgba(245, 158, 11, 0.35)',
                   borderRadius: 10,
-                  padding: isExpanded ? '10px 14px' : '10px 6px',
+                  padding: '10px 14px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: isExpanded ? 'space-between' : 'center',
+                  justifyContent: 'space-between',
                 }}
                 title={`Active Role: ${role}`}
               >
-                {isExpanded ? (
-                  <div>
-                    <div style={{ fontSize: 10, color: '#A7F3D0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
-                      Active Role
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>{role}</div>
+                <div>
+                  <div style={{ fontSize: 10, color: '#A7F3D0', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>
+                    Active Role
                   </div>
-                ) : (
-                  <span style={{ fontSize: 14 }}>🛡️</span>
-                )}
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>{role}</div>
+                </div>
                 <span style={{ height: 8, width: 8, borderRadius: '50%', backgroundColor: '#F59E0B' }} className="pulse-live" />
               </div>
             ) : null}
@@ -181,12 +175,11 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                     <li key={item.href}>
                       <Link
                         href={item.href}
-                        title={!isExpanded ? item.label : undefined}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: isExpanded ? 'space-between' : 'center',
-                          padding: isExpanded ? '9px 12px' : '10px 0',
+                          justifyContent: 'space-between',
+                          padding: '9px 12px',
                           borderRadius: 8,
                           fontSize: 13,
                           fontWeight: isActive || isHighlighted ? 800 : 500,
@@ -200,11 +193,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                             : isHighlighted
                             ? 'rgba(245, 158, 11, 0.25)'
                             : 'transparent',
-                          borderLeft: isExpanded
-                            ? isActive || isHighlighted
-                              ? '4px solid #F59E0B'
-                              : '4px solid transparent'
-                            : 'none',
+                          borderLeft: isActive || isHighlighted
+                            ? '4px solid #F59E0B'
+                            : '4px solid transparent',
                           textDecoration: 'none',
                           transition: 'all 0.15s ease-in-out',
                         }}
@@ -212,7 +203,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span style={{ whiteSpace: 'nowrap' }}>{item.label}</span>
                         </div>
-                        {isExpanded && item.badge ? (
+                        {item.badge ? (
                           <span
                             style={{
                               fontSize: 10,
@@ -235,8 +226,17 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* Main Content Area */}
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowX: 'hidden' }}>
+        {/* Main Content Area — Scrollable */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            flex: 1,
+            height: '100vh',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
           {/* Top Header Bar */}
           <AdminHeaderBar
             role={role}
@@ -264,7 +264,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: 48, marginBottom: 16 }}>🚫</div>
+                <div style={{ fontSize: 48, marginBottom: 16 }}></div>
                 <Text as="h2" variant="heading1" style={{ fontSize: 22, fontWeight: 800, color: '#991B1B', marginBottom: 8 }}>
                   403 — Access Restricted
                 </Text>
@@ -290,9 +290,6 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </main>
         </div>
       </div>
-
-      {/* Full-width Executive Admin Footer */}
-      <AdminFooter />
 
       {/* Foodie AI Operations Assistant Floating Widget */}
       <AiAssistantWidget />

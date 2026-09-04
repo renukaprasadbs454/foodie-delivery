@@ -115,7 +115,7 @@ export function DarkstoreInventoryPage() {
     <div style={{ padding: 24, maxWidth: 1400, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-          🏬 Darkstore Inventory Management
+           Darkstore Inventory Management
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
           Real-time stock control, bin location mapping, reserved stock tracking, and stock-in/stock-out adjustments.
@@ -162,7 +162,7 @@ export function DarkstoreInventoryPage() {
                 color: stockFilter === st ? '#FFFFFF' : '#374151',
               }}
             >
-              {st === 'ALL' ? 'All Stock' : st === 'LOW' ? '⚠️ Low Stock' : '🚫 Out of Stock'}
+              {st === 'ALL' ? 'All Stock' : st === 'LOW' ? ' Low Stock' : ' Out of Stock'}
             </button>
           ))}
         </div>
@@ -191,7 +191,7 @@ export function DarkstoreInventoryPage() {
                 <td style={{ padding: '14px 16px', fontWeight: 800, color: '#0F3D21' }}>{p.sku}</td>
                 <td style={{ padding: '14px 16px', fontWeight: 700, color: '#111827' }}>{p.name}</td>
                 <td style={{ padding: '14px 16px', color: '#4B5563' }}>{p.category}</td>
-                <td style={{ padding: '14px 16px', fontWeight: 800, color: '#F59E0B' }}>📍 {p.shelfLocation}</td>
+                <td style={{ padding: '14px 16px', fontWeight: 800, color: '#F59E0B' }}> {p.shelfLocation}</td>
                 <td style={{ padding: '14px 16px', fontWeight: 900, color: '#111827' }}>{p.currentStock} {p.unit}</td>
                 <td style={{ padding: '14px 16px', color: '#D97706' }}>{p.reservedStock}</td>
                 <td style={{ padding: '14px 16px', fontWeight: 800, color: '#15803D' }}>{p.availableStock}</td>
@@ -228,7 +228,7 @@ export function DarkstoreInventoryPage() {
                       cursor: 'pointer',
                     }}
                   >
-                    Stock Adjust ⚖️
+                    Stock Adjust 
                   </button>
                 </td>
               </tr>

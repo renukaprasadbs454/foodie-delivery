@@ -6,6 +6,7 @@ import { Text, trackAnalyticsEvent, useTheme } from 'foodie-shared-web';
 import { GAP_API_16_ORDER_LIST } from '@/constants/gaps';
 import { useAppSelector } from '@/store/hooks';
 import { selectActiveModule } from '@/store/moduleSlice';
+import { OrderOperationalPipeline } from '@/features/analytics/components/OrderOperationalPipeline';
 
 export interface OrderItemRecord {
   id: string;
@@ -134,10 +135,13 @@ export function OrdersPage() {
           </Text>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, backgroundColor: '#FEF3C7', padding: '6px 12px', borderRadius: 20 }}>
-          <span style={{ fontSize: 14 }}>⚡</span>
+          <span style={{ fontSize: 14 }}></span>
           <span style={{ fontSize: 12, fontWeight: 700, color: '#D97706' }}>Live WebSocket Dispatch Feed</span>
         </div>
       </div>
+
+      {/* Live Order Operational Pipeline */}
+      <OrderOperationalPipeline totalOrders={324} />
 
       {/* Orders Filter Toolbar */}
       <div

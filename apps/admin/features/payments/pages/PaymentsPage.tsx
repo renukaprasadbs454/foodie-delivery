@@ -192,7 +192,7 @@ export function PaymentsPage() {
     setSettlements((prev) => [newSettlement, ...prev]);
 
     showToast(
-      `🎉 Customer Payment ₹${split.totalPaid.toFixed(2)} Credited to Admin Escrow! Auto-Split: Admin ₹${split.adminTotalRevenue.toFixed(2)} | Restaurant ₹${split.restaurantNetShare.toFixed(2)} | Driver ₹${split.deliveryPartnerNetShare.toFixed(2)}`
+      ` Customer Payment ₹${split.totalPaid.toFixed(2)} Credited to Admin Escrow! Auto-Split: Admin ₹${split.adminTotalRevenue.toFixed(2)} | Restaurant ₹${split.restaurantNetShare.toFixed(2)} | Driver ₹${split.deliveryPartnerNetShare.toFixed(2)}`
     );
   };
 
@@ -258,7 +258,7 @@ export function PaymentsPage() {
             gap: 10,
           }}
         >
-          <span style={{ fontSize: 18 }}>💳</span>
+          <span style={{ fontSize: 18 }}></span>
           <span>{toastMsg}</span>
         </div>
       ) : null}
@@ -267,7 +267,7 @@ export function PaymentsPage() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <Text as="h1" variant="heading1" color="#0F3D21" style={{ margin: 0 }}>
-            💳 Admin Central Escrow & Automatic Commission Settlement
+             Admin Central Escrow & Automatic Commission Settlement
           </Text>
           <Text as="p" variant="caption" color="#64748B" style={{ margin: '4px 0 0' }}>
             Customer payments credit 100% directly to Admin Account and auto-distribute to Restaurants and Delivery Partners based on commission rates.
@@ -293,7 +293,7 @@ export function PaymentsPage() {
               textDecoration: 'none',
             }}
           >
-            <span>💸</span> Delivery Partner Payouts & Reconciliation
+            <span></span> Delivery Partner Payouts & Reconciliation
           </Link>
 
           <button
@@ -314,7 +314,7 @@ export function PaymentsPage() {
               boxShadow: '0 4px 12px rgba(15,61,33,0.2)',
             }}
           >
-            <span>⚙️</span> Configure Commission Rates
+            <span></span> Configure Commission Rates
           </button>
         </div>
       </div>
@@ -419,7 +419,7 @@ export function PaymentsPage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-              ⚡ Customer Payment & Commission Auto-Split Simulator
+               Customer Payment & Commission Auto-Split Simulator
             </h2>
             <p style={{ fontSize: 12, color: '#64748B', margin: '2px 0 0' }}>
               Simulate a customer order payment to verify instant credit to Admin Escrow and automatic split calculation.
@@ -529,7 +529,7 @@ export function PaymentsPage() {
           >
             <div>
               <div style={{ fontSize: 12, fontWeight: 800, color: '#0F3D21', textTransform: 'uppercase', marginBottom: 10 }}>
-                📊 Calculated Auto-Split Breakdown
+                 Calculated Auto-Split Breakdown
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
@@ -539,7 +539,7 @@ export function PaymentsPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#D97706', fontWeight: 700 }}>
-                  <span>👑 Admin Net Commission Revenue:</span>
+                  <span> Admin Net Commission Revenue:</span>
                   <span>₹{livePreviewSplit.adminTotalRevenue.toFixed(2)}</span>
                 </div>
 
@@ -552,12 +552,12 @@ export function PaymentsPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#059669', fontWeight: 700, paddingTop: 4 }}>
-                  <span>🍽️ Restaurant Net Wallet Distribution:</span>
+                  <span> Restaurant Net Wallet Distribution:</span>
                   <span>₹{livePreviewSplit.restaurantNetShare.toFixed(2)}</span>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: '#2563EB', fontWeight: 700 }}>
-                  <span>🛵 Delivery Partner Net Wallet Distribution:</span>
+                  <span> Delivery Partner Net Wallet Distribution:</span>
                   <span>₹{livePreviewSplit.deliveryPartnerNetShare.toFixed(2)}</span>
                 </div>
               </div>
@@ -578,7 +578,7 @@ export function PaymentsPage() {
                 transition: 'all 0.15s ease',
               }}
             >
-              ⚡ Pay Bill & Auto-Distribute Funds
+               Pay Bill & Auto-Distribute Funds
             </button>
           </div>
         </form>
@@ -597,7 +597,7 @@ export function PaymentsPage() {
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <Text as="h2" variant="heading3" color="#0F3D21" style={{ margin: 0 }}>
-              📋 Live Payment Settlement & Distribution Ledger
+               Live Payment Settlement & Distribution Ledger
             </Text>
             <Text as="p" variant="caption" color="#64748B" style={{ margin: '2px 0 0' }}>
               Real-time audit log of customer bill payments credited to Admin Escrow and split to stakeholders.
@@ -693,7 +693,7 @@ export function PaymentsPage() {
         >
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', backgroundColor: '#F8FAFC' }}>
             <Text as="h2" variant="heading3" color="#0F3D21">
-              🏦 Vendor & Delivery Partner Payout Requests
+               Vendor & Delivery Partner Payout Requests
             </Text>
             <Text as="p" variant="caption" color="#64748B">
               Withdrawal requests from restaurants and riders to disburse their accumulated wallet earnings.
@@ -787,7 +787,7 @@ export function PaymentsPage() {
         >
           <div>
             <Text as="h2" variant="heading3" color="#0F3D21" style={{ margin: 0 }}>
-              🔄 Issue Payment Refund
+               Issue Payment Refund
             </Text>
             <Text as="p" variant="caption" color="#64748B" style={{ margin: '2px 0 0' }}>
               Process direct refunds to customer account by Payment UUID (GAP-API-17)
@@ -896,14 +896,14 @@ export function PaymentsPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-                ⚙️ Configure Commission & Fee Rules
+                 Configure Commission & Fee Rules
               </h3>
               <button
                 type="button"
                 onClick={() => setIsConfigOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 

@@ -6,6 +6,7 @@ import type { AuditLogsResponse } from '../../features/audit-log/types';
  * Access restricted to SUPER_ADMIN.
  */
 export const auditLogsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getAuditLogs: builder.query<
       AuditLogsResponse,

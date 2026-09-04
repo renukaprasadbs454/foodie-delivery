@@ -281,7 +281,7 @@ export function DarkstoreShell({ children }: DarkstoreShellProps) {
           </nav>
 
           <div style={{ padding: 12, backgroundColor: '#14532D', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', marginTop: 20 }}>
-            <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 800 }}>⚡ Operational Hotline</div>
+            <div style={{ fontSize: 11, color: '#A7F3D0', fontWeight: 800 }}> Operational Hotline</div>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#FFFFFF', marginTop: 2 }}>+91 98000 11223</div>
             <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>Quick-commerce SLA: Sub 15-min delivery</div>
           </div>

@@ -14,7 +14,7 @@ describe('Users Feature & Sidebar Integration', () => {
     const usersNavItem = DASHBOARD_NAV.find((item) => item.href === '/users');
     expect(usersNavItem).toBeDefined();
     expect(usersNavItem?.label).toBe('Users');
-    expect(usersNavItem?.icon).toBe('👤');
+    expect(usersNavItem?.icon).toBe('');
     expect(usersNavItem?.category).toBe('BUSINESS MANAGERS');
   });
 

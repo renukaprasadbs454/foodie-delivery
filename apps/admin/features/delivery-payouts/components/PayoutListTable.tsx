@@ -224,7 +224,7 @@ export function PayoutListTable({
                           }}
                           title="Inspect Partner Wallet Ledger"
                         >
-                          Wallet 💼
+                          Wallet 
                         </button>
                       </div>
                     </td>

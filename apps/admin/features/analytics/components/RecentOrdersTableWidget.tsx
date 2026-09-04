@@ -43,12 +43,16 @@ function getStatusBadge(status: RecentOrder['status']) {
   }
 }
 
-export function RecentOrdersTableWidget() {
+interface Props {
+  orders?: RecentOrder[];
+}
+
+export function RecentOrdersTableWidget({ orders = [] }: Props) {
   const router = useRouter();
   const activeModule = useAppSelector(selectActiveModule);
   const [selectedOrder, setSelectedOrder] = useState<RecentOrder | null>(null);
 
-  const filteredOrders = MOCK_RECENT_ORDERS.filter((ord) => {
+  const filteredOrders = orders.filter((ord) => {
     if (activeModule === 'FOOD') return true;
     if (activeModule === 'RESTAURANTS') return ord.module.includes('Indian') || ord.module.includes('Italian') || ord.module.includes('Pizza');
     if (activeModule === 'CAFES') return ord.module.includes('Bakery') || ord.module.includes('Desserts') || ord.module.includes('Cafe');
@@ -73,7 +77,7 @@ export function RecentOrdersTableWidget() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 16, fontWeight: 800, color: '#14532D', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>🛒 Live Recent Orders Activity Stream</span>
+            <span>Live Recent Orders Activity Stream</span>
             <span style={{ height: 8, width: 8, borderRadius: '50%', backgroundColor: '#22C55E' }} className="pulse-live" />
           </div>
           <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
@@ -95,7 +99,7 @@ export function RecentOrdersTableWidget() {
             cursor: 'pointer',
           }}
         >
-          View Full Order Book ➔
+          View Full Order Book
         </button>
       </div>
 
@@ -114,60 +118,68 @@ export function RecentOrdersTableWidget() {
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.map((ord) => {
-              const badge = getStatusBadge(ord.status);
-              return (
-                <tr
-                  key={ord.id}
-                  style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s ease' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <td style={{ padding: '12px 14px', fontWeight: 800, color: '#14532D' }}>{ord.orderCode}</td>
-                  <td style={{ padding: '12px 14px', color: '#1E293B', fontWeight: 600 }}>{ord.customerName}</td>
-                  <td style={{ padding: '12px 14px', color: '#475569' }}>{ord.restaurantName}</td>
-                  <td style={{ padding: '12px 14px', fontWeight: 800, color: '#1E293B' }}>${ord.totalAmount.toFixed(2)}</td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '3px 8px', borderRadius: 4 }}>
-                      {ord.paymentMethod}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 14px' }}>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: badge.color,
-                        backgroundColor: badge.bg,
-                        padding: '4px 10px',
-                        borderRadius: 20,
-                        display: 'inline-block',
-                      }}
-                    >
-                      {badge.label}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedOrder(ord)}
-                      style={{
-                        padding: '5px 10px',
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: '#14532D',
-                        backgroundColor: '#FEF3C7',
-                        border: '1px solid #FDE68A',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Quick View
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+            {filteredOrders.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ padding: 32, textAlign: 'center', color: '#64748B' }}>
+                  No recent orders available.
+                </td>
+              </tr>
+            ) : (
+              filteredOrders.map((ord) => {
+                const badge = getStatusBadge(ord.status);
+                return (
+                  <tr
+                    key={ord.id}
+                    style={{ borderBottom: '1px solid #F1F5F9', transition: 'background-color 0.15s ease' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#F8FAFC')}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <td style={{ padding: '12px 14px', fontWeight: 800, color: '#14532D' }}>{ord.orderCode}</td>
+                    <td style={{ padding: '12px 14px', color: '#1E293B', fontWeight: 600 }}>{ord.customerName}</td>
+                    <td style={{ padding: '12px 14px', color: '#475569' }}>{ord.restaurantName}</td>
+                    <td style={{ padding: '12px 14px', fontWeight: 800, color: '#1E293B' }}>₹{ord.totalAmount.toFixed(2)}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', backgroundColor: '#F1F5F9', padding: '3px 8px', borderRadius: 4 }}>
+                        {ord.paymentMethod}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px' }}>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: badge.color,
+                          backgroundColor: badge.bg,
+                          padding: '4px 10px',
+                          borderRadius: 20,
+                          display: 'inline-block',
+                        }}
+                      >
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 14px', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrder(ord)}
+                        style={{
+                          padding: '5px 10px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: '#14532D',
+                          backgroundColor: '#FEF3C7',
+                          border: '1px solid #FDE68A',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Quick View
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
@@ -211,7 +223,7 @@ export function RecentOrdersTableWidget() {
                 onClick={() => setSelectedOrder(null)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                ×
               </button>
             </div>
 
@@ -231,7 +243,7 @@ export function RecentOrdersTableWidget() {
               <div style={{ backgroundColor: '#FEF3C7', padding: 14, borderRadius: 10, border: '1px solid #FDE68A' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: '#0F3D21' }}>Total Amount Paid</span>
-                  <span style={{ fontSize: 18, fontWeight: 800, color: '#14532D' }}>${selectedOrder.totalAmount.toFixed(2)}</span>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: '#14532D' }}>₹{selectedOrder.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -255,7 +267,7 @@ export function RecentOrdersTableWidget() {
                   cursor: 'pointer',
                 }}
               >
-                Go to Order Details ➔
+                Go to Order Details
               </button>
             </div>
           </div>

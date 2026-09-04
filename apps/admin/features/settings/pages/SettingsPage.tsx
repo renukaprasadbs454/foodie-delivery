@@ -211,7 +211,7 @@ export function SettingsPage() {
 
     setTimeout(() => {
       setSaving(false);
-      setToastMessage('✅ Control Center Settings & Policy Pages updated successfully!');
+      setToastMessage(' Control Center Settings & Policy Pages updated successfully!');
       setTimeout(() => setToastMessage(null), 3000);
     }, 600);
   };
@@ -269,7 +269,7 @@ export function SettingsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 800, color: '#14532D', margin: 0 }}>
-            ⚙️ Control Center Settings
+             Control Center Settings
           </h1>
           <p style={{ fontSize: 14, color: '#64748B', margin: '4px 0 0 0' }}>
             Configure admin profiles, policy page setups, commission rates, GST taxes, delivery pricing & security
@@ -293,7 +293,7 @@ export function SettingsPage() {
             transition: 'all 0.15s ease',
           }}
         >
-          {saving ? 'Saving Changes...' : '💾 Save Settings'}
+          {saving ? 'Saving Changes...' : ' Save Settings'}
         </button>
       </div>
 
@@ -428,7 +428,7 @@ export function SettingsPage() {
                     gap: 6,
                   }}
                 >
-                  <span>➕</span> Add Custom Policy Page
+                  <span></span> Add Custom Policy Page
                 </button>
               </div>
 
@@ -798,14 +798,14 @@ export function SettingsPage() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', margin: 0 }}>
-                ➕ Create Custom Policy Page
+                 Create Custom Policy Page
               </h3>
               <button
                 type="button"
                 onClick={() => setIsAddPageModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 

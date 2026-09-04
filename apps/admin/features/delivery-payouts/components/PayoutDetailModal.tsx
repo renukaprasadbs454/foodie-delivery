@@ -93,7 +93,7 @@ export function PayoutDetailModal({
               padding: 4,
             }}
           >
-            ✕
+            
           </button>
         </div>
 
@@ -119,7 +119,7 @@ export function PayoutDetailModal({
               cursor: 'pointer',
             }}
           >
-            📋 Payout Details
+             Payout Details
           </button>
           <button
             type="button"
@@ -134,7 +134,7 @@ export function PayoutDetailModal({
               cursor: 'pointer',
             }}
           >
-            💼 Wallet & Ledger Investigation
+             Wallet & Ledger Investigation
           </button>
         </div>
 
@@ -229,7 +229,7 @@ export function PayoutDetailModal({
                     color: '#991B1B',
                   }}
                 >
-                  <div style={{ fontSize: 13, fontWeight: 800 }}>⚠️ Failure Reason:</div>
+                  <div style={{ fontSize: 13, fontWeight: 800 }}> Failure Reason:</div>
                   <div style={{ fontSize: 13, marginTop: 2 }}>{payout.failureReason || 'Bank account detail validation failed or gateway timed out.'}</div>
                 </div>
               )}
@@ -237,7 +237,7 @@ export function PayoutDetailModal({
               {/* Partner Bank Details Grid */}
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', marginBottom: 10 }}>
-                  🏦 Partner Beneficiary Bank Account
+                   Partner Beneficiary Bank Account
                 </div>
                 <div
                   style={{
@@ -273,7 +273,7 @@ export function PayoutDetailModal({
               {/* Provider & Transaction Info */}
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', marginBottom: 10 }}>
-                  💳 Gateway & Provider Metadata (Read-Only)
+                   Gateway & Provider Metadata (Read-Only)
                 </div>
                 <div
                   style={{
@@ -310,7 +310,7 @@ export function PayoutDetailModal({
 
               {/* Read-only Security Guarantee Notice */}
               <div style={{ fontSize: 11, color: '#64748B', backgroundColor: '#F8FAFC', padding: '10px 12px', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-                🔒 <strong>Security Policy:</strong> Provider authentication keys and webhook secrets are kept encrypted and never exposed in admin responses.
+                 <strong>Security Policy:</strong> Provider authentication keys and webhook secrets are kept encrypted and never exposed in admin responses.
               </div>
             </div>
           ) : (
@@ -348,7 +348,7 @@ export function PayoutDetailModal({
               {/* Ledger Entries Table */}
               <div>
                 <div style={{ fontSize: 14, fontWeight: 800, color: '#0F172A', marginBottom: 8 }}>
-                  📜 Recent Wallet Ledger Entries
+                   Recent Wallet Ledger Entries
                 </div>
                 <div style={{ border: '1px solid #E2E8F0', borderRadius: 10, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
@@ -430,7 +430,7 @@ export function PayoutDetailModal({
                   boxShadow: '0 2px 4px rgba(217, 119, 6, 0.3)',
                 }}
               >
-                {isRetrying ? 'Retrying Payout...' : '🔄 Retry Failed Payout'}
+                {isRetrying ? 'Retrying Payout...' : ' Retry Failed Payout'}
               </button>
             )}
           </div>

@@ -252,7 +252,7 @@ export function AuditLogPage() {
             gap: 8,
           }}
         >
-          🔄 Refresh
+           Refresh
         </button>
       </div>
 
@@ -475,7 +475,7 @@ export function AuditLogPage() {
         {isLoading ? (
           <div style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>
             <span style={{ fontSize: 24, display: 'inline-block', animation: 'spin 1s linear infinite' }}>
-              ⏳
+              
             </span>
             <div style={{ marginTop: 8, fontWeight: 600 }}>Loading system audit logs...</div>
           </div>
@@ -585,7 +585,7 @@ export function AuditLogPage() {
                             e.currentTarget.style.color = '#14532D';
                           }}
                         >
-                          🔍 State Diff
+                           State Diff
                         </button>
                       </td>
                     </tr>

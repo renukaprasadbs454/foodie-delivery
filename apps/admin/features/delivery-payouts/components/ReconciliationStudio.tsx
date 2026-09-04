@@ -35,7 +35,7 @@ export function ReconciliationStudio({ overview, onSelectPayout }: Reconciliatio
       >
         <div>
           <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>
-            ⚖️ Payout Reconciliation Studio
+             Payout Reconciliation Studio
           </div>
           <div style={{ fontSize: 13, color: '#A7F3D0', marginTop: 4, maxWidth: 600 }}>
             Automated cross-reconciliation engine auditing local ledger entries against Razorpay and Cashfree provider settlement logs.
@@ -222,7 +222,7 @@ export function ReconciliationStudio({ overview, onSelectPayout }: Reconciliatio
               {filteredDiscrepancies.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ padding: '32px 14px', textAlign: 'center', color: '#166534', backgroundColor: '#F0FDF4' }}>
-                    ✅ All records in this category are fully matched with provider logs!
+                     All records in this category are fully matched with provider logs!
                   </td>
                 </tr>
               ) : (

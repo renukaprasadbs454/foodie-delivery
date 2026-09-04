@@ -23,7 +23,7 @@ export function DarkstoreReportsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-            📈 Darkstore Operational Reports & Analytics
+             Darkstore Operational Reports & Analytics
           </h1>
           <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
             Metrics on picking velocity, packing efficiency, dispatch turnarounds, and stock-out frequency.
@@ -46,7 +46,7 @@ export function DarkstoreReportsPage() {
             onClick={exportCSV}
             style={{ backgroundColor: '#0F3D21', color: '#FFFFFF', padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 800, border: 'none', cursor: 'pointer' }}
           >
-            Export CSV 📥
+            Export CSV 
           </button>
         </div>
       </div>
@@ -55,17 +55,17 @@ export function DarkstoreReportsPage() {
         <div style={{ backgroundColor: '#FFFFFF', padding: 20, borderRadius: 12, border: '1px solid #E5E7EB' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280' }}>AVG PICK TIME / ORDER</div>
           <div style={{ fontSize: 26, fontWeight: 900, color: '#0F3D21', marginTop: 4 }}>3.2 mins</div>
-          <div style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}>⚡ Sub 5-min target met</div>
+          <div style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}> Sub 5-min target met</div>
         </div>
         <div style={{ backgroundColor: '#FFFFFF', padding: 20, borderRadius: 12, border: '1px solid #E5E7EB' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280' }}>AVG PACK TIME / ORDER</div>
           <div style={{ fontSize: 26, fontWeight: 900, color: '#0F3D21', marginTop: 4 }}>1.8 mins</div>
-          <div style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}>⚡ Sub 2-min target met</div>
+          <div style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}> Sub 2-min target met</div>
         </div>
         <div style={{ backgroundColor: '#FFFFFF', padding: 20, borderRadius: 12, border: '1px solid #E5E7EB' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: '#6B7280' }}>DISPATCH PREP SLA</div>
           <div style={{ fontSize: 26, fontWeight: 900, color: '#0F3D21', marginTop: 4 }}>98.4%</div>
-          <div style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}>⚡ 10-min store exit SLA</div>
+          <div style={{ fontSize: 11, color: '#15803D', marginTop: 4 }}> 10-min store exit SLA</div>
         </div>
       </div>
 

@@ -35,7 +35,7 @@ export default function OtherBusinessPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>📍</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#D1FAE5', color: '#047857', padding: '3px 8px', borderRadius: 6 }}>
               PRIMARY FEATURE
             </span>
@@ -73,7 +73,7 @@ export default function OtherBusinessPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>🌐</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#FEF3C7', color: '#B45309', padding: '3px 8px', borderRadius: 6 }}>
               FEATURED
             </span>
@@ -107,7 +107,7 @@ export default function OtherBusinessPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>🚚</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#FEF3C7', color: '#B45309', padding: '3px 8px', borderRadius: 6 }}>
               LOGISTICS
             </span>
@@ -140,7 +140,7 @@ export default function OtherBusinessPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>🍽️</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#E0E7FF', color: '#3730A3', padding: '3px 8px', borderRadius: 6 }}>
               MERCHANT OPS
             </span>

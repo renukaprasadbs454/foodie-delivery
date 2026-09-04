@@ -10,6 +10,7 @@ import type {
  * No admin coupon list GET (GAP-API-19).
  */
 export const couponsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     createCoupon: builder.mutation<Coupon, CreateCouponBody>({
       query: (body) => ({

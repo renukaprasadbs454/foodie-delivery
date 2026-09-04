@@ -14,6 +14,7 @@ export interface UpdateDeliveryPricingRequest {
 }
 
 export const deliveryPartnersApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     approveDeliveryPartnerKyc: builder.mutation<DeliveryPartnerProfile, string>({
       query: (partnerId) => ({

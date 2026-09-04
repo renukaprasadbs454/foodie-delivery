@@ -44,7 +44,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'basePay',
       title: 'Base Pay per Order',
-      icon: '📦',
+      icon: '',
       value: 50,
       unit: '₹ / order',
       active: true,
@@ -54,7 +54,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'peakHourBonus',
       title: 'Peak Hour Bonus',
-      icon: '🔥',
+      icon: '',
       value: 100,
       unit: '₹ / order',
       active: true,
@@ -64,7 +64,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'dailyTargetBonus',
       title: 'Daily Target Bonus',
-      icon: '🎯',
+      icon: '',
       value: 150,
       unit: '₹ / day',
       active: true,
@@ -74,7 +74,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'weeklyTargetBonus',
       title: 'Weekly Target Bonus',
-      icon: '🏆',
+      icon: '',
       value: 800,
       unit: '₹ / week',
       active: true,
@@ -84,7 +84,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'longDistanceBonus',
       title: 'Long-Distance Bonus',
-      icon: '📍',
+      icon: '',
       value: 15,
       unit: '₹ / extra km',
       active: true,
@@ -94,7 +94,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'rainBonus',
       title: 'Rain/Bad Weather Bonus',
-      icon: '🌧️',
+      icon: '',
       value: 70,
       unit: '₹ / order',
       active: true,
@@ -104,7 +104,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'referralBonus',
       title: 'Referral Bonus',
-      icon: '🤝',
+      icon: '',
       value: 500,
       unit: '₹ / referral',
       active: true,
@@ -114,7 +114,7 @@ export function DeliveryPricingSettingsCard() {
     {
       id: 'performanceBonus',
       title: 'Performance/Rating Bonus',
-      icon: '⭐',
+      icon: '',
       value: 250,
       unit: '₹ / week',
       active: true,
@@ -178,7 +178,7 @@ export function DeliveryPricingSettingsCard() {
     const newRule: IncentiveItem = {
       id: newId,
       title: 'Custom Rider Bonus',
-      icon: '⚡',
+      icon: '',
       value: 50,
       unit: '₹ / rule',
       active: true,
@@ -192,7 +192,7 @@ export function DeliveryPricingSettingsCard() {
     setIncentives((prev) => prev.filter((item) => item.id !== id));
   };
 
-  // PERSISTENCE SAVING FUNCTIONALITY (Saves rule state and triggers Saved ✓ state)
+  // PERSISTENCE SAVING FUNCTIONALITY (Saves rule state and triggers Saved  state)
   const handleSaveSingleRule = async (item: IncentiveItem) => {
     const nowIso = new Date().toISOString();
     try {
@@ -313,7 +313,7 @@ export function DeliveryPricingSettingsCard() {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <h2 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800, color: '#064E3B', letterSpacing: '-0.02em' }}>
-              🚚 Delivery Partner Payout Structure & Incentives
+               Delivery Partner Payout Structure & Incentives
             </h2>
           </div>
           <p style={{ margin: '8px 0 0 0', fontSize: '0.875rem', color: '#4B5563', lineHeight: '1.5' }}>
@@ -340,14 +340,14 @@ export function DeliveryPricingSettingsCard() {
             boxShadow: '0 4px 12px rgba(16, 185, 129, 0.12)',
           }}
         >
-          <span>{toastMsg.type === 'success' ? '✅' : '⚠️'}</span>
+          <span>{toastMsg.type === 'success' ? '' : ''}</span>
           <span>{toastMsg.text}</span>
         </div>
       )}
 
       {isLoading ? (
         <div style={{ padding: '30px', textAlign: 'center', color: '#047857', fontWeight: 600 }}>
-          ⏳ Loading delivery payout & incentive rules...
+           Loading delivery payout & incentive rules...
         </div>
       ) : (
         <form onSubmit={handleSave}>
@@ -516,7 +516,7 @@ export function DeliveryPricingSettingsCard() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🎁 Rider Incentives & Performance Bonus Matrix
+                   Rider Incentives & Performance Bonus Matrix
                 </h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#64748B' }}>
                   Admin Operator Control: Edit titles, custom rule descriptions, amounts, and click Save to persist.
@@ -538,7 +538,7 @@ export function DeliveryPricingSettingsCard() {
                     cursor: 'pointer',
                   }}
                 >
-                  ➕ Add Custom Rule
+                   Add Custom Rule
                 </button>
                 <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#047857', backgroundColor: '#ECFDF5', padding: '6px 12px', borderRadius: '20px', border: '1px solid #A7F3D0' }}>
                   {incentives.filter((i) => i.active).length} of {incentives.length} Active
@@ -604,7 +604,7 @@ export function DeliveryPricingSettingsCard() {
                             }}
                             title="Remove custom bonus rule"
                           >
-                            ✕
+                            
                           </button>
                         )}
 
@@ -627,7 +627,7 @@ export function DeliveryPricingSettingsCard() {
                           {item.active ? 'ON' : 'OFF'}
                         </button>
 
-                        {/* Interactive Save Button (Toggles to Saved ✓ upon click) */}
+                        {/* Interactive Save Button (Toggles to Saved  upon click) */}
                         <button
                           type="button"
                           disabled={isUpdating}
@@ -652,7 +652,7 @@ export function DeliveryPricingSettingsCard() {
                           }}
                           title={`Save ${item.title} rule`}
                         >
-                          <span>{isUpdating ? 'Saving...' : isItemSaved ? 'Saved ✓' : 'Save'}</span>
+                          <span>{isUpdating ? 'Saving...' : isItemSaved ? 'Saved ' : 'Save'}</span>
                         </button>
                       </div>
                     </div>
@@ -660,7 +660,7 @@ export function DeliveryPricingSettingsCard() {
                     {/* EDITABLE RULE DESCRIPTION TEXTAREA FOR ADMIN OPERATORS */}
                     <div style={{ marginBottom: '12px' }}>
                       <label style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#64748B', display: 'block', marginBottom: '4px' }}>
-                        ✏️ Rule Condition & Description:
+                         Rule Condition & Description:
                       </label>
                       <textarea
                         value={item.description}
@@ -734,7 +734,7 @@ export function DeliveryPricingSettingsCard() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
               <div>
                 <div style={{ fontSize: '0.975rem', fontWeight: 800, color: '#064E3B', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  📊 Formula & Interactive Payout Simulator
+                   Formula & Interactive Payout Simulator
                 </div>
                 <div style={{ fontSize: '0.75rem', color: '#047857', marginTop: '2px' }}>
                   Admin Operator Control: Edit test distances below or try any custom trip distance
@@ -756,7 +756,7 @@ export function DeliveryPricingSettingsCard() {
                     cursor: 'pointer',
                   }}
                 >
-                  ➕ Add Test Distance
+                   Add Test Distance
                 </button>
               </div>
             </div>
@@ -784,7 +784,7 @@ export function DeliveryPricingSettingsCard() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8125rem', fontWeight: 700, color: '#064E3B' }}>
-                <span>🧮 Operator Quick Test:</span>
+                <span> Operator Quick Test:</span>
                 <input
                   type="number"
                   min="0.1"
@@ -823,7 +823,7 @@ export function DeliveryPricingSettingsCard() {
                     color: customResult.appliedRule === 'PER_KM' ? '#166534' : '#1E40AF',
                   }}
                 >
-                  {customResult.appliedRule === 'PER_KM' ? '✓ Per KM Rate' : '✓ Base Guaranteed'}
+                  {customResult.appliedRule === 'PER_KM' ? ' Per KM Rate' : ' Base Guaranteed'}
                 </span>
               </div>
             </div>
@@ -886,7 +886,7 @@ export function DeliveryPricingSettingsCard() {
                           }}
                           title="Remove test distance"
                         >
-                          ✕
+                          
                         </button>
                       )}
                     </div>
@@ -908,7 +908,7 @@ export function DeliveryPricingSettingsCard() {
                           display: 'inline-block',
                         }}
                       >
-                        {isPerKm ? '✓ Distance Incentive' : '✓ Base Guaranteed'}
+                        {isPerKm ? ' Distance Incentive' : ' Base Guaranteed'}
                       </span>
                       <span style={{ fontSize: '0.675rem', color: isPerKm ? '#15803D' : '#1D4ED8', fontWeight: 700 }}>
                         {isPerKm ? `${dist}×₹${moneyPerKm}` : 'Base'}

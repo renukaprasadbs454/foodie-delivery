@@ -27,7 +27,7 @@ export function DarkstorePackingPage() {
     <div style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-          🎁 Packing Station
+           Packing Station
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
           Active Packing Order: <strong style={{ color: '#0F3D21' }}>{orderNumber}</strong> | Assigned Packer: <strong>{assignedPacker}</strong>
@@ -43,7 +43,7 @@ export function DarkstorePackingPage() {
           {items.map((it, idx) => (
             <li key={idx} style={{ padding: 12, backgroundColor: '#F9FAFB', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
               <div>
-                <span style={{ fontWeight: 800, color: '#0F3D21' }}>✓ {it.name}</span>
+                <span style={{ fontWeight: 800, color: '#0F3D21' }}> {it.name}</span>
                 <span style={{ fontSize: 11, color: '#6B7280', marginLeft: 8 }}>Qty: {it.qty}</span>
               </div>
               <span style={{ fontSize: 11, fontWeight: 800, color: '#15803D', backgroundColor: '#DCFCE7', padding: '2px 8px', borderRadius: 6 }}>
@@ -99,11 +99,11 @@ export function DarkstorePackingPage() {
               cursor: 'pointer',
             }}
           >
-            Seal Bag & Mark Ready for Dispatch 🎁
+            Seal Bag & Mark Ready for Dispatch 
           </button>
         ) : (
           <div style={{ backgroundColor: '#DCFCE7', color: '#15803D', padding: 16, borderRadius: 8, textAlign: 'center', fontWeight: 800 }}>
-            ✅ Order {orderNumber} sealed with tag #{sealTag} ({bagCount} bag). Transferred to Dispatch Bay!
+             Order {orderNumber} sealed with tag #{sealTag} ({bagCount} bag). Transferred to Dispatch Bay!
           </div>
         )}
       </div>

@@ -103,12 +103,12 @@ export function CentralizedManagementSection() {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  📍 {z.name}
+                   {z.name}
                 </button>
               ))}
 
               <div style={{ position: 'absolute', bottom: 10, left: 12, fontSize: 11, fontWeight: 700, color: '#047857' }}>
-                🗺️ Active Zone: {selectedZone.name} ({selectedZone.activeStores} Food Outlets)
+                 Active Zone: {selectedZone.name} ({selectedZone.activeStores} Food Outlets)
               </div>
             </div>
           </div>
@@ -148,10 +148,10 @@ export function CentralizedManagementSection() {
             }}
           >
             {[
-              { label: 'Fine Dining & Pizzerias', icon: '🍕', count: '18 Active Outlets' },
-              { label: 'Cafes & Bakery', icon: '☕', count: '12 Active Outlets' },
-              { label: 'Cloud Kitchens', icon: '🍳', count: '8 Active Outlets' },
-              { label: 'All Food Delivery', icon: '🍔', count: '42 Total Outlets' },
+              { label: 'Fine Dining & Pizzerias', icon: '', count: '18 Active Outlets' },
+              { label: 'Cafes & Bakery', icon: '', count: '12 Active Outlets' },
+              { label: 'Cloud Kitchens', icon: '', count: '8 Active Outlets' },
+              { label: 'All Food Delivery', icon: '', count: '42 Total Outlets' },
             ].map((m) => {
               const isSelected = activeModuleTile === m.label;
               return (

@@ -9,7 +9,7 @@ export default function MembersHubPage() {
       {/* Header */}
       <div>
         <h1 style={{ fontSize: 24, fontWeight: 800, color: '#0F3D21', margin: '0 0 6px 0' }}>
-          👥 Platform Members & Stakeholder Management
+           Platform Members & Stakeholder Management
         </h1>
         <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
           Centralized management studio for all Foodie platform members: Admin Staff, Customers, Merchants, and Deliverymen.
@@ -35,7 +35,7 @@ export default function MembersHubPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>👤</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#DCFCE7', color: '#166534', padding: '3px 8px', borderRadius: 6 }}>
               FEATURED
             </span>
@@ -73,7 +73,7 @@ export default function MembersHubPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>👥</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#E0E7FF', color: '#3730A3', padding: '3px 8px', borderRadius: 6 }}>
               CONSUMERS
             </span>
@@ -111,7 +111,7 @@ export default function MembersHubPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>🍽️</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#FEF3C7', color: '#B45309', padding: '3px 8px', borderRadius: 6 }}>
               MERCHANTS
             </span>
@@ -149,7 +149,7 @@ export default function MembersHubPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: 24 }}>🛵</span>
+            <span style={{ fontSize: 24 }}></span>
             <span style={{ fontSize: 11, fontWeight: 800, backgroundColor: '#FCE7F3', color: '#9D174D', padding: '3px 8px', borderRadius: 6 }}>
               LOGISTICS
             </span>

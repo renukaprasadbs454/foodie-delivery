@@ -88,7 +88,7 @@ export function SupportQuestionsBanner() {
             zIndex: 2,
           }}
         >
-          <div style={{ fontSize: 48 }}>📅</div>
+          <div style={{ fontSize: 48 }}></div>
           <div>
             <div style={{ fontSize: 16, fontWeight: 800, color: '#FEF3C7' }}>1-on-1 Operations Call</div>
             <div style={{ fontSize: 12, color: '#E6F4EA', marginTop: 4 }}>30-min strategy session with Foodie experts</div>
@@ -151,20 +151,20 @@ export function SupportQuestionsBanner() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', margin: 0 }}>
-                📅 Schedule Foodie Operations Consultation
+                 Schedule Foodie Operations Consultation
               </h3>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
             {booked ? (
               <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 48 }}>🎉</div>
+                <div style={{ fontSize: 48 }}></div>
                 <h4 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', marginTop: 12 }}>
                   Meeting Successfully Booked!
                 </h4>
@@ -233,7 +233,7 @@ export function SupportQuestionsBanner() {
                     cursor: 'pointer',
                   }}
                 >
-                  Confirm Booking ➔
+                  Confirm Booking 
                 </button>
               </form>
             )}
@@ -270,22 +270,22 @@ export function SupportQuestionsBanner() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', paddingBottom: 16 }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', margin: 0 }}>
-                🚀 Upcoming Foodie Features Roadmap
+                 Upcoming Foodie Features Roadmap
               </h3>
               <button
                 type="button"
                 onClick={() => setIsRoadmapOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {[
-                { title: '🤖 AI Multilingual Order Voice Bot', status: 'Q4 2025', desc: 'Allows customers to speak complex food orders directly in native languages.' },
-                { title: '🛸 Autonomous Drone Delivery Dispatch', status: 'Q1 2026', desc: 'Integration with automated aerial food delivery route planners.' },
-                { title: '📊 Thermal Kitchen Heatmap Analytics', status: 'In Progress', desc: 'Real-time kitchen prep bottle-neck diagnostics for cloud kitchens.' },
+                { title: ' AI Multilingual Order Voice Bot', status: 'Q4 2025', desc: 'Allows customers to speak complex food orders directly in native languages.' },
+                { title: ' Autonomous Drone Delivery Dispatch', status: 'Q1 2026', desc: 'Integration with automated aerial food delivery route planners.' },
+                { title: ' Thermal Kitchen Heatmap Analytics', status: 'In Progress', desc: 'Real-time kitchen prep bottle-neck diagnostics for cloud kitchens.' },
               ].map((f) => (
                 <div key={f.title} style={{ padding: 14, borderRadius: 10, backgroundColor: '#F8FAFC', border: '1px solid #E2E8F0' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

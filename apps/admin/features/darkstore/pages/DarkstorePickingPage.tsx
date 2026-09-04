@@ -154,7 +154,7 @@ export function DarkstorePickingPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-            🛒 Picker Execution Station
+             Picker Execution Station
           </h1>
           <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
             Active Pick Order: <strong style={{ color: '#0F3D21' }}>{activeOrderId}</strong> | Assigned Picker: <strong>Karan Verma</strong> | Total Items: <strong>{items.length} SKUs ({totalRequested} units)</strong>
@@ -177,7 +177,7 @@ export function DarkstorePickingPage() {
                 boxShadow: '0 2px 4px rgba(16,185,129,0.2)',
               }}
             >
-              ⚡ Fast Pick All
+               Fast Pick All
             </button>
           )}
           <span style={{ fontSize: 13, fontWeight: 800, color: '#15803D', backgroundColor: '#DCFCE7', padding: '6px 14px', borderRadius: 20 }}>
@@ -188,7 +188,7 @@ export function DarkstorePickingPage() {
 
       {toastMessage && (
         <div style={{ backgroundColor: '#FEF3C7', color: '#92400E', padding: '12px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, marginBottom: 16 }}>
-          ⚠️ {toastMessage}
+           {toastMessage}
         </div>
       )}
 
@@ -201,9 +201,9 @@ export function DarkstorePickingPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {[
           { key: 'ALL', label: `All Items (${items.length})` },
-          { key: 'COOLER', label: `❄️ Cooler & Chiller (${items.filter(i => i.shelfLocation.toLowerCase().includes('cooler') || i.shelfLocation.toLowerCase().includes('chiller')).length})` },
-          { key: 'SNACKS', label: `🍿 Snacks & Pantry (${items.filter(i => i.shelfLocation.toLowerCase().includes('snacks') || i.shelfLocation.toLowerCase().includes('pantry') || i.shelfLocation.toLowerCase().includes('premium')).length})` },
-          { key: 'PENDING', label: `⏳ Pending Pick (${items.filter(i => i.status === 'PENDING').length})` },
+          { key: 'COOLER', label: ` Cooler & Chiller (${items.filter(i => i.shelfLocation.toLowerCase().includes('cooler') || i.shelfLocation.toLowerCase().includes('chiller')).length})` },
+          { key: 'SNACKS', label: ` Snacks & Pantry (${items.filter(i => i.shelfLocation.toLowerCase().includes('snacks') || i.shelfLocation.toLowerCase().includes('pantry') || i.shelfLocation.toLowerCase().includes('premium')).length})` },
+          { key: 'PENDING', label: ` Pending Pick (${items.filter(i => i.status === 'PENDING').length})` },
         ].map((tab) => (
           <button
             key={tab.key}
@@ -251,7 +251,7 @@ export function DarkstorePickingPage() {
               )}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 800, color: item.shelfLocation.includes('Cooler') || item.shelfLocation.includes('Chiller') ? '#2563EB' : '#F59E0B', textTransform: 'uppercase' }}>
-                  📍 Shelf Location: {item.shelfLocation}
+                   Shelf Location: {item.shelfLocation}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', marginTop: 2 }}>{item.productName}</div>
                 <div style={{ fontSize: 12, color: '#6B7280' }}>
@@ -303,7 +303,7 @@ export function DarkstorePickingPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Report Missing ⚠️
+                  Report Missing 
                 </button>
               </div>
             </div>
@@ -315,7 +315,7 @@ export function DarkstorePickingPage() {
       {isComplete && (
         <div style={{ marginTop: 32, padding: 20, backgroundColor: '#DCFCE7', borderRadius: 12, border: '1px solid #86EFAC', textAlign: 'center' }}>
           <h3 style={{ fontSize: 18, fontWeight: 900, color: '#15803D', margin: '0 0 8px' }}>
-            🎉 All {items.length} Items Picked!
+             All {items.length} Items Picked!
           </h3>
           <p style={{ fontSize: 13, color: '#166534', margin: '0 0 16px' }}>
             Order {activeOrderId} picking is complete. Please hand over the crate ({totalRequested} items) to the packing station.

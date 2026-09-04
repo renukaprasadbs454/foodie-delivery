@@ -11,6 +11,7 @@ import type {
  * Payments RTK — Commission Settlement, Payment Distribution & Refunds.
  */
 export const paymentsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getSettlements: builder.query<PaymentSettlementRecord[], void>({
       query: () => '/api/v1/admin/payments/settlements',

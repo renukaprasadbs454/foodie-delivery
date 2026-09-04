@@ -25,24 +25,24 @@ describe('6amMart Admin Panel Navigation & Role Configuration', () => {
     expect(membersNav?.highlighted).toBe(true);
 
     const usersNav = DASHBOARD_NAV.find(i => i.href === '/users');
-    expect(usersNav?.icon).toBe('👤');
+    expect(usersNav?.icon).toBe('');
 
     const socialMediaNav = DASHBOARD_NAV.find(i => i.href === '/social-media');
-    expect(socialMediaNav?.icon).toBe('🌐');
+    expect(socialMediaNav?.icon).toBe('');
 
     const otherNav = DASHBOARD_NAV.find(i => i.href === '/other');
     expect(otherNav?.icon).toBeUndefined();
     expect(otherNav?.highlighted).toBe(true);
 
     const orderNav = DASHBOARD_NAV.find(i => i.href === '/orders');
-    expect(orderNav?.icon).toBe('📦');
+    expect(orderNav?.icon).toBe('');
     expect(orderNav?.badge).toBe('LIVE');
 
     const restaurantNav = DASHBOARD_NAV.find(i => i.href === '/restaurants');
-    expect(restaurantNav?.icon).toBe('🍽️');
+    expect(restaurantNav?.icon).toBe('');
 
     const settingsNav = DASHBOARD_NAV.find(i => i.href === '/settings');
-    expect(settingsNav?.icon).toBe('⚙️');
+    expect(settingsNav?.icon).toBe('');
   });
 
   it('correctly filters categorized navigation for different roles', () => {

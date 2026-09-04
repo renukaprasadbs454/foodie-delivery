@@ -307,10 +307,10 @@ export function GoogleMapsPolygonPinPicker({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 900, color: '#14532D', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>🗺️</span> {title}
+            <span></span> {title}
           </div>
           <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-            Click anywhere on the interactive map canvas below to drop Google Maps Pins (📌) and dynamically build the polygon string.
+            Click anywhere on the interactive map canvas below to drop Google Maps Pins () and dynamically build the polygon string.
           </div>
         </div>
 
@@ -333,7 +333,7 @@ export function GoogleMapsPolygonPinPicker({
                   color: mapTheme === thm ? '#F59E0B' : '#475569',
                 }}
               >
-                {thm === 'VECTOR' ? '🗺️ Vector' : thm === 'SATELLITE' ? '🛰️ Satellite' : '🌐 Hybrid'}
+                {thm === 'VECTOR' ? ' Vector' : thm === 'SATELLITE' ? ' Satellite' : ' Hybrid'}
               </button>
             ))}
           </div>
@@ -348,7 +348,7 @@ export function GoogleMapsPolygonPinPicker({
               color: currentPins.length >= 3 ? '#047857' : '#B45309',
             }}
           >
-            📌 {currentPins.length} Pins Placed
+             {currentPins.length} Pins Placed
           </span>
         </div>
       </div>
@@ -374,11 +374,11 @@ export function GoogleMapsPolygonPinPicker({
       >
         {/* Map Watermark & Scale */}
         <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 5, backgroundColor: 'rgba(15, 23, 42, 0.75)', color: '#FFFFFF', padding: '6px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, backdropFilter: 'blur(4px)' }}>
-          📍 Center: {centerLat.toFixed(4)}, {centerLng.toFixed(4)} (Scale: {radiusKm} KM Circle)
+           Center: {centerLat.toFixed(4)}, {centerLng.toFixed(4)} (Scale: {radiusKm} KM Circle)
         </div>
 
         <div style={{ position: 'absolute', bottom: 12, right: 12, zIndex: 5, backgroundColor: 'rgba(255, 255, 255, 0.9)', color: '#14532D', padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 800, border: '1px solid #CBD5E1' }}>
-          💡 Click Map Canvas to Drop Google Pin
+           Click Map Canvas to Drop Google Pin
         </div>
 
         {/* Center Crosshair Marker */}
@@ -527,7 +527,7 @@ export function GoogleMapsPolygonPinPicker({
               cursor: 'pointer',
             }}
           >
-            📍 Drop Pin at Center
+             Drop Pin at Center
           </button>
 
           <button
@@ -561,7 +561,7 @@ export function GoogleMapsPolygonPinPicker({
               cursor: 'pointer',
             }}
           >
-            🔷 Auto 6-Point Hexagon Pins
+             Auto 6-Point Hexagon Pins
           </button>
 
           {currentPins.length > 0 && (
@@ -579,7 +579,7 @@ export function GoogleMapsPolygonPinPicker({
                 cursor: 'pointer',
               }}
             >
-              🗑️ Clear All Pins ({currentPins.length})
+               Clear All Pins ({currentPins.length})
             </button>
           )}
         </div>
@@ -645,7 +645,7 @@ export function GoogleMapsPolygonPinPicker({
               >
                 <div>
                   <div style={{ fontWeight: 800, color: '#14532D' }}>
-                    📍 Pin #{idx + 1}
+                     Pin #{idx + 1}
                   </div>
                   <div style={{ color: '#475569', fontSize: 11, fontFamily: 'monospace', marginTop: 2 }}>
                     {pin.lat.toFixed(4)}, {pin.lng.toFixed(4)}
@@ -666,7 +666,7 @@ export function GoogleMapsPolygonPinPicker({
                     padding: '4px 8px',
                   }}
                 >
-                  ✕
+                  
                 </button>
               </div>
             ))}
@@ -674,7 +674,7 @@ export function GoogleMapsPolygonPinPicker({
         </div>
       ) : (
         <div style={{ textAlign: 'center', padding: 16, backgroundColor: '#F8FAFC', borderRadius: 8, border: '1px dashed #CBD5E1', fontSize: 12, color: '#64748B' }}>
-          📌 No polygon pins dropped yet. Click anywhere on the map above or click <strong>"Auto 4-Point Square Pins"</strong> to place boundary markers.
+           No polygon pins dropped yet. Click anywhere on the map above or click <strong>"Auto 4-Point Square Pins"</strong> to place boundary markers.
         </div>
       )}
     </div>
@@ -1080,7 +1080,7 @@ export function LocationManagementPage() {
               {/* Toggle 1: Restaurants */}
               <div style={{ backgroundColor: '#FFFFFF', padding: 14, borderRadius: 10, border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>🍽️ Restaurant Onboarding</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}> Restaurant Onboarding</div>
                   <div style={{ fontSize: 11, color: '#64748B' }}>Allow restaurants to register & accept orders</div>
                 </div>
                 <input
@@ -1094,7 +1094,7 @@ export function LocationManagementPage() {
               {/* Toggle 2: Delivery Partners */}
               <div style={{ backgroundColor: '#FFFFFF', padding: 14, borderRadius: 10, border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>🛵 Delivery Partner Dispatch</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}> Delivery Partner Dispatch</div>
                   <div style={{ fontSize: 11, color: '#64748B' }}>Allow driver fleet dispatch & payouts</div>
                 </div>
                 <input
@@ -1108,7 +1108,7 @@ export function LocationManagementPage() {
               {/* Toggle 3: Customer Ordering */}
               <div style={{ backgroundColor: '#FFFFFF', padding: 14, borderRadius: 10, border: '1px solid #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}>🛍️ Customer Ordering Power</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: '#0F172A' }}> Customer Ordering Power</div>
                   <div style={{ fontSize: 11, color: '#64748B' }}>Allow customers to place food orders</div>
                 </div>
                 <input
@@ -1160,7 +1160,7 @@ export function LocationManagementPage() {
                   <td style={{ padding: '16px 20px' }}>
                     <div style={{ fontWeight: 800, color: '#14532D' }}>{dz.zoneName}</div>
                     <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>
-                      📍 Lat: {dz.latitude}, Lng: {dz.longitude}
+                       Lat: {dz.latitude}, Lng: {dz.longitude}
                     </div>
                   </td>
 
@@ -1192,7 +1192,7 @@ export function LocationManagementPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        <span>🍽️ Restaurant Service:</span>
+                        <span> Restaurant Service:</span>
                         <span>{dz.restaurantEnabled ? 'ON' : 'OFF'}</span>
                       </button>
 
@@ -1215,7 +1215,7 @@ export function LocationManagementPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        <span>🛵 Driver Dispatch:</span>
+                        <span> Driver Dispatch:</span>
                         <span>{dz.deliveryPartnerEnabled ? 'ON' : 'OFF'}</span>
                       </button>
 
@@ -1238,7 +1238,7 @@ export function LocationManagementPage() {
                           cursor: 'pointer',
                         }}
                       >
-                        <span>🛍️ Customer Ordering:</span>
+                        <span> Customer Ordering:</span>
                         <span>{dz.customerOrderingEnabled ? 'ON' : 'OFF'}</span>
                       </button>
                     </div>
@@ -1281,7 +1281,7 @@ export function LocationManagementPage() {
                         gap: 6,
                       }}
                     >
-                      <span>📍 Edit Pins ({dz.polygonCoordinates ? dz.polygonCoordinates.split('|').length : 0})</span>
+                      <span> Edit Pins ({dz.polygonCoordinates ? dz.polygonCoordinates.split('|').length : 0})</span>
                     </button>
                   </td>
                 </tr>
@@ -1309,7 +1309,7 @@ export function LocationManagementPage() {
                 onClick={() => setEditingZoneMap(null)}
                 style={{ padding: '6px 14px', backgroundColor: '#F1F5F9', border: 'none', borderRadius: 6, fontWeight: 700, cursor: 'pointer' }}
               >
-                Close Window ✖
+                Close Window 
               </button>
             </div>
 
@@ -1374,7 +1374,7 @@ export function LocationManagementPage() {
                       <div style={{ fontSize: 11, color: '#64748B' }}>{req.contactPhone}</div>
                     </td>
                     <td style={{ padding: '16px 20px', fontWeight: 700, color: '#047857' }}>
-                      📍 Lat: {req.latitude}, Lng: {req.longitude}
+                       Lat: {req.latitude}, Lng: {req.longitude}
                     </td>
                     <td style={{ padding: '16px 20px', color: '#64748B', fontSize: 12 }}>
                       {req.createdAt}

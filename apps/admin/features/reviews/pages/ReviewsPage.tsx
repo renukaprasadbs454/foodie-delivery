@@ -270,8 +270,8 @@ export function ReviewsPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {[
               { id: 'ALL', label: 'Customer Reviews' },
-              { id: 'RESTAURANT_RATINGS', label: 'Restaurant Ratings (4.8★)' },
-              { id: 'DELIVERY_RATINGS', label: 'Delivery Partner Ratings (4.9★)' },
+              { id: 'RESTAURANT_RATINGS', label: 'Restaurant Ratings (4.8)' },
+              { id: 'DELIVERY_RATINGS', label: 'Delivery Partner Ratings (4.9)' },
               { id: 'REPORTED_REVIEWS', label: 'Reported Reviews' },
               { id: 'MODERATION', label: 'Review Moderation' },
             ].map((tab) => (
@@ -301,14 +301,14 @@ export function ReviewsPage() {
             <div style={{ backgroundColor: '#FFFFFF', padding: 20, borderRadius: 12, border: '1px solid #E2E8F0', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
               <div>
                 <div style={{ fontSize: 12, color: '#64748B' }}>Top Rated Restaurant</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#14532D' }}>Royal Biryani House (4.9 ⭐)</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#14532D' }}>Royal Biryani House (4.9 )</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: '#64748B' }}>Total 5-Star Outlets</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#047857' }}>148 Restaurants</div>
               </div>
               <div>
-                <div style={{ fontSize: 12, color: '#64748B' }}>Low Rating Warnings (&lt;3.5★)</div>
+                <div style={{ fontSize: 12, color: '#64748B' }}>Low Rating Warnings (&lt;3.5)</div>
                 <div style={{ fontSize: 18, fontWeight: 800, color: '#DC2626' }}>2 Outlets Under Review</div>
               </div>
             </div>
@@ -319,11 +319,11 @@ export function ReviewsPage() {
             <div style={{ backgroundColor: '#FFFFFF', padding: 20, borderRadius: 12, border: '1px solid #E2E8F0', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
               <div>
                 <div style={{ fontSize: 12, color: '#64748B' }}>Fleet Dispatch Average</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#14532D' }}>4.92 ⭐ (On-Time 98.4%)</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#14532D' }}>4.92  (On-Time 98.4%)</div>
               </div>
               <div>
                 <div style={{ fontSize: 12, color: '#64748B' }}>Top Delivery Partner</div>
-                <div style={{ fontSize: 18, fontWeight: 800, color: '#047857' }}>Ramesh Kumar (5.0 ⭐ - 420 deliveries)</div>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#047857' }}>Ramesh Kumar (5.0  - 420 deliveries)</div>
               </div>
             </div>
           )}
@@ -349,14 +349,14 @@ export function ReviewsPage() {
                       <div style={{ fontSize: 12, color: '#64748B' }}>{r.restaurantName} • <span style={{ color: '#D97706', fontWeight: 600 }}>{r.module}</span></div>
                     </td>
                     <td style={{ padding: '16px 20px' }}>
-                      <div style={{ fontWeight: 800, color: '#D97706' }}>Store: {r.rating} ⭐</div>
-                      <div style={{ fontSize: 11, color: '#64748B' }}>Delivery: {r.deliveryRating} ⭐</div>
+                      <div style={{ fontWeight: 800, color: '#D97706' }}>Store: {r.rating} </div>
+                      <div style={{ fontSize: 11, color: '#64748B' }}>Delivery: {r.deliveryRating} </div>
                     </td>
                     <td style={{ padding: '16px 20px', color: '#334155', maxWidth: 360, lineHeight: 1.4 }}>
                       &ldquo;{r.comment}&rdquo;
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: 13, fontWeight: 600, color: '#475569' }}>
-                      🛵 {r.deliveryManName}
+                       {r.deliveryManName}
                     </td>
                     <td style={{ padding: '16px 20px' }}>
                       <span style={{ backgroundColor: r.status === 'PUBLISHED' ? '#D1FAE5' : r.status === 'FLAGGED' ? '#FEF3C7' : '#FEE2E2', color: r.status === 'PUBLISHED' ? '#047857' : r.status === 'FLAGGED' ? '#B45309' : '#B91C1C', fontSize: 11, fontWeight: 700, padding: '4px 8px', borderRadius: 20 }}>
@@ -458,7 +458,7 @@ export function ReviewsPage() {
                 {filteredTickets.map((t) => (
                   <tr key={t.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                     <td style={{ padding: '16px 20px' }}>
-                      <div style={{ fontWeight: 800, color: '#14532D', fontFamily: 'monospace' }}>🎫 {t.ticketNumber}</div>
+                      <div style={{ fontWeight: 800, color: '#14532D', fontFamily: 'monospace' }}> {t.ticketNumber}</div>
                       <div style={{ fontSize: 12, color: '#0F172A', fontWeight: 600 }}>{t.customerName}</div>
                       <div style={{ fontSize: 11, color: '#64748B' }}>{t.customerPhone}</div>
                     </td>
@@ -470,7 +470,7 @@ export function ReviewsPage() {
                       <div style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>{t.details}</div>
                     </td>
                     <td style={{ padding: '16px 20px', fontSize: 13, color: '#334155', fontWeight: 600 }}>
-                      👤 {t.assignedAgent}
+                       {t.assignedAgent}
                     </td>
                     <td style={{ padding: '16px 20px', fontWeight: 800, color: '#D97706' }}>
                       {t.refundAmount ? `₹${t.refundAmount}` : 'N/A'}
@@ -533,7 +533,7 @@ export function ReviewsPage() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           }}
         >
-          ⭐ {toastMsg}
+           {toastMsg}
         </div>
       )}
     </div>

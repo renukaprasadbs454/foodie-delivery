@@ -25,10 +25,10 @@ const INITIAL_MESSAGES: ChatMessage[] = [
 ];
 
 const QUICK_PROMPTS = [
-  '📈 Analyze today\'s revenue & order trends',
-  '🍕 Which restaurant needs operational boost?',
-  '🛵 Check live delivery fleet bottlenecks',
-  '🏷️ Suggest best promo coupon strategy',
+  ' Analyze today\'s revenue & order trends',
+  ' Which restaurant needs operational boost?',
+  ' Check live delivery fleet bottlenecks',
+  ' Suggest best promo coupon strategy',
 ];
 
 export function AiAssistantWidget() {
@@ -139,7 +139,7 @@ export function AiAssistantWidget() {
           transition: 'all 0.2s ease-in-out',
         }}
       >
-        <span style={{ fontSize: 18 }}>🤖</span>
+        <span style={{ fontSize: 18 }}></span>
         <span>FoodieBot</span>
       </button>
 
@@ -176,7 +176,7 @@ export function AiAssistantWidget() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontSize: 22 }}>🤖</span>
+              <span style={{ fontSize: 22 }}></span>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 800, color: '#FFFFFF' }}>
                   FoodieBot
@@ -207,7 +207,7 @@ export function AiAssistantWidget() {
                 fontWeight: 700,
               }}
             >
-              ✕
+              
             </button>
           </div>
 
@@ -332,7 +332,7 @@ export function AiAssistantWidget() {
                   gap: 6,
                 }}
               >
-                <span>🤖 FoodieBot is thinking</span>
+                <span> FoodieBot is thinking</span>
                 <span className="pulse-live" style={{ width: 6, height: 6, backgroundColor: '#F59E0B', borderRadius: '50%' }} />
               </div>
             )}

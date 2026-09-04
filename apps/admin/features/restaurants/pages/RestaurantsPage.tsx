@@ -201,7 +201,7 @@ export function RestaurantsPage() {
               boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
             }}
           >
-            <span>➕</span> Add New Vendor
+            <span></span> Add New Vendor
           </button>
         </div>
       </div>
@@ -383,7 +383,7 @@ export function RestaurantsPage() {
                 <td style={{ padding: '16px 20px', color: '#475569', fontWeight: 500 }}>{store.zone}</td>
                 <td style={{ padding: '16px 20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, color: '#D97706' }}>
-                    <span>⭐ {store.rating}</span>
+                    <span> {store.rating}</span>
                   </div>
                   <div style={{ fontSize: 12, color: '#64748B' }}>{store.ordersCount} orders</div>
                 </td>
@@ -511,7 +511,7 @@ export function RestaurantsPage() {
                 onClick={() => setIsAddModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -627,7 +627,7 @@ export function RestaurantsPage() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           }}
         >
-          ✅ {toastMessage}
+           {toastMessage}
         </div>
       ) : null}
     </div>

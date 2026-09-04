@@ -262,7 +262,7 @@ export function DeliveryPayoutsPage() {
               animation: 'fadeIn 0.2s ease',
             }}
           >
-            🔔 {toastMsg}
+             {toastMsg}
           </div>
         )}
       </div>
@@ -372,7 +372,7 @@ export function DeliveryPayoutsPage() {
             cursor: 'pointer',
           }}
         >
-          💸 Payout Requests & History ({payouts.length})
+           Payout Requests & History ({payouts.length})
         </button>
 
         <button
@@ -391,7 +391,7 @@ export function DeliveryPayoutsPage() {
             cursor: 'pointer',
           }}
         >
-          ⚖️ Reconciliation Studio ({discrepancyCount > 0 ? `⚠️ ${discrepancyCount}` : 'OK'})
+           Reconciliation Studio ({discrepancyCount > 0 ? ` ${discrepancyCount}` : 'OK'})
         </button>
 
         <button
@@ -410,7 +410,7 @@ export function DeliveryPayoutsPage() {
             cursor: 'pointer',
           }}
         >
-          ⚙️ Provider Config (Read-Only)
+           Provider Config (Read-Only)
         </button>
       </div>
 
@@ -476,7 +476,7 @@ export function DeliveryPayoutsPage() {
                 </code>
               </div>
               <div style={{ fontSize: 11, color: '#64748B', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8, marginTop: 8 }}>
-                🔒 Provider credentials and secret keys are stored in encrypted environment variables and never returned over API endpoints.
+                 Provider credentials and secret keys are stored in encrypted environment variables and never returned over API endpoints.
               </div>
             </div>
           </div>
@@ -515,7 +515,7 @@ export function DeliveryPayoutsPage() {
                 </code>
               </div>
               <div style={{ fontSize: 11, color: '#64748B', backgroundColor: '#F8FAFC', padding: 10, borderRadius: 8, marginTop: 8 }}>
-                🔒 Provider credentials and secret keys are stored in encrypted environment variables and never returned over API endpoints.
+                 Provider credentials and secret keys are stored in encrypted environment variables and never returned over API endpoints.
               </div>
             </div>
           </div>

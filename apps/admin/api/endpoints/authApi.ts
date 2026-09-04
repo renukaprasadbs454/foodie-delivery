@@ -24,6 +24,7 @@ export type AdminUserProfile = {
 };
 
 export const authApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     login: builder.mutation<AdminLoginIdentity, AdminLoginRequest>({
       query: (body) => ({

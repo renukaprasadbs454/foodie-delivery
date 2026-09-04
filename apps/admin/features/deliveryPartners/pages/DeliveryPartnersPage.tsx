@@ -191,7 +191,7 @@ export function DeliveryPartnersPage() {
               cursor: 'pointer',
             }}
           >
-            💸 Payouts & Reconciliation
+             Payouts & Reconciliation
           </button>
           <button
             type="button"
@@ -207,7 +207,7 @@ export function DeliveryPartnersPage() {
               cursor: 'pointer',
             }}
           >
-            ➕ Register Deliveryman
+             Register Deliveryman
           </button>
         </div>
       </div>
@@ -354,12 +354,12 @@ export function DeliveryPartnersPage() {
                 </td>
                 <td style={{ padding: '16px 20px', fontWeight: 600, color: '#334155' }}>{p.phone}</td>
                 <td style={{ padding: '16px 20px' }}>
-                  <div style={{ fontWeight: 600, color: '#14532D' }}>🛵 {p.vehicleType}</div>
+                  <div style={{ fontWeight: 600, color: '#14532D' }}> {p.vehicleType}</div>
                   <div style={{ fontSize: 12, color: '#64748B' }}>{p.zone}</div>
                 </td>
                 <td style={{ padding: '16px 20px' }}>
                   <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
-                    📄 {p.documentType ?? 'Driving License'}
+                     {p.documentType ?? 'Driving License'}
                   </div>
                   <div style={{ fontSize: 11, color: '#64748B', fontFamily: 'monospace', marginTop: 2 }}>
                     {p.documentNumber ?? 'DL-9811122233'}
@@ -376,7 +376,7 @@ export function DeliveryPartnersPage() {
                       color: p.documentVerificationStatus === 'PENDING' ? '#B45309' : '#047857',
                     }}
                   >
-                    {p.documentVerificationStatus === 'PENDING' ? '⏳ Doc Pending' : '✅ Doc Verified'}
+                    {p.documentVerificationStatus === 'PENDING' ? ' Doc Pending' : ' Doc Verified'}
                   </span>
                 </td>
                 <td style={{ padding: '16px 20px' }}>
@@ -504,7 +504,7 @@ export function DeliveryPartnersPage() {
                 onClick={() => setIsAddModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
@@ -577,7 +577,7 @@ export function DeliveryPartnersPage() {
                 }}
               >
                 <div style={{ fontSize: 13, fontWeight: 700, color: '#14532D', display: 'flex', alignItems: 'center', gap: 6 }}>
-                  📄 Document & Identity Verification
+                   Document & Identity Verification
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -635,7 +635,7 @@ export function DeliveryPartnersPage() {
                       }}
                     />
                     <label htmlFor="doc-upload-file" style={{ cursor: 'pointer', fontSize: 12, color: '#047857', fontWeight: 600 }}>
-                      {uploadedFileName ? `✅ Attached: ${uploadedFileName}` : '📁 Click to upload or select file (PDF, PNG, JPG)'}
+                      {uploadedFileName ? ` Attached: ${uploadedFileName}` : ' Click to upload or select file (PDF, PNG, JPG)'}
                     </label>
                   </div>
                 </div>
@@ -648,8 +648,8 @@ export function DeliveryPartnersPage() {
                     onChange={(e) => setNewDocumentStatus(e.target.value as 'VERIFIED' | 'PENDING')}
                     style={{ padding: '9px 12px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 13, outline: 'none' }}
                   >
-                    <option value="VERIFIED">✅ Approve & Mark Document Verified</option>
-                    <option value="PENDING">⏳ Submit for Admin Verification Review</option>
+                    <option value="VERIFIED"> Approve & Mark Document Verified</option>
+                    <option value="PENDING"> Submit for Admin Verification Review</option>
                   </select>
                 </div>
               </div>
@@ -688,7 +688,7 @@ export function DeliveryPartnersPage() {
             boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
           }}
         >
-          ✅ {toastMsg}
+           {toastMsg}
         </div>
       ) : null}
     </div>

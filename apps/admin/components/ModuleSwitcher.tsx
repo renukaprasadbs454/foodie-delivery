@@ -10,10 +10,10 @@ export interface ModuleSwitcherProps {
 }
 
 const MODULES: { id: MarketplaceModule; label: string; icon: string; badgeColor: string }[] = [
-  { id: 'FOOD', label: 'All Food Delivery', icon: '🍔', badgeColor: '#14532D' },
-  { id: 'RESTAURANTS', label: 'Fine Dining & Pizzerias', icon: '🍕', badgeColor: '#0284C7' },
-  { id: 'CAFES', label: 'Cafes & Bakery', icon: '☕', badgeColor: '#D97706' },
-  { id: 'CLOUD_KITCHEN', label: 'Cloud Kitchens', icon: '🍳', badgeColor: '#7C3AED' },
+  { id: 'FOOD', label: 'All Food Delivery', icon: '', badgeColor: '#14532D' },
+  { id: 'RESTAURANTS', label: 'Fine Dining & Pizzerias', icon: '', badgeColor: '#0284C7' },
+  { id: 'CAFES', label: 'Cafes & Bakery', icon: '', badgeColor: '#D97706' },
+  { id: 'CLOUD_KITCHEN', label: 'Cloud Kitchens', icon: '', badgeColor: '#7C3AED' },
 ];
 
 export function ModuleSwitcher({ activeModule: externalModule, onModuleChange }: ModuleSwitcherProps) {

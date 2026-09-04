@@ -36,7 +36,7 @@ export function DarkstoreDispatchPage() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-          🛵 Dispatch Bay & Delivery Partner Coordination
+           Dispatch Bay & Delivery Partner Coordination
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
           Monitor orders ready for pickup and manage delivery partner handoff at the gate.
@@ -93,11 +93,11 @@ export function DarkstoreDispatchPage() {
                     cursor: 'pointer',
                   }}
                 >
-                  Confirm Handoff & Dispatch 🛵
+                  Confirm Handoff & Dispatch 
                 </button>
               ) : (
                 <div style={{ fontSize: 13, fontWeight: 800, color: '#15803D', backgroundColor: '#DCFCE7', padding: '8px 16px', borderRadius: 8 }}>
-                  ✅ DISPATCHED AT GATE
+                   DISPATCHED AT GATE
                 </div>
               )}
             </div>

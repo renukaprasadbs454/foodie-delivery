@@ -93,18 +93,18 @@ export function DarkstoreDashboardPage() {
   ]);
 
   const kpiCards = [
-    { title: 'Total Orders', value: metrics.totalOrders, color: '#0F3D21', icon: '📦', bg: '#DCFCE7' },
-    { title: 'New Orders', value: metrics.newOrders, color: '#B45309', icon: '🔔', bg: '#FEF3C7' },
-    { title: 'Picking in Progress', value: metrics.ordersBeingPicked, color: '#1D4ED8', icon: '🛒', bg: '#DBEAFE' },
-    { title: 'Ready for Dispatch', value: metrics.ordersReadyForDispatch, color: '#6D28D9', icon: '🎁', bg: '#EDE9FE' },
-    { title: 'Completed Orders', value: metrics.completedOrders, color: '#15803D', icon: '✅', bg: '#DCFCE7' },
-    { title: 'Cancelled Orders', value: metrics.cancelledOrders, color: '#B91C1C', icon: '❌', bg: '#FEE2E2' },
-    { title: 'Low Stock SKU', value: metrics.lowStockProducts, color: '#C2410C', icon: '⚠️', bg: '#FFEDD5' },
-    { title: 'Out of Stock SKU', value: metrics.outOfStockProducts, color: '#991B1B', icon: '🚫', bg: '#FEE2E2' },
-    { title: 'Total Catalog Products', value: metrics.totalProducts, color: '#374151', icon: '🏷️', bg: '#F3F4F6' },
-    { title: "Today's Revenue", value: `₹${metrics.todaysRevenue.toFixed(2)}`, color: '#0F3D21', icon: '💰', bg: '#DCFCE7' },
-    { title: 'Average Order Value', value: `₹${metrics.averageOrderValue.toFixed(2)}`, color: '#1E40AF', icon: '📈', bg: '#DBEAFE' },
-    { title: 'Pending Actions', value: metrics.pendingActionsCount, color: '#9A3412', icon: '⚡', bg: '#FFEDD5' },
+    { title: 'Total Orders', value: metrics.totalOrders, color: '#0F3D21', icon: '', bg: '#DCFCE7' },
+    { title: 'New Orders', value: metrics.newOrders, color: '#B45309', icon: '', bg: '#FEF3C7' },
+    { title: 'Picking in Progress', value: metrics.ordersBeingPicked, color: '#1D4ED8', icon: '', bg: '#DBEAFE' },
+    { title: 'Ready for Dispatch', value: metrics.ordersReadyForDispatch, color: '#6D28D9', icon: '', bg: '#EDE9FE' },
+    { title: 'Completed Orders', value: metrics.completedOrders, color: '#15803D', icon: '', bg: '#DCFCE7' },
+    { title: 'Cancelled Orders', value: metrics.cancelledOrders, color: '#B91C1C', icon: '', bg: '#FEE2E2' },
+    { title: 'Low Stock SKU', value: metrics.lowStockProducts, color: '#C2410C', icon: '', bg: '#FFEDD5' },
+    { title: 'Out of Stock SKU', value: metrics.outOfStockProducts, color: '#991B1B', icon: '', bg: '#FEE2E2' },
+    { title: 'Total Catalog Products', value: metrics.totalProducts, color: '#374151', icon: '', bg: '#F3F4F6' },
+    { title: "Today's Revenue", value: `₹${metrics.todaysRevenue.toFixed(2)}`, color: '#0F3D21', icon: '', bg: '#DCFCE7' },
+    { title: 'Average Order Value', value: `₹${metrics.averageOrderValue.toFixed(2)}`, color: '#1E40AF', icon: '', bg: '#DBEAFE' },
+    { title: 'Pending Actions', value: metrics.pendingActionsCount, color: '#9A3412', icon: '', bg: '#FFEDD5' },
   ];
 
   return (
@@ -135,7 +135,7 @@ export function DarkstoreDashboardPage() {
               gap: 8,
             }}
           >
-            <span>🛒</span> Launch Picker Station
+            <span></span> Launch Picker Station
           </Link>
           <Link
             href="/darkstore-admin/dispatch"
@@ -152,7 +152,7 @@ export function DarkstoreDashboardPage() {
               gap: 8,
             }}
           >
-            <span>🛵</span> Dispatch Bay
+            <span></span> Dispatch Bay
           </Link>
         </div>
       </div>
@@ -199,7 +199,7 @@ export function DarkstoreDashboardPage() {
       <div style={{ backgroundColor: '#FFFFFF', borderRadius: 12, border: '1px solid #E5E7EB', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0F3D21', margin: 0 }}>
-            🔥 Active Quick-Commerce Order Queue
+             Active Quick-Commerce Order Queue
           </h2>
           <Link href="/darkstore-admin/orders" style={{ fontSize: 13, fontWeight: 700, color: '#0F3D21', textDecoration: 'none' }}>
             View All Orders →
@@ -272,7 +272,7 @@ export function DarkstoreDashboardPage() {
                         textDecoration: 'none',
                       }}
                     >
-                      Start Pick 🛒
+                      Start Pick 
                     </Link>
                   </td>
                 </tr>

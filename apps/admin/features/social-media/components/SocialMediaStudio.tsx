@@ -29,13 +29,13 @@ const INITIAL_LINKS: SocialMediaLink[] = [
 ];
 
 const PLATFORM_ICONS: Record<string, string> = {
-  pinterest: '📌',
-  linkedin: '💼',
-  facebook: '📘',
-  instagram: '📸',
-  youtube: '▶️',
-  twitter: '🐦',
-  tiktok: '🎵',
+  pinterest: '',
+  linkedin: '',
+  facebook: '',
+  instagram: '',
+  youtube: '▶',
+  twitter: '',
+  tiktok: '',
 };
 
 export function SocialMediaStudio() {
@@ -132,7 +132,7 @@ export function SocialMediaStudio() {
             gap: 10,
           }}
         >
-          <span>🌐</span>
+          <span></span>
           <span>{toastMsg}</span>
         </div>
       )}
@@ -141,7 +141,7 @@ export function SocialMediaStudio() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 26 }}>🌐</span>
+            <span style={{ fontSize: 26 }}></span>
             <h1 style={{ fontSize: 24, fontWeight: 800, color: '#14532D', margin: 0 }}>
               Social Media
             </h1>
@@ -291,7 +291,7 @@ export function SocialMediaStudio() {
               {socialLinks.map((item, index) => {
                 const isActive = item.status === 'ACTIVE';
                 const isEditingThis = editingId === item.id;
-                const icon = PLATFORM_ICONS[item.name.toLowerCase()] || '🌐';
+                const icon = PLATFORM_ICONS[item.name.toLowerCase()] || '';
 
                 return (
                   <tr
@@ -375,7 +375,7 @@ export function SocialMediaStudio() {
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        ✏️
+                        
                       </button>
                     </td>
                   </tr>

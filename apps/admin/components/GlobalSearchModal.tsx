@@ -18,14 +18,14 @@ interface SearchResult {
 }
 
 const MOCK_SEARCH_ITEMS: SearchResult[] = [
-  { id: '1', category: 'Order', title: 'Order #ORD-9821', subtitle: 'Customer: Sarah Jenkins • $42.50 • Delivered', url: '/orders', icon: '📦' },
-  { id: '2', category: 'Order', title: 'Order #ORD-9820', subtitle: 'Customer: Mike Ross • $18.90 • Pending', url: '/orders', icon: '📦' },
-  { id: '3', category: 'Restaurant', title: 'The Gourmet Kitchen', subtitle: 'Italian & Continental • Rating 4.8★ • Active', url: '/restaurants', icon: '🍽️' },
-  { id: '4', category: 'Restaurant', title: 'Spice Garden India', subtitle: 'Indian Cuisine • Rating 4.6★ • Active', url: '/restaurants', icon: '🍽️' },
-  { id: '5', category: 'Delivery Partner', title: 'David Miller', subtitle: 'Vehicle: Scooter • Status: On-Duty (Active)', url: '/delivery-partners', icon: '🛵' },
-  { id: '6', category: 'Delivery Partner', title: 'Elena Vance', subtitle: 'Vehicle: Bicycle • Status: Pending KYC', url: '/delivery-partners', icon: '🛵' },
-  { id: '7', category: 'Coupon', title: 'FLAT50OFF', subtitle: '50% OFF up to $15 • Usage: 1,420 / 2,000', url: '/coupons', icon: '🎟️' },
-  { id: '8', category: 'Coupon', title: 'FREESHIP2026', subtitle: 'Free Delivery on orders above $30', url: '/coupons', icon: '🎟️' },
+  { id: '1', category: 'Order', title: 'Order #ORD-9821', subtitle: 'Customer: Sarah Jenkins • $42.50 • Delivered', url: '/orders', icon: '' },
+  { id: '2', category: 'Order', title: 'Order #ORD-9820', subtitle: 'Customer: Mike Ross • $18.90 • Pending', url: '/orders', icon: '' },
+  { id: '3', category: 'Restaurant', title: 'The Gourmet Kitchen', subtitle: 'Italian & Continental • Rating 4.8 • Active', url: '/restaurants', icon: '' },
+  { id: '4', category: 'Restaurant', title: 'Spice Garden India', subtitle: 'Indian Cuisine • Rating 4.6 • Active', url: '/restaurants', icon: '' },
+  { id: '5', category: 'Delivery Partner', title: 'David Miller', subtitle: 'Vehicle: Scooter • Status: On-Duty (Active)', url: '/delivery-partners', icon: '' },
+  { id: '6', category: 'Delivery Partner', title: 'Elena Vance', subtitle: 'Vehicle: Bicycle • Status: Pending KYC', url: '/delivery-partners', icon: '' },
+  { id: '7', category: 'Coupon', title: 'FLAT50OFF', subtitle: '50% OFF up to $15 • Usage: 1,420 / 2,000', url: '/coupons', icon: '' },
+  { id: '8', category: 'Coupon', title: 'FREESHIP2026', subtitle: 'Free Delivery on orders above $30', url: '/coupons', icon: '' },
 ];
 
 export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
@@ -94,7 +94,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
       >
         {/* Search Header Input */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #E2E8F0', gap: 12 }}>
-          <span style={{ fontSize: 18, color: '#64748B' }}>🔍</span>
+          <span style={{ fontSize: 18, color: '#64748B' }}></span>
           <input
             type="text"
             autoFocus
@@ -173,7 +173,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                   </div>
                   <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{item.subtitle}</div>
                 </div>
-                <span style={{ fontSize: 16, color: '#CBD5E1' }}>➔</span>
+                <span style={{ fontSize: 16, color: '#CBD5E1' }}></span>
               </div>
             ))
           )}

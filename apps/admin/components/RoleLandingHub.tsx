@@ -30,7 +30,7 @@ export function RoleLandingHub() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                👑 Super Admin Control & Role Management Center
+                 Super Admin Control & Role Management Center
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
                 Full system administration, user role assignment, permission configuration, and high-risk action overrides.
@@ -111,7 +111,7 @@ export function RoleLandingHub() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                💳 Finance & Payments Administration Hub
+                 Finance & Payments Administration Hub
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
                 Manage payment settlements, merchant payouts, refund processing, commission rates, and financial reconciliation.
@@ -145,7 +145,7 @@ export function RoleLandingHub() {
                   textDecoration: 'none',
                 }}
               >
-                Pending Approvals ⏳
+                Pending Approvals 
               </Link>
             </div>
           </div>
@@ -187,7 +187,7 @@ export function RoleLandingHub() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                🛵 Operations, Location & Logistics Console
+                 Operations, Location & Logistics Console
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
                 Operate city polygon zones, driver assignments, live order pipeline override, and merchant onboarding.
@@ -206,7 +206,7 @@ export function RoleLandingHub() {
                   textDecoration: 'none',
                 }}
               >
-                Location Management 📍
+                Location Management 
               </Link>
               <Link
                 href="/delivery-partners"
@@ -221,7 +221,7 @@ export function RoleLandingHub() {
                   textDecoration: 'none',
                 }}
               >
-                Delivery Partners 🛵
+                Delivery Partners 
               </Link>
             </div>
           </div>
@@ -263,7 +263,7 @@ export function RoleLandingHub() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                🍽️ Restaurant Manager Portal (Scoped to Your Outlet)
+                 Restaurant Manager Portal (Scoped to Your Outlet)
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
                 Manage live orders, menu item availability, settlement statements, and customer reviews.
@@ -282,7 +282,7 @@ export function RoleLandingHub() {
                   textDecoration: 'none',
                 }}
               >
-                View Kitchen Orders 📦
+                View Kitchen Orders 
               </Link>
             </div>
           </div>
@@ -319,7 +319,7 @@ export function RoleLandingHub() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                🎧 Customer Support & Order Resolution Console
+                 Customer Support & Order Resolution Console
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
                 Lookup customer orders, view payment status, and initiate refund requests for manager approval.
@@ -338,13 +338,13 @@ export function RoleLandingHub() {
                   textDecoration: 'none',
                 }}
               >
-                Customer Orders 📦
+                Customer Orders 
               </Link>
             </div>
           </div>
 
           <div style={{ padding: 14, borderRadius: 10, backgroundColor: '#F3E8FF', border: '1px solid #DDD6FE', fontSize: 13, color: '#581C87' }}>
-            🔒 <strong>Support Agent Safety Scope:</strong> Direct settlement release, ledger adjustments, and commission rule updates are disabled. Refund requests require 2-step Finance approval.
+             <strong>Support Agent Safety Scope:</strong> Direct settlement release, ledger adjustments, and commission rule updates are disabled. Refund requests require 2-step Finance approval.
           </div>
         </div>
       )}
@@ -366,7 +366,7 @@ export function RoleLandingHub() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                🛡️ Auditor Read-Only Compliance Console
+                 Auditor Read-Only Compliance Console
               </h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0 0' }}>
                 Read-only access to audit logs, financial telemetry, settlement ledgers, and system mutation records.
@@ -385,13 +385,13 @@ export function RoleLandingHub() {
                   textDecoration: 'none',
                 }}
               >
-                View Audit Log 🛡️
+                View Audit Log 
               </Link>
             </div>
           </div>
 
           <div style={{ padding: 14, borderRadius: 10, backgroundColor: '#F1F5F9', border: '1px solid #CBD5E1', fontSize: 13, color: '#334155' }}>
-            👁️ <strong>Read-Only Compliance Mode:</strong> Mutation buttons, release controls, and rule editing actions are strictly hidden and disabled on the backend.
+             <strong>Read-Only Compliance Mode:</strong> Mutation buttons, release controls, and rule editing actions are strictly hidden and disabled on the backend.
           </div>
         </div>
       )}

@@ -93,7 +93,7 @@ export function DarkstoreProductsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-            🏷️ Darkstore Product Catalog Management
+             Darkstore Product Catalog Management
           </h1>
           <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
             Catalog items, pricing, GST %, units, and rack shelf locations assigned to Indiranagar QuickHub.
@@ -131,7 +131,7 @@ export function DarkstoreProductsPage() {
                   <span style={{ textDecoration: 'line-through', color: '#9CA3AF', marginRight: 6 }}>₹{p.price.toFixed(2)}</span>
                   <span style={{ fontWeight: 800, color: '#0F3D21' }}>₹{p.sellingPrice.toFixed(2)}</span>
                 </td>
-                <td style={{ padding: '14px 16px', fontWeight: 800, color: '#F59E0B' }}>📍 {p.shelfLocation}</td>
+                <td style={{ padding: '14px 16px', fontWeight: 800, color: '#F59E0B' }}> {p.shelfLocation}</td>
                 <td style={{ padding: '14px 16px', fontWeight: 800, color: '#111827' }}>{p.currentStock} {p.unit}</td>
                 <td style={{ padding: '14px 16px' }}>
                   <span style={{ padding: '4px 10px', borderRadius: 12, fontSize: 11, fontWeight: 800, backgroundColor: '#DCFCE7', color: '#15803D' }}>

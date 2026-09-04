@@ -8,7 +8,7 @@ describe('Social Media Feature Contract', () => {
     expect(socialNav).toBeDefined();
     expect(socialNav?.label).toBe('Social Media');
     expect(socialNav?.category).toBe('BUSINESS MANAGERS');
-    expect(socialNav?.icon).toBe('🌐');
+    expect(socialNav?.icon).toBe('');
   });
 
   it('supports essential social media platforms (Pinterest, LinkedIn, Facebook, Instagram, YouTube, Twitter, TikTok)', () => {

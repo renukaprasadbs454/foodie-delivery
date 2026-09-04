@@ -43,7 +43,7 @@ export function AdminFooter() {
         {/* Brand Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingRight: 16 }}>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: 10, letterSpacing: '-0.5px' }}>
-            <span style={{ backgroundColor: '#10B981', color: '#FFFFFF', borderRadius: 8, padding: '4px 8px', fontSize: 18 }}>🍔</span>
+            <span style={{ backgroundColor: '#10B981', color: '#FFFFFF', borderRadius: 8, padding: '4px 8px', fontSize: 18 }}></span>
             <span>Foodie Admin</span>
           </div>
           <p style={{ fontSize: 13, color: '#94A3B8', lineHeight: 1.6, margin: 0 }}>
@@ -162,20 +162,20 @@ export function AdminFooter() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', margin: 0 }}>
-                🎫 Submit Support Ticket
+                 Submit Support Ticket
               </h3>
               <button
                 type="button"
                 onClick={() => setIsTicketModalOpen(false)}
                 style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748B' }}
               >
-                ✕
+                
               </button>
             </div>
 
             {submitted ? (
               <div style={{ padding: '32px 0', textAlign: 'center' }}>
-                <div style={{ fontSize: 48 }}>✅</div>
+                <div style={{ fontSize: 48 }}></div>
                 <h4 style={{ fontSize: 18, fontWeight: 800, color: '#14532D', marginTop: 12 }}>
                   Ticket #TK-8942 Submitted!
                 </h4>
@@ -221,7 +221,7 @@ export function AdminFooter() {
                     cursor: 'pointer',
                   }}
                 >
-                  Submit Ticket Now ➔
+                  Submit Ticket Now 
                 </button>
               </form>
             )}

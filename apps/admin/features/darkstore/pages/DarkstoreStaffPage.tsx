@@ -47,7 +47,7 @@ export function DarkstoreStaffPage() {
     <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: '#0F3D21', margin: 0 }}>
-          👥 Darkstore Staff Management
+           Darkstore Staff Management
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', margin: '4px 0 0' }}>
           Role assignments, active pick/pack tasks, shift attendance, and staff directory.

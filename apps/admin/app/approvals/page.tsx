@@ -79,7 +79,7 @@ export default function ApprovalsPage() {
           <div>Loading requests…</div>
         ) : requests.length === 0 ? (
           <div style={{ padding: 32, backgroundColor: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0', textAlign: 'center', color: '#64748B' }}>
-            🎉 No pending high-risk approval requests!
+             No pending high-risk approval requests!
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

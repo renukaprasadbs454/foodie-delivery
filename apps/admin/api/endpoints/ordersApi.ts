@@ -9,6 +9,7 @@ import type {
  * No admin order list GET (GAP-API-16).
  */
 export const ordersApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getOrder: builder.query<AdminOrder, string>({
       query: (orderId) => `/api/bff/orders/${orderId}`,

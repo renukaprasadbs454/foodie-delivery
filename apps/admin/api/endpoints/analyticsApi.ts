@@ -11,6 +11,7 @@ import type {
  * BFF proxy paths → `/api/v1/analytics/*`. No invent endpoints. No WS.
  */
 export const analyticsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
     getDashboardSummary: builder.query<DashboardSummary, AnalyticsDateRange>({
       query: ({ dateFrom, dateTo }) => ({

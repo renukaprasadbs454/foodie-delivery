@@ -41,21 +41,23 @@ function KpiCard({
         <Text as="span" variant="caption" color="#64748B" style={{ fontSize: 13, fontWeight: 600 }}>
           {label}
         </Text>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            backgroundColor: '#F0FDF4',
-            border: '1px solid #DCFCE7',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 18,
-          }}
-        >
-          {icon}
-        </div>
+        {icon ? (
+          <div
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              backgroundColor: '#F0FDF4',
+              border: '1px solid #DCFCE7',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 18,
+            }}
+          >
+            {icon}
+          </div>
+        ) : null}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 4 }}>
         {children}
@@ -88,30 +90,30 @@ export function KpiGrid({ summary }: Props) {
         gap: 16,
       }}
     >
-      <KpiCard label="Total Orders" icon="📦" trend="+14.2%">
+      <KpiCard label="Total Orders">
         <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.totalOrders)}
         </Text>
       </KpiCard>
-      <KpiCard label="Total Marketplace Revenue" icon="💰" trend="+18.6%">
+      <KpiCard label="Total Marketplace Revenue">
         <MoneyText value={summary.totalRevenue} aria-label="Total revenue" />
       </KpiCard>
-      <KpiCard label="Active Stores / Vendors" icon="🍽️" trend="+5 new">
+      <KpiCard label="Active Stores / Vendors">
         <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.activeRestaurants)}
         </Text>
       </KpiCard>
-      <KpiCard label="Active Delivery Fleet" icon="🛵" trend="+8 online">
+      <KpiCard label="Active Delivery Fleet">
         <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.activeDeliveryPartners)}
         </Text>
       </KpiCard>
-      <KpiCard label="New Registered Customers" icon="👥" trend="+22.1%">
+      <KpiCard label="New Registered Customers">
         <Text as="span" variant="heading2" color="#14532D">
           {formatCount(summary.newCustomers)}
         </Text>
       </KpiCard>
-      <KpiCard label="Average Order Value" icon="📈" trend="+3.4%">
+      <KpiCard label="Average Order Value">
         <MoneyText value={summary.avgOrderValue} aria-label="Average order value" />
       </KpiCard>
     </div>

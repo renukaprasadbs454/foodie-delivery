@@ -69,7 +69,7 @@ export function AdminHeaderBar({
     switch (activeModalTab) {
       case 'ABOUT':
         return {
-          title: 'ℹ️ About us',
+          title: 'ℹ About us',
           subtitle:
             'Enterprise Hyperlocal Multi-Vendor Platform',
           body: (
@@ -100,7 +100,7 @@ export function AdminHeaderBar({
 
       case 'PRIVACY':
         return {
-          title: '🔒 Privacy policy',
+          title: ' Privacy policy',
           subtitle:
             'Enterprise Data Security & Privacy Guidelines',
           body: (
@@ -146,7 +146,7 @@ export function AdminHeaderBar({
 
       case 'TERMS':
         return {
-          title: '📜 Terms and condition',
+          title: ' Terms and condition',
           subtitle:
             'Operational Rules & Platform Terms of Service',
           body: (
@@ -212,7 +212,7 @@ export function AdminHeaderBar({
 
       case 'CONTACT':
         return {
-          title: '📞 Contact us',
+          title: ' Contact us',
           subtitle: 'Operations & Technical Support Desk',
           body: (
             <div
@@ -329,7 +329,7 @@ export function AdminHeaderBar({
             ================================= */}
           <div className="profile-user-id">
             <span className="profile-id-icon">
-              🔑
+              
             </span>
 
             <span>
@@ -451,7 +451,7 @@ export function AdminHeaderBar({
             flexWrap: 'wrap',
           }}
         >
-          {/* Hamburger */}
+          {/* Sidebar Collapse / Expand Menu Toggle */}
           {onToggleCompact ? (
             <button
               type="button"
@@ -463,28 +463,29 @@ export function AdminHeaderBar({
                 width: 38,
                 height: 38,
                 borderRadius: 10,
-                border: isCompact
-                  ? '1px solid #F59E0B'
-                  : '1px solid #E2E8F0',
-                backgroundColor: isCompact
-                  ? '#FEF3C7'
-                  : '#F8FAFC',
-                color: isCompact
-                  ? '#D97706'
-                  : '#334155',
-                fontSize: 18,
-                fontWeight: 700,
+                border: isCompact ? '1px solid #F59E0B' : '1px solid #CBD5E1',
+                backgroundColor: isCompact ? '#FEF3C7' : '#F8FAFC',
+                color: isCompact ? '#D97706' : '#14532D',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
               }}
-              aria-label="Toggle sidebar compact mode"
-              title={
-                isCompact
-                  ? 'Expand sidebar (Pin)'
-                  : 'Collapse sidebar (Hover to peek panel)'
-              }
+              aria-label={isCompact ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={isCompact ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              ☰
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
             </button>
           ) : null}
 
@@ -508,7 +509,7 @@ export function AdminHeaderBar({
               transition: 'border-color 0.15s ease',
             }}
           >
-            <span>🔍</span>
+            <span></span>
 
             <span
               style={{
@@ -530,7 +531,7 @@ export function AdminHeaderBar({
                 borderRadius: 4,
               }}
             >
-              ⌘K
+              K
             </kbd>
           </button>
         </div>
@@ -553,82 +554,6 @@ export function AdminHeaderBar({
             WebkitOverflowScrolling: 'touch',
           }}
         >
-          {/* About Us */}
-          <button
-            type="button"
-            onClick={() => setActiveModalTab('ABOUT')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color:
-                activeModalTab === 'ABOUT'
-                  ? '#10B981'
-                  : '#475569',
-              fontWeight: 600,
-              fontSize: 14,
-              cursor: 'pointer',
-              padding: 0,
-              transition: 'color 0.15s ease',
-              whiteSpace: 'nowrap',
-            }}
-            onMouseEnter={(e) =>
-              (e.currentTarget.style.color = '#10B981')
-            }
-            onMouseLeave={(e) =>
-            (e.currentTarget.style.color =
-              activeModalTab === 'ABOUT'
-                ? '#10B981'
-                : '#475569')
-            }
-          >
-            About us
-          </button>
-
-          {/* Legal */}
-          <Link
-            href="/legal"
-            style={{
-              color: '#475569',
-              fontWeight: 600,
-              fontSize: 14,
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Legal & Compliance
-          </Link>
-
-          {/* Contact */}
-          <Link
-            href="/contact-us"
-            style={{
-              color: '#475569',
-              fontWeight: 600,
-              fontSize: 14,
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Contact us
-          </Link>
-
-          {/* Notifications */}
-          <Link
-            href="/notifications"
-            style={{
-              color: '#14532D',
-              fontWeight: 700,
-              fontSize: 14,
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            Notifications
-          </Link>
-
           {/* =================================================
               PROFILE BUTTON
           ================================================= */}
@@ -797,7 +722,7 @@ export function AdminHeaderBar({
                   color: '#64748B',
                 }}
               >
-                ✕
+                
               </button>
             </div>
 

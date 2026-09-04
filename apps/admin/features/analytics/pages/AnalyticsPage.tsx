@@ -131,7 +131,7 @@ export function AnalyticsPage() {
     setRangeError(null);
     setApplied(validated.range);
     setToast({
-      message: `✅ Custom date range applied: ${validated.range.dateFrom} to ${validated.range.dateTo}`,
+      message: ` Custom date range applied: ${validated.range.dateFrom} to ${validated.range.dateTo}`,
       variant: 'success',
     });
     trackAnalyticsEvent('date_range_changed', {
@@ -189,7 +189,7 @@ export function AnalyticsPage() {
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: '#14532D', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>📅 Analytics Timeframe Filter</span>
+            <span> Analytics Timeframe Filter</span>
             <span
               style={{
                 fontSize: 11,
@@ -298,41 +298,23 @@ export function AnalyticsPage() {
           <KpiGrid
             summary={
               summaryQuery.data ?? {
-                totalOrders: 324,
-                totalRevenue: 14850.0,
-                activeRestaurants: 42,
-                activeDeliveryPartners: 28,
-                newCustomers: 156,
-                avgOrderValue: 45.83,
+                totalOrders: 0,
+                totalRevenue: 0,
+                activeRestaurants: 0,
+                activeDeliveryPartners: 0,
+                newCustomers: 0,
+                avgOrderValue: 0,
               }
             }
           />
 
           <DailySalesChart
-            points={
-              salesQuery.data ?? [
-                { date: '2025-08-01', orderCount: 28, revenue: 1240 },
-                { date: '2025-08-02', orderCount: 42, revenue: 1890 },
-                { date: '2025-08-03', orderCount: 54, revenue: 2390 },
-                { date: '2025-08-04', orderCount: 78, revenue: 3490 },
-                { date: '2025-08-05', orderCount: 92, revenue: 4200 },
-                { date: '2025-08-06', orderCount: 110, revenue: 5100 },
-                { date: '2025-08-07', orderCount: 104, revenue: 4800 },
-              ]
-            }
+            points={salesQuery.data ?? []}
           />
 
           <div style={{ marginTop: tokens.spacing.md }}>
             <OrderStatusTable
-              metrics={
-                statusQuery.data ?? [
-                  { status: 'PENDING', count: 14, percentageOfTotal: '4.3' },
-                  { status: 'PREPARING', count: 22, percentageOfTotal: '6.8' },
-                  { status: 'OUT_FOR_DELIVERY', count: 18, percentageOfTotal: '5.5' },
-                  { status: 'DELIVERED', count: 260, percentageOfTotal: '80.2' },
-                  { status: 'CANCELED', count: 10, percentageOfTotal: '3.1' },
-                ]
-              }
+              metrics={statusQuery.data ?? []}
             />
           </div>
         </>
