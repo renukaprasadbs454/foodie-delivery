@@ -34,6 +34,5 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "src/__tests__"
-  ],
-  "extends": "expo/tsconfig.base"
+  ]
 }

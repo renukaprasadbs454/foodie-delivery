@@ -249,7 +249,7 @@ function Shell({ children, open, setOpen, connected, orders, user, onLogout }) {
         <div className="crumb"><span>{roleLabel[role]}</span><ChevronRight size={14} /><b>{title}</b></div>
         <div className="top-actions" style={{ position: 'relative' }}>
           {role === "owner" && <div className="open-toggle"><span className={open ? "live-dot" : "closed-dot"} /><span>{open ? "Accepting orders" : "Currently closed"}</span><button data-testid="restaurant-status-toggle" className={open ? "toggle on" : "toggle"} onClick={() => setOpen(!open)}><span /></button></div>}
-          
+
           <button className="icon-btn" data-testid="notifications-button" onClick={() => setShowNotifications(!showNotifications)}>
             <Bell size={18} />
             <AnimatePresence>
@@ -263,7 +263,7 @@ function Shell({ children, open, setOpen, connected, orders, user, onLogout }) {
               )}
             </AnimatePresence>
           </button>
-          
+
           <AnimatePresence>
             {showNotifications && (
               <>
@@ -305,7 +305,7 @@ function Shell({ children, open, setOpen, connected, orders, user, onLogout }) {
               </>
             )}
           </AnimatePresence>
-          
+
           <NavLink to="/settings" className="mobile-settings-link" style={{display: 'flex', alignItems: 'center'}} title="Settings">
              {user.picture ? <img src={user.picture} alt="" className="user-avatar-img top-avatar" style={{width: 32, height: 32}} /> : <div className="user-avatar top-avatar" style={{width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12}}>{initials}</div>}
           </NavLink>
@@ -1808,7 +1808,7 @@ function Offers() {
                 <p>{offer.discount} · {offer.window}</p>
               </div>
               <button className="icon-btn light" data-testid={`offer-menu-${i}`}><MoreHorizontal size={17} /></button>
-              
+
               <AnimatePresence>
                 {expandedOffer === offer.name ? (
                   <motion.div className="offer-expanded-stats" initial={{height:0, opacity:0}} animate={{height:"auto", opacity:1}} exit={{height:0, opacity:0}}>
@@ -1837,7 +1837,7 @@ function Offers() {
               <span className="eyebrow">Promotion builder</span>
               <h2>Create an offer</h2>
               <p>Make a simple, time-boxed reason to order.</p>
-              
+
               <div className="offer-form-fields">
                 <input value={name} onChange={e => setName(e.target.value)} className="modal-input" data-testid="offer-name-input" placeholder="Offer name (e.g. Lunch Hour Treat)" />
                 <label className="modal-label">
@@ -1849,7 +1849,7 @@ function Offers() {
                   <input value={windowTime} onChange={e => setWindowTime(e.target.value)} className="modal-input" data-testid="offer-window-input" />
                 </label>
               </div>
-              
+
               <div className="offer-preview live">
                 <span>Preview</span>
                 <b>{discount}% off</b>
@@ -2866,7 +2866,7 @@ function FeatureHub({ orderTick }) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 16, height: 60, position: 'relative' }}>
              <div style={{ width: 60, height: 60, borderRadius: '50%', border: '1px dashed var(--green)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                 <Store size={20} color="var(--green)" style={{position: 'relative', zIndex: 2, background: 'white', padding: 2}} />
-                
+
                 {/* Radar sweep animation */}
                 <motion.div 
                   style={{ position: 'absolute', width: '50%', height: '1px', background: 'var(--green)', left: '50%', transformOrigin: 'left center', zIndex: 1 }}
@@ -2948,17 +2948,17 @@ function LoginPage() {
             </button>
             <div className="login-divider"><span>or</span></div>
             <button className="secondary-btn full" data-testid="go-staff-login" onClick={() => navigate("/staff-login")}><KeyRound size={16} /> Staff sign-in with PIN</button>
-            
+
             <div className="login-divider"><span>New to GreenFork?</span></div>
             <button className="quiet-btn full" style={{background: '#f3f4f6', color: '#111827'}} onClick={() => setView("register")}>Register your restaurant</button>
-            
+
             <span className="demo-note">Owners sign in with Google · Staff use their personal PIN from the owner</span>
           </motion.div>
         ) : view === "register" ? (
           <motion.div key="form-register" initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} exit={{opacity:0, x:-20}} className="login-form registration-form">
             <button className="icon-btn light back-btn" style={{position: 'absolute', top: 24, left: 24}} onClick={() => { if(step===1) setView("login"); else setStep(s=>s-1); }}><ChevronLeft size={20}/></button>
             <div className="step-indicator" style={{textAlign: 'right', fontSize: 13, color: 'var(--muted)', marginBottom: 24, paddingRight: 4}}>Step {step} of 3</div>
-            
+
             <AnimatePresence mode="wait">
               {step === 1 && (
                 <motion.div key="step1" initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} exit={{opacity:0, x:-20}} style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
