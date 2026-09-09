@@ -1,0 +1,32 @@
+{
+  "cli": {
+    "version": ">= 16.0.0"
+  },
+  "build": {
+    "development": {
+      "node": "22.14.0",
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "node": "22.14.0",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.foodie.kwiko.org"
+      }
+    },
+    "production": {
+      "node": "22.14.0",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.foodie.kwiko.org"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

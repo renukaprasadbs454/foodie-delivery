@@ -38,5 +38,5 @@ export class LocationPingBuffer {
   }
 }
 
-/** Elevated tier: 1 ping / 3 seconds (UI-API Navigation AC + backend rate limit). To be safe, we poll every 5s natively. */
-export const LOCATION_PING_INTERVAL_MS = 5_000;
+/** Elevated tier: 1 ping / 3 seconds (UI-API Navigation AC + backend rate limit). */
+export const LOCATION_PING_INTERVAL_MS = 3_000;
