@@ -35,6 +35,14 @@
             "DEFAULT"
           ]
         }
+      ],
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "web": {
@@ -62,7 +70,10 @@
     "extra": {
       "apiBaseUrl": "https://api.foodie.kwiko.org",
       "wsUrl": "wss://api.foodie.kwiko.org/ws",
-      "appEnv": "development"
-    }
+      "eas": {
+        "projectId": "f5d1c08a-cd53-4533-a2d8-68912d58b42b"
+      }
+    },
+    "owner": "preethishreed"
   }
 }

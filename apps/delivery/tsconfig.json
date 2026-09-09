@@ -19,6 +19,9 @@
     "target": "ESNext",
     "strict": true,
     "noImplicitOverride": true,
+    "types": [
+      "jest"
+    ],
     "paths": {
       "foodie-shared-rn": [
         "../../packages/shared-rn/src/index.ts"

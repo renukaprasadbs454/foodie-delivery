@@ -14,6 +14,11 @@ jest.mock('@react-native-async-storage/async-storage', () => {
   };
 });
 
+jest.mock('expo-constants', () => ({
+  executionEnvironment: 'bare',
+  manifest: {},
+}));
+
 jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(),
   requestPermissionsAsync: jest.fn(),
