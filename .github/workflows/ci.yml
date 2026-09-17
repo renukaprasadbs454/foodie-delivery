@@ -14,9 +14,6 @@ jobs:
         with:
           node-version: '20'
           cache: npm
-      - name: Install shared-rn
-        working-directory: ../foodie-shared-rn
-        run: npm ci || npm install
       - name: Install
         run: npm ci
       - name: Lint

@@ -1,3 +1,9 @@
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => {}),
+  deleteItemAsync: jest.fn(async () => {}),
+}));
+
 import { isTransportFetchStatus, parseEnvelopeFromUnknown } from '@/api/createBaseApi';
 
 /** TD-009 unit coverage for envelope/transport classification helpers. */

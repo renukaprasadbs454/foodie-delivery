@@ -1,6 +1,3 @@
-jest.mock('foodie-shared-rn', () => ({
-  PHONE_REGEX: /^\+91[6-9]\d{9}$/,
-}));
 
 import { isValidDeliveryPhone, normalizeDeliveryPhone } from '@/features/auth/phone';
 

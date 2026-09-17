@@ -2,9 +2,6 @@
  * Client-side JWT exp decode for proactive refresh timing only.
  * Blueprint §13.4 — never trusted as an authorization decision.
  */
-declare var atob: ((data: string) => string) | undefined;
-declare var Buffer: any;
-
 export function getJwtExpiryMs(token: string): number | null {
   try {
     const parts = token.split('.');
@@ -12,8 +9,8 @@ export function getJwtExpiryMs(token: string): number | null {
     const payload = parts[1].replace(/-/g, '+').replace(/_/g, '/');
     const padded = payload + '='.repeat((4 - (payload.length % 4)) % 4);
     const json =
-      typeof atob === 'function'
-        ? atob(padded)
+      typeof globalThis.atob === 'function'
+        ? globalThis.atob(padded)
         : Buffer.from(padded, 'base64').toString('utf8');
     const parsed = JSON.parse(json) as { exp?: number };
     if (typeof parsed.exp !== 'number') return null;
