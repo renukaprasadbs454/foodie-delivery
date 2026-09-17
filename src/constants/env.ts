@@ -1,6 +1,3 @@
-declare const process: any;
-declare const __DEV__: boolean;
-
 import Constants from 'expo-constants';
 import { NativeModules, Platform } from 'react-native';
 
@@ -51,7 +48,7 @@ function normalizeUrl(url: string): string {
 
 function resolveApiBaseUrl(): string {
   // 1. Explicit environment variable (injected at build time or via .env)
-  const envUrl = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_BASE_URL;
+  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
     return normalizeUrl(envUrl.trim());
   }
@@ -72,7 +69,7 @@ function resolveApiBaseUrl(): string {
 }
 
 function resolveWsUrl(apiBase: string): string {
-  const envWs = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_WS_URL;
+  const envWs = process.env.EXPO_PUBLIC_WS_URL;
   if (envWs && envWs.trim()) {
     return normalizeUrl(envWs.trim());
   }
@@ -96,7 +93,7 @@ const computedWsUrl = resolveWsUrl(computedApiBaseUrl);
 export const ENV = {
   apiBaseUrl: computedApiBaseUrl,
   wsUrl: computedWsUrl,
-  appEnv: (typeof process !== 'undefined' && process.env?.APP_ENV) || extra.appEnv || (typeof __DEV__ !== 'undefined' && __DEV__ ? 'development' : 'production'),
+  appEnv: process.env.APP_ENV || extra.appEnv || (__DEV__ ? 'development' : 'production'),
   appName: Constants.expoConfig?.name ?? 'foodie-delivery',
   appVersion: Constants.expoConfig?.version ?? '0.1.0',
 } as const;
