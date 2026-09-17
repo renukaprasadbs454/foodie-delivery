@@ -20,7 +20,8 @@
     "strict": true,
     "noImplicitOverride": true,
     "types": [
-      "jest"
+      "jest",
+      "node"
     ],
     "paths": {
       "@/*": [
