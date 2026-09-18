@@ -1,5 +1,11 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    },
     "allowJs": true,
     "esModuleInterop": true,
     "jsx": "react-native",
@@ -20,14 +26,9 @@
     "strict": true,
     "noImplicitOverride": true,
     "types": [
-      "jest"
+      "jest",
+      "node"
     ],
-    "paths": {
-      "@/*": [
-        "src/*"
-      ]
-    },
-    "baseUrl": ".",
     "ignoreDeprecations": "5.0"
   },
   "include": [
@@ -35,10 +36,7 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "src/__tests__"
+    "node_modules"
   ],
   "extends": "expo/tsconfig.base"
 }
