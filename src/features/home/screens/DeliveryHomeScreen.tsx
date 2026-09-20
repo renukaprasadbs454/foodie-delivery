@@ -23,7 +23,6 @@ import { formatMoney } from '../types';
 import type { MainStackParamList } from '@/navigation/types';
 import { ensureLocalPushRegistration } from '../../notifications/pushRegistration';
 import { selectUserId } from '../../auth/authSlice';
-import { Audio } from 'expo-av';
 import { OfferCard } from '@/features/home/components/OfferCard';
 import { useAcceptAssignmentMutation } from '@/api/endpoints/deliveryApi';
 import { ENV } from '@/constants/env';
@@ -146,20 +145,9 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const visibleOffers = rawOffers.filter((o: any) => !rejectedOffers.includes(o.assignmentId));
 
   useEffect(() => {
-    async function playSoundAndVibrate() {
-      if (visibleOffers.length > 0 && isOnline && !active?.orderId) {
-        Vibration.vibrate([0, 500, 200, 500]);
-        try {
-          // Play default system notification sound via Audio (creating a beep sequence)
-          const { sound } = await Audio.Sound.createAsync(
-            require('../../../../assets/adaptive-icon.png'), // placeholder, actually we'll just not load a file if we don't have one
-            { shouldPlay: false }
-          );
-          // Wait, I shouldn't load a PNG as sound. Let me just use a generic expo-av hack or just skip the file.
-        } catch (e) { }
-      }
+    if (visibleOffers.length > 0 && isOnline && !active?.orderId) {
+      Vibration.vibrate([0, 500, 200, 500]);
     }
-    void playSoundAndVibrate();
   }, [visibleOffers.length, isOnline, active?.orderId]);
 
   const loading = (offersQuery.isLoading && !offersQuery.data) || (Boolean(active?.orderId) && orderQuery.isLoading && !orderQuery.data) || (profileQuery.isLoading && !profileQuery.data);
@@ -1016,7 +1004,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   cameraModal: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#1A202C',
     zIndex: 200,
     justifyContent: 'center',

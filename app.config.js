@@ -78,6 +78,7 @@ module.exports = ({ config }) => {
       favicon: './src/assets/favicon.png',
     },
     plugins: [
+      'expo-asset',
       'expo-font',
       'expo-secure-store',
       'expo-notifications',

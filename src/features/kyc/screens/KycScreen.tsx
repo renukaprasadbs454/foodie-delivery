@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   cameraModal: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#1A202C',
     zIndex: 200,
     justifyContent: 'center',
