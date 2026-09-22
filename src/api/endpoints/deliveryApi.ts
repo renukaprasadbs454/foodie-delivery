@@ -20,7 +20,9 @@ export const deliveryApi = baseApi.injectEndpoints({
           if (data && typeof data.isOnline === 'boolean') {
             dispatch(setIsOnline(data.isOnline));
           }
-        } catch {}
+        } catch {
+          // Ignored if query fails
+        }
       },
     }),
     upsertDeliveryProfile: builder.mutation<DeliveryProfile, { fullName: string; vehicleType: string; vehicleNumber?: string }>({
@@ -80,7 +82,9 @@ export const deliveryApi = baseApi.injectEndpoints({
           try {
             const { data } = await queryFulfilled;
             dispatch(setIsOnline(Boolean(data?.isOnline ?? isOnline)));
-          } catch {}
+          } catch {
+            // Ignored if mutation fails
+          }
         },
       },
     ),

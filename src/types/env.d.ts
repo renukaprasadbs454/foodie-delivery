@@ -10,5 +10,5 @@ declare namespace NodeJS {
   }
 }
 
-declare var process: NodeJS.Process;
+declare const process: NodeJS.Process;
 
