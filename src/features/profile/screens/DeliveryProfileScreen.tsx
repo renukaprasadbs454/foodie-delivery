@@ -260,7 +260,7 @@ export function DeliveryProfileScreen({ navigation }: Props) {
 
             {/* Legal Documents */}
             <Pressable
-              onPress={() => setToast({ message: 'Terms & Conditions clicked.', variant: 'info' })}
+              onPress={() => navigation.navigate('TermsAndConditions' as any)}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 justifyContent: 'space-between',
@@ -279,7 +279,7 @@ export function DeliveryProfileScreen({ navigation }: Props) {
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
 
             <Pressable
-              onPress={() => setToast({ message: 'Privacy Policy clicked.', variant: 'info' })}
+              onPress={() => navigation.navigate('PrivacyPolicy' as any)}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 justifyContent: 'space-between',

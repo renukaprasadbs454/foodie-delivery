@@ -6,6 +6,8 @@ import type { NavigationLeg } from '@/features/navigation/types';
 
 export type AuthStackParamList = {
   Login: { returnTo?: string } | undefined;
+  PrivacyPolicy: undefined;
+  TermsAndConditions: undefined;
 };
 
 /** KYC stack — UI-API routes `Kyc` | `PendingVerification`. */
@@ -51,6 +53,8 @@ export type MainStackParamList = {
   PendingVerification: undefined;
   Incentives: undefined;
   CashDeposit: undefined;
+  PrivacyPolicy: undefined;
+  TermsAndConditions: undefined;
 };
 
 export type RootStackParamList = {

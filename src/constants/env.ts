@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import Constants from 'expo-constants';
 import { NativeModules, Platform } from 'react-native';
 
