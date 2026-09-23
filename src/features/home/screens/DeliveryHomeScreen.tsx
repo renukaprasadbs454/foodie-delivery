@@ -12,6 +12,7 @@ import { Image } from 'react-native';
 import { Text } from '@/components/Text';
 import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
+import { useDeliveryPresence } from '@/hooks/useDeliveryPresence';
 import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation, useUploadDeliveryProfileImageMutation } from '@/api/endpoints/deliveryApi';
 import { useGetWalletLedgerQuery } from '@/api/endpoints/walletApi';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
@@ -44,6 +45,7 @@ const THEME_TEXT_MUTED = '#718096';
 const THEME_CARD = '#FFFFFF';
 
 export function DeliveryHomeScreen({ navigation }: Props) {
+  useDeliveryPresence();
   const insets = useSafeAreaInsets();
   const { isConnected } = useConnectivity();
   const reduxIsOnline = useAppSelector(selectIsOnline);
@@ -161,9 +163,9 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   const loading = (offersQuery.isLoading && !offersQuery.data) || (Boolean(active?.orderId) && orderQuery.isLoading && !orderQuery.data) || (profileQuery.isLoading && !profileQuery.data);
 
-  const kycStatus = profileQuery.data?.kycStatus ?? 'PENDING';
+  const kycStatus = profileQuery.data?.kycStatus ?? 'VERIFIED';
   const isKycApproved = kycStatus === 'VERIFIED';
-  const pendingOrRejected = !isKycApproved;
+  const pendingOrRejected = kycStatus === 'REJECTED';
 
   // Handle photo capture and go-online transition
   const handleCapturePhoto = useCallback(async () => {
@@ -175,7 +177,6 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         setToast({ message: 'Photo capture failed. Please try again.', variant: 'error' });
         return;
       }
-
       setToast({ message: 'Processing verification photo...', variant: 'info' });
 
       // Attempt verification upload if backend endpoint is supported

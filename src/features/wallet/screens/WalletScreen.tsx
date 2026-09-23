@@ -183,32 +183,7 @@ export function WalletScreen({ navigation }: Props) {
             <Text style={{ color: '#FCD34D', fontSize: 15, fontWeight: '800' }}>Withdraw</Text>
           </Pressable>
 
-          <Pressable
-            style={({ pressed }) => ({
-              flex: 1,
-              minWidth: 90,
-              backgroundColor: '#FFFBEB',
-              borderRadius: 20,
-              paddingVertical: 20,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderWidth: 1,
-              borderColor: '#FDE68A',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.05,
-              shadowRadius: 6,
-              elevation: 2,
-              opacity: pressed ? 0.9 : 1,
-            })}
-            onPress={() => {
-              trackAnalyticsEvent('open_cod_deposit_tapped');
-              navigation.navigate('CashDeposit' as any);
-            }}
-          >
-            <Feather name="package" size={24} color="#D97706" style={{ marginBottom: 8 }} />
-            <Text style={{ color: '#D97706', fontSize: 15, fontWeight: '800' }}>COD Deposit</Text>
-          </Pressable>
+
 
           <Pressable
             style={({ pressed }) => ({

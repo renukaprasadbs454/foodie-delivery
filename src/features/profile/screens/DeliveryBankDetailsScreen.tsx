@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -8,36 +8,84 @@ import { Text } from '@/components/Text';
 import { TextInput } from '@/components/TextInput';
 import { Toast } from '@/components/Toast';
 import { useConnectivity } from '@/hooks/useConnectivity';
+import {
+    useGetDeliveryBankDetailsQuery,
+    useUpsertDeliveryBankDetailsMutation,
+} from '@/api/endpoints/deliveryApi';
 import type { MainStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryBankDetails'>;
 
 export function DeliveryBankDetailsScreen({ navigation }: Props) {
     const { isConnected } = useConnectivity();
+    const { data: bankDetails, isLoading: isFetching, refetch } = useGetDeliveryBankDetailsQuery();
+    const [upsertBankDetails, { isLoading: isSaving }] = useUpsertDeliveryBankDetailsMutation();
+
     const [accountHolderName, setAccountHolderName] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
     const [ifscCode, setIfscCode] = useState('');
     const [bankName, setBankName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const [branchName, setBranchName] = useState('');
+    const [accountType, setAccountType] = useState('SAVINGS');
     const [toast, setToast] = useState<{ message: string; variant: 'info' | 'success' | 'error' } | null>(null);
 
-    const onSubmit = () => {
+    useEffect(() => {
+        if (bankDetails) {
+            setAccountHolderName(bankDetails.accountHolderName || '');
+            setAccountNumber(bankDetails.accountNumber || '');
+            setIfscCode(bankDetails.ifscCode || '');
+            setBankName(bankDetails.bankName || '');
+            setBranchName(bankDetails.branchName || '');
+            setAccountType(bankDetails.accountType || 'SAVINGS');
+        }
+    }, [bankDetails]);
+
+    const onSubmit = async () => {
         if (!isConnected) {
             setToast({ message: 'Connect to the internet to save details.', variant: 'error' });
             return;
         }
-        if (!accountHolderName || !accountNumber || !ifscCode || !bankName) {
-            setToast({ message: 'Please fill in all bank details.', variant: 'error' });
+
+        const trimmedName = accountHolderName.trim();
+        const trimmedAcc = accountNumber.trim();
+        const trimmedIfsc = ifscCode.trim().toUpperCase();
+        const trimmedBank = bankName.trim();
+
+        if (!trimmedName || !trimmedAcc || !trimmedIfsc || !trimmedBank) {
+            setToast({ message: 'Please fill in all required bank details.', variant: 'error' });
             return;
         }
 
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        if (!/^[0-9]{9,18}$/.test(trimmedAcc)) {
+            setToast({ message: 'Account number must be 9 to 18 digits.', variant: 'error' });
+            return;
+        }
+
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(trimmedIfsc)) {
+            setToast({ message: 'Invalid IFSC format. Example: SBIN0001234', variant: 'error' });
+            return;
+        }
+
+        try {
+            await upsertBankDetails({
+                accountHolderName: trimmedName,
+                accountNumber: trimmedAcc,
+                ifscCode: trimmedIfsc,
+                bankName: trimmedBank,
+                branchName: branchName.trim(),
+                accountType: accountType.trim() || 'SAVINGS',
+            }).unwrap();
+
             setToast({ message: 'Bank details saved successfully.', variant: 'success' });
-            setTimeout(() => navigation.goBack(), 1000);
-        }, 1000);
+            refetch();
+            setTimeout(() => navigation.goBack(), 1200);
+        } catch (err: any) {
+            const errMsg = err?.data?.error?.message || err?.data?.message || 'Failed to save bank details. Please try again.';
+            setToast({ message: errMsg, variant: 'error' });
+        }
     };
+
+    const status = bankDetails?.verificationStatus;
 
     return (
         <SafeAreaView style={styles.container}>
@@ -51,56 +99,109 @@ export function DeliveryBankDetailsScreen({ navigation }: Props) {
 
             <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
                 <Text style={styles.description}>
-                    Enter your bank account details securely to receive payouts.
+                    Enter your bank account details securely to receive weekly payout settlements.
                 </Text>
+
+                {status && (
+                    <View
+                        style={[
+                            styles.statusBanner,
+                            status === 'VERIFIED'
+                                ? styles.bannerVerified
+                                : status === 'REJECTED'
+                                ? styles.bannerRejected
+                                : styles.bannerPending,
+                        ]}
+                    >
+                        <Feather
+                            name={status === 'VERIFIED' ? 'check-circle' : status === 'REJECTED' ? 'x-circle' : 'clock'}
+                            size={20}
+                            color={status === 'VERIFIED' ? '#065F46' : status === 'REJECTED' ? '#991B1B' : '#92400E'}
+                        />
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                            <Text
+                                style={[
+                                    styles.statusBannerTitle,
+                                    { color: status === 'VERIFIED' ? '#065F46' : status === 'REJECTED' ? '#991B1B' : '#92400E' },
+                                ]}
+                            >
+                                Status: {status}
+                            </Text>
+                            {status === 'REJECTED' && bankDetails?.rejectionReason && (
+                                <Text style={styles.statusBannerSub}>Reason: {bankDetails.rejectionReason}</Text>
+                            )}
+                            {status === 'VERIFIED' && (
+                                <Text style={styles.statusBannerSub}>Your bank details have been verified by Admin.</Text>
+                            )}
+                        </View>
+                    </View>
+                )}
 
                 <View style={styles.card}>
                     <View style={styles.inputGroup}>
                         <TextInput
-                            label="Account Holder Name"
+                            label="Account Holder Name *"
                             accessibilityLabel="Bank Account Holder Name"
                             value={accountHolderName}
                             onChangeText={setAccountHolderName}
-                            editable={!isLoading}
+                            editable={!isSaving && !isFetching}
+                            placeholder="e.g. Vikram Choudhary"
                         />
                     </View>
+
                     <View style={styles.inputGroup}>
                         <TextInput
-                            label="Account Number"
+                            label="Account Number *"
                             accessibilityLabel="Bank Account Number"
                             value={accountNumber}
                             onChangeText={setAccountNumber}
                             keyboardType="number-pad"
-                            editable={!isLoading}
+                            editable={!isSaving && !isFetching}
+                            placeholder="9 to 18 digit account number"
                         />
                     </View>
+
                     <View style={styles.inputGroup}>
                         <TextInput
-                            label="IFSC Code"
+                            label="IFSC Code *"
                             accessibilityLabel="Bank IFSC Code"
                             value={ifscCode}
-                            onChangeText={setIfscCode}
+                            onChangeText={text => setIfscCode(text.toUpperCase())}
                             autoCapitalize="characters"
-                            editable={!isLoading}
+                            editable={!isSaving && !isFetching}
+                            placeholder="e.g. SBIN0001234"
                         />
                     </View>
-                    <View style={styles.inputGroupLast}>
+
+                    <View style={styles.inputGroup}>
                         <TextInput
-                            label="Bank Name"
+                            label="Bank Name *"
                             accessibilityLabel="Bank Name"
                             value={bankName}
                             onChangeText={setBankName}
-                            editable={!isLoading}
+                            editable={!isSaving && !isFetching}
+                            placeholder="e.g. State Bank of India"
+                        />
+                    </View>
+
+                    <View style={styles.inputGroupLast}>
+                        <TextInput
+                            label="Branch Name (Optional)"
+                            accessibilityLabel="Branch Name"
+                            value={branchName}
+                            onChangeText={setBranchName}
+                            editable={!isSaving && !isFetching}
+                            placeholder="e.g. Tumkur Main Branch"
                         />
                     </View>
 
                     <Pressable
-                        disabled={!isConnected || isLoading}
+                        disabled={!isConnected || isSaving || isFetching}
                         onPress={onSubmit}
                         accessibilityLabel="Save Bank Details"
                         style={({ pressed }) => [
                             styles.submitButton,
-                            (!isConnected || isLoading) && { opacity: 0.6 },
+                            (!isConnected || isSaving || isFetching) && { opacity: 0.6 },
                             pressed && { opacity: 0.9 },
                         ]}
                     >
@@ -111,7 +212,7 @@ export function DeliveryBankDetailsScreen({ navigation }: Props) {
                             style={styles.submitGradient}
                         >
                             <Text style={styles.submitText}>
-                                {isLoading ? 'Saving...' : 'Save Bank Details'}
+                                {isSaving ? 'Saving to Database...' : isFetching ? 'Loading...' : 'Save Bank Details'}
                             </Text>
                         </LinearGradient>
                     </Pressable>
@@ -164,8 +265,37 @@ const styles = StyleSheet.create({
     description: {
         fontSize: 15,
         color: '#4B5563',
-        marginBottom: 20,
+        marginBottom: 16,
         lineHeight: 22,
+    },
+    statusBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 14,
+        borderRadius: 16,
+        marginBottom: 20,
+        borderWidth: 1,
+    },
+    bannerVerified: {
+        backgroundColor: '#ECFDF5',
+        borderColor: '#A7F3D0',
+    },
+    bannerPending: {
+        backgroundColor: '#FEF3C7',
+        borderColor: '#FDE68A',
+    },
+    bannerRejected: {
+        backgroundColor: '#FEE2E2',
+        borderColor: '#FCA5A5',
+    },
+    statusBannerTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    statusBannerSub: {
+        fontSize: 12,
+        color: '#4B5563',
+        marginTop: 2,
     },
     card: {
         backgroundColor: '#FFFFFF',

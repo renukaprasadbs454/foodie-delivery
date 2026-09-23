@@ -129,11 +129,18 @@ export function createBaseApi<TagTypes extends string = string>(
     const requestArgs = attachIdempotencyHeader(args);
     const result = await rawBaseQuery(requestArgs, api, extraOptions ?? {});
 
-    if (result.error) {
-      const fetchError = result.error as FetchBaseQueryError;
-      const errorMsg = ('error' in fetchError && typeof fetchError.error === 'string') ? fetchError.error : 'check your connection';
+    const fetchError = result.error as FetchBaseQueryError | undefined;
+    const responseData = result.data ?? fetchError?.data;
+    const envelope = parseEnvelopeFromUnknown(responseData);
+    const status = fetchError?.status ?? result.meta?.response?.status;
+
+    // Handle true transport / network failures (e.g. offline, connection refused)
+    if (result.error && !envelope && status !== 401) {
+      const errorMsg = (fetchError && 'error' in fetchError && typeof fetchError.error === 'string')
+        ? fetchError.error
+        : 'check your connection';
       const networkError: EnvelopeAwareError = {
-        status: fetchError.status,
+        status: fetchError?.status ?? 500,
         data: {
           code: 'NETWORK_ERROR',
           message: `Network error: ${errorMsg}`,
@@ -142,12 +149,80 @@ export function createBaseApi<TagTypes extends string = string>(
       };
       logger.error('API network failure', {
         url: extractUrl(requestArgs),
-        status: String(fetchError.status),
+        status: String(fetchError?.status),
       });
       return { error: networkError, meta: result.meta };
     }
 
-    const envelope = parseEnvelopeFromUnknown(result.data);
+    // Coalesced 401 Unauthorized / 403 Forbidden handling — token expired, forbidden, or invalid (§13.2)
+    const isAuthFailure =
+      status === 401 ||
+      status === 403 ||
+      envelope?.error?.code === 'UNAUTHORIZED' ||
+      envelope?.error?.code === 'FORBIDDEN';
+
+    if (isAuthFailure && !isRefreshEndpoint(extractUrl(requestArgs))) {
+      const refreshToken = config.getRefreshToken(api.getState());
+      if (refreshToken) {
+        const pair = await performTokenRefresh({
+          baseUrl: config.baseUrl,
+          refreshToken,
+          callbacks: refreshCallbacks,
+        });
+        if (pair) {
+          const retryResult = await rawBaseQuery(
+            requestArgs,
+            api,
+            extraOptions ?? {},
+          );
+          if (retryResult.error) {
+            const retryError = retryResult.error as FetchBaseQueryError;
+            const retryEnvelope = parseEnvelopeFromUnknown(retryError.data);
+            if (retryEnvelope?.success) {
+              return { data: retryEnvelope.data, meta: retryResult.meta };
+            }
+            const errorMsg = ('error' in retryError && typeof retryError.error === 'string')
+              ? retryError.error
+              : 'check your connection';
+            return {
+              error: {
+                status: retryError.status,
+                data: {
+                  code: retryEnvelope?.error?.code ?? 'NETWORK_ERROR',
+                  message: retryEnvelope?.error?.message ?? `Network error: ${errorMsg}`,
+                  fields: retryEnvelope?.error?.fields ?? null,
+                },
+              },
+              meta: retryResult.meta,
+            };
+          }
+          const retryEnvelope = parseEnvelopeFromUnknown(retryResult.data);
+          recordRequestId(retryEnvelope?.meta?.requestId);
+          if (retryEnvelope?.success) {
+            return { data: retryEnvelope.data, meta: retryResult.meta };
+          }
+          const retryCode = retryEnvelope?.error?.code ?? 'INTERNAL_ERROR';
+          if (retryCode === 'FORBIDDEN' || retryCode === 'UNAUTHORIZED' || retryResult.meta?.response?.status === 403 || retryResult.meta?.response?.status === 401) {
+            await config.onRefreshFailed(retryCode);
+          }
+          return {
+            error: {
+              status: retryEnvelope?.meta ? 400 : 401,
+              data: {
+                code: retryCode,
+                message: retryEnvelope?.error?.message ?? 'Something went wrong',
+                fields: retryEnvelope?.error?.fields ?? null,
+                requestId: retryEnvelope?.meta?.requestId,
+              },
+            },
+            meta: retryResult.meta,
+          };
+        }
+      } else {
+        await config.onRefreshFailed(envelope?.error?.code ?? (status === 403 ? 'FORBIDDEN' : 'UNAUTHORIZED'));
+      }
+    }
+
     const requestId = envelope?.meta?.requestId;
     recordRequestId(requestId);
 
@@ -162,10 +237,7 @@ export function createBaseApi<TagTypes extends string = string>(
         code,
         message: envelope.error?.message ?? 'Something went wrong',
         fields: envelope.error?.fields ?? null,
-        status:
-          typeof result.meta?.response?.status === 'number'
-            ? result.meta.response.status
-            : undefined,
+        status: typeof status === 'number' ? status : undefined,
         requestId,
       };
 
@@ -181,7 +253,6 @@ export function createBaseApi<TagTypes extends string = string>(
         url: extractUrl(requestArgs),
       });
 
-      // TOKEN_REUSE_DETECTED — never retry (Blueprint §13.3)
       if (code === 'TOKEN_REUSE_DETECTED') {
         await config.onTokenReuseDetected();
         return {
@@ -190,60 +261,8 @@ export function createBaseApi<TagTypes extends string = string>(
         };
       }
 
-      // Routine expired access token — coalesce refresh + single retry (§13.2)
-      if (
-        code === 'UNAUTHORIZED' &&
-        !isRefreshEndpoint(extractUrl(requestArgs))
-      ) {
-        const refreshToken = config.getRefreshToken(api.getState());
-        if (refreshToken) {
-          const pair = await performTokenRefresh({
-            baseUrl: config.baseUrl,
-            refreshToken,
-            callbacks: refreshCallbacks,
-          });
-          if (pair) {
-            const retryResult = await rawBaseQuery(
-              requestArgs,
-              api,
-              extraOptions ?? {},
-            );
-            if (retryResult.error) {
-              const retryError = retryResult.error as FetchBaseQueryError;
-              const errorMsg = ('error' in retryError && typeof retryError.error === 'string') ? retryError.error : 'check your connection';
-              return {
-                error: {
-                  status: retryError.status,
-                  data: {
-                    code: 'NETWORK_ERROR',
-                    message: `Network error: ${errorMsg}`,
-                    fields: null,
-                  },
-                },
-                meta: retryResult.meta,
-              };
-            }
-            const retryEnvelope = parseEnvelopeFromUnknown(retryResult.data);
-            recordRequestId(retryEnvelope?.meta?.requestId);
-            if (retryEnvelope?.success) {
-              return { data: retryEnvelope.data, meta: retryResult.meta };
-            }
-            const retryCode = retryEnvelope?.error?.code ?? 'INTERNAL_ERROR';
-            return {
-              error: {
-                status: retryEnvelope?.meta ? 400 : 401,
-                data: {
-                  code: retryCode,
-                  message:
-                    retryEnvelope?.error?.message ?? 'Something went wrong',
-                  fields: retryEnvelope?.error?.fields ?? null,
-                  requestId: retryEnvelope?.meta?.requestId,
-                },
-              },
-              meta: retryResult.meta,
-            };
-          }
-        }
+      if (code === 'FORBIDDEN' || code === 'UNAUTHORIZED' || status === 403 || status === 401) {
+        await config.onRefreshFailed(code);
       }
 
       return {
@@ -252,7 +271,22 @@ export function createBaseApi<TagTypes extends string = string>(
       };
     }
 
-    // Non-envelope response (should not occur for Foodie API) — pass through
+    if (result.error) {
+      const fetchErr = result.error as FetchBaseQueryError;
+      const errorMsg = ('error' in fetchErr && typeof fetchErr.error === 'string') ? fetchErr.error : 'check your connection';
+      return {
+        error: {
+          status: fetchErr.status,
+          data: {
+            code: 'NETWORK_ERROR',
+            message: `Network error: ${errorMsg}`,
+            fields: null,
+          },
+        },
+        meta: result.meta,
+      };
+    }
+
     return { data: result.data, meta: result.meta };
   };
 

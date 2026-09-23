@@ -63,18 +63,13 @@ function resolveApiBaseUrl(): string {
   }
 
   // 2. Extra config provided by app.config.ts / EAS Build
-  if (extra.apiBaseUrl && extra.apiBaseUrl.trim()) {
+  if (extra.apiBaseUrl && extra.apiBaseUrl.trim() && !extra.apiBaseUrl.includes('kwiko.org')) {
     return normalizeUrl(extra.apiBaseUrl.trim());
   }
 
-  // 3. Web runtime same-origin default
-  if (Platform.OS === 'web') {
-    return '';
-  }
-
-  // 4. Local development fallback
+  // 3. Local development fallback (works for web & native)
   const devHost = resolveDevHost();
-  return `http://${devHost}:8082`;
+  return `http://${devHost}:8080`;
 }
 
 function resolveWsUrl(apiBase: string): string {
@@ -93,7 +88,7 @@ function resolveWsUrl(apiBase: string): string {
   if (apiBase.startsWith('http://')) {
     return `${apiBase.replace(/^http:\/\//, 'ws://')}/ws`;
   }
-  return `ws://${resolveDevHost()}:8082/ws`;
+  return `ws://${resolveDevHost()}:8080/ws`;
 }
 
 const computedApiBaseUrl = resolveApiBaseUrl();
