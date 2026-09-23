@@ -24,6 +24,8 @@ export const linking: LinkingOptions<RootStackParamList> = {
           AssignmentDetails: 'orders/:orderId',
           Wallet: 'wallet',
           DeliveryNotifications: 'notifications',
+          PrivacyPolicy: 'privacy-policy',
+          TermsAndConditions: 'terms-and-conditions',
         },
       },
     },

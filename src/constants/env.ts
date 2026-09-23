@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import Constants from 'expo-constants';
 import { NativeModules, Platform } from 'react-native';
 
@@ -19,7 +20,14 @@ type AppExtra = {
   };
 };
 
-const extra = (Constants.expoConfig?.extra ?? (Constants as any).manifest?.extra ?? {}) as AppExtra;
+interface LegacyExpoConstants {
+  manifest?: { extra?: AppExtra };
+  manifest2?: { extra?: { expoGo?: { debuggerHost?: string } } };
+}
+
+const legacyConstants = Constants as unknown as LegacyExpoConstants;
+
+const extra = (Constants.expoConfig?.extra ?? legacyConstants.manifest?.extra ?? {}) as AppExtra;
 
 function resolveDevHost(): string {
   if (Platform.OS === 'web') {
@@ -35,8 +43,9 @@ function resolveDevHost(): string {
   if (Constants.expoConfig?.hostUri) {
     return Constants.expoConfig.hostUri.split(':')[0];
   }
-  if ((Constants as any).manifest2?.extra?.expoGo?.debuggerHost) {
-    return (Constants as any).manifest2.extra.expoGo.debuggerHost.split(':')[0];
+  const debuggerHost = legacyConstants.manifest2?.extra?.expoGo?.debuggerHost;
+  if (debuggerHost) {
+    return debuggerHost.split(':')[0];
   }
   // Android emulator loopback alias to host machine
   return Platform.OS === 'android' ? '10.0.2.2' : 'localhost';

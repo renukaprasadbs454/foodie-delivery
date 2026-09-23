@@ -3,6 +3,7 @@ import type { DeliveryDocType, DeliveryDocumentUploadResult, DeliveryProfile } f
 import type { AvailabilityState, DeliveryAssignment, DeliveryOffer } from '@/features/home/types';
 import { normalizeOffers } from '@/features/home/types';
 import type { LocationPingPayload } from '@/features/navigation/types';
+import { setIsOnline } from '@/features/home/availabilitySlice';
 
 /**
  * Delivery RTK — P2-DEL-01…03.
@@ -13,6 +14,16 @@ export const deliveryApi = baseApi.injectEndpoints({
     getDeliveryProfile: builder.query<DeliveryProfile, void>({
       query: () => '/api/v1/delivery/me',
       providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data && typeof data.isOnline === 'boolean') {
+            dispatch(setIsOnline(data.isOnline));
+          }
+        } catch {
+          // Ignored if query fails
+        }
+      },
     }),
     upsertDeliveryProfile: builder.mutation<DeliveryProfile, { fullName: string; vehicleType: string; vehicleNumber?: string }>({
       query: (body) => ({
@@ -63,7 +74,18 @@ export const deliveryApi = baseApi.injectEndpoints({
           headers: { 'Content-Type': 'application/json' },
           body,
         }),
-        invalidatesTags: [{ type: 'Delivery', id: 'AVAILABILITY' }],
+        invalidatesTags: [
+          { type: 'Delivery', id: 'AVAILABILITY' },
+          { type: 'Delivery', id: 'PROFILE' },
+        ],
+        async onQueryStarted({ isOnline }, { dispatch, queryFulfilled }) {
+          try {
+            const { data } = await queryFulfilled;
+            dispatch(setIsOnline(Boolean(data?.isOnline ?? isOnline)));
+          } catch {
+            // Ignored if mutation fails
+          }
+        },
       },
     ),
     getDeliveryOffers: builder.query<DeliveryOffer[], void>({

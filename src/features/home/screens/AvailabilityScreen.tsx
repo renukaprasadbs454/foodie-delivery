@@ -8,14 +8,13 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useApiErrorHandler } from '@/hooks/useApiErrorHandler';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
-import { useSetAvailabilityMutation } from '@/api/endpoints/deliveryApi';
+import { useGetDeliveryProfileQuery, useSetAvailabilityMutation } from '@/api/endpoints/deliveryApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import {
   selectIsOnline,
   setIsOnline,
 } from '../availabilitySlice';
-import { ensureBackgroundLocationForOnline } from '../locationPermission';
 import type { MainStackParamList } from '@/navigation/types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Availability'>;
@@ -29,7 +28,9 @@ export function AvailabilityScreen(_props: Props) {
   const { tokens } = useTheme();
   const { isConnected } = useConnectivity();
   const dispatch = useAppDispatch();
-  const isOnline = useAppSelector(selectIsOnline);
+  const reduxIsOnline = useAppSelector(selectIsOnline);
+  const profileQuery = useGetDeliveryProfileQuery(undefined, { refetchOnFocus: true });
+  const isOnline = profileQuery.data !== undefined ? Boolean(profileQuery.data.isOnline) : reduxIsOnline;
   const [setAvailability, mutation] = useSetAvailabilityMutation();
   const [toast, setToast] = useState<{
     message: string;
@@ -62,25 +63,22 @@ export function AvailabilityScreen(_props: Props) {
 
     if (nextOnline) {
       trackAnalyticsEvent('go_online_tapped');
-      const gate = await ensureBackgroundLocationForOnline();
-      if (!gate.ok) {
-        setToast({ message: gate.message, variant: 'warning' });
-        return;
-      }
-    } else {
-      trackAnalyticsEvent('go_offline_tapped');
+      // Enforce camera photo verification via DeliveryHome
+      _props.navigation.navigate('DeliveryHome');
+      return;
     }
 
+    trackAnalyticsEvent('go_offline_tapped');
     const previous = isOnline;
-    dispatch(setIsOnline(nextOnline));
+    dispatch(setIsOnline(false));
     try {
-      const result = await setAvailability({ isOnline: nextOnline }).unwrap();
+      const result = await setAvailability({ isOnline: false }).unwrap();
       dispatch(setIsOnline(Boolean(result.isOnline)));
       trackAnalyticsEvent('delivery_availability_changed', {
         isOnline: Boolean(result.isOnline),
       });
       setToast({
-        message: result.isOnline ? 'You are online.' : 'You are offline.',
+        message: 'You are offline.',
         variant: 'success',
       });
     } catch (error) {

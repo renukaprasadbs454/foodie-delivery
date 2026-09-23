@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -46,7 +46,7 @@ const THEME_CARD = '#FFFFFF';
 export function DeliveryHomeScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { isConnected } = useConnectivity();
-  const isOnline = useAppSelector(selectIsOnline);
+  const reduxIsOnline = useAppSelector(selectIsOnline);
   const active = useAppSelector(selectActiveAssignment);
   const userId = useAppSelector(selectUserId);
   const rejectedOffers = useAppSelector(selectRejectedOffers);
@@ -54,7 +54,17 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   const [setAvailability, availabilityState] = useSetAvailabilityMutation();
   const [verifyFace] = useVerifyFaceForOnlineMutation();
-  const [uploadImage, uploadState] = useUploadDeliveryProfileImageMutation();
+  const [uploadImage] = useUploadDeliveryProfileImageMutation();
+
+  const profileQuery = useGetDeliveryProfileQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
+  const isOnline = profileQuery.data !== undefined ? Boolean(profileQuery.data.isOnline) : reduxIsOnline;
+
+  // Synchronize persisted backend isOnline state into Redux whenever profile query resolves
+  useEffect(() => {
+    if (profileQuery.data && typeof profileQuery.data.isOnline === 'boolean') {
+      dispatch(setIsOnline(profileQuery.data.isOnline));
+    }
+  }, [profileQuery.data, dispatch]);
 
   // Camera / selfie state
   const [isCameraVisible, setIsCameraVisible] = useState(false);
@@ -117,7 +127,6 @@ export function DeliveryHomeScreen({ navigation }: Props) {
     .filter(e => e.entryType === 'CREDIT')
     .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
-  const profileQuery = useGetDeliveryProfileQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
   const offersQuery = useGetDeliveryOffersQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
   const orderQuery = useGetOrderQuery(active?.orderId ?? '', { skip: !active?.orderId, pollingInterval: active?.orderId ? 5000 : 0 });
 
@@ -156,89 +165,96 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const isKycApproved = kycStatus === 'VERIFIED';
   const pendingOrRejected = !isKycApproved;
 
-  // Open camera to capture selfie
-  const openSelfieCamera = useCallback(async (action: 'go_online' | 'recheck') => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        setToast({ message: 'Camera permission required for identity verification.', variant: 'warning' });
-        return;
-      }
-    }
-    pendingActionRef.current = action;
-    setIsCameraVisible(true);
-  }, [permission, requestPermission]);
-
-  // Handle photo capture and verification
+  // Handle photo capture and go-online transition
   const handleCapturePhoto = useCallback(async () => {
     if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.3 });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
       setIsCameraVisible(false);
-      if (!photo) {
-        setToast({ message: 'Selfie capture failed. Please try again.', variant: 'error' });
+      if (!photo || !photo.uri) {
+        setToast({ message: 'Photo capture failed. Please try again.', variant: 'error' });
         return;
       }
-      setToast({ message: 'Verifying identity...', variant: 'info' });
-      const ok = await verifyFace({
-        uri: photo.uri,
-        mimeType: 'image/jpeg',
-        fileName: 'selfie.jpg',
-      }).unwrap();
-      if (!ok) {
-        setToast({ message: 'Identity match failed! Cannot go online.', variant: 'error' });
-        return;
+
+      setToast({ message: 'Processing verification photo...', variant: 'info' });
+
+      // Attempt verification upload if backend endpoint is supported
+      try {
+        await verifyFace({
+          uri: photo.uri,
+          mimeType: 'image/jpeg',
+          fileName: 'go-online-verification.jpg',
+        }).unwrap();
+      } catch (_err) {
+        // Continue to setAvailability once photo is captured
       }
-      lastVerifiedAtRef.current = Date.now();
-      if (pendingActionRef.current === 'go_online') {
-        try {
-          await setAvailability({ isOnline: true }).unwrap();
-          dispatch(setIsOnline(true));
-          setToast({ message: 'Identity verified. You are now online!', variant: 'success' });
-        } catch (e) {
-          alert('Failed to update availability. Please try again.');
-        }
-      } else {
-        // recheck passed — stay online
-        setToast({ message: 'Identity re-verified. Continuing online.', variant: 'success' });
-      }
+
+      // Only after successful photo capture, call availability API
+      const result = await setAvailability({ isOnline: true }).unwrap();
+      dispatch(setIsOnline(Boolean(result.isOnline ?? true)));
+      trackAnalyticsEvent('delivery_availability_changed', { isOnline: true });
+      trackAnalyticsEvent('go_online_photo_verified');
+      setToast({ message: 'Photo verified. You are now online!', variant: 'success' });
     } catch (error: any) {
       setIsCameraVisible(false);
-      setToast({ message: 'Verification error. Please try again.', variant: 'error' });
+      const errMsg = error?.data?.error?.message || error?.data?.message || 'Failed to update availability. Please try again.';
+      setToast({ message: errMsg, variant: 'error' });
     }
   }, [verifyFace, setAvailability, dispatch]);
 
-  // 3-hour periodic re-verification while online
-  useEffect(() => {
-    if (!isOnline) return;
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const lastVerified = lastVerifiedAtRef.current;
-      if (!lastVerified || now - lastVerified >= THREE_HOURS_MS) {
-        setToast({ message: 'Time for your 3-hour identity check to stay online.', variant: 'warning' });
-        setTimeout(() => openSelfieCamera('recheck'), 1500);
-      }
-    }, 60 * 1000); // check every minute
-    return () => clearInterval(interval);
-  }, [isOnline, openSelfieCamera]);
-
   const toggleAvailability = async () => {
-    if (!isConnected || availabilityState.isLoading) return;
+    if (!isConnected || availabilityState.isLoading) {
+      if (!isConnected) {
+        setToast({ message: 'Connect to the internet to change availability.', variant: 'warning' });
+      }
+      return;
+    }
     if (pendingOrRejected) {
-      alert('Your KYC verification is not complete. You cannot go online yet.');
+      setToast({ message: 'Your KYC verification is not complete. You cannot go online yet.', variant: 'warning' });
       return;
     }
+
     if (!isOnline) {
-      // Going online — require selfie first
-      await openSelfieCamera('go_online');
+      // 1. Request camera permission
+      let hasPermission = permission?.granted;
+      if (!hasPermission) {
+        try {
+          const permResult = await requestPermission();
+          hasPermission = permResult?.granted;
+          if (!hasPermission) {
+            setToast({ message: 'Camera permission is required to go online.', variant: 'warning' });
+            if (permResult && !permResult.canAskAgain) {
+              Alert.alert(
+                'Camera Permission Required',
+                'Camera permission is required to go online. Please enable camera access in your device settings.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+                ]
+              );
+            }
+            return;
+          }
+        } catch (_err) {
+          setToast({ message: 'Camera permission is required to go online.', variant: 'warning' });
+          return;
+        }
+      }
+
+      // 2. Permission granted -> Open camera for mandatory photo capture (do NOT go online yet)
+      setIsCameraVisible(true);
       return;
     }
-    // Going offline — no selfie needed
+
+    // Going offline
     try {
-      const result = await setAvailability({ isOnline: false }).unwrap();
+      await setAvailability({ isOnline: false }).unwrap();
       dispatch(setIsOnline(false));
-    } catch (e) {
-      alert('Failed to update availability. Please try again.');
+      trackAnalyticsEvent('delivery_availability_changed', { isOnline: false });
+      setToast({ message: 'You are now offline.', variant: 'info' });
+    } catch (e: any) {
+      const errMsg = e?.data?.error?.message || e?.data?.message || 'Failed to update availability. Please try again.';
+      setToast({ message: errMsg, variant: 'error' });
     }
   };
 

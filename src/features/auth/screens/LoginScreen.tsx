@@ -9,7 +9,6 @@ import {
   Platform,
   ActivityIndicator,
   Image,
-  Dimensions,
   TextInput as RNTextInput,
 } from 'react-native';
 import { OTP_REGEX } from '@/utils/regex';
@@ -23,6 +22,9 @@ import { toUnwrappedApiError } from '../apiError';
 import { isValidDeliveryPhone, normalizeDeliveryPhone } from '../phone';
 import { applyAuthSession } from '../session';
 import { useAppDispatch } from '@/store/hooks';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AuthStackParamList } from '@/navigation/types';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const brandLogo = require('../../../assets/delivery_logo.png');
@@ -32,6 +34,7 @@ const RESEND_COOLDOWN_SEC = 30;
 type Step = 'phone' | 'otp';
 
 export function LoginScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const dispatch = useAppDispatch();
   const { isConnected } = useConnectivity();
   const [step, setStep] = useState<Step>('phone');
@@ -315,8 +318,21 @@ export function LoginScreen() {
           <Text style={styles.footerSecureText}>🔒 Secure SSL Encrypted Session</Text>
           <Text style={styles.footerTermsText}>
             By continuing, you agree to our{' '}
-            <Text style={styles.linkText}>Terms of Service</Text> &{' '}
-            <Text style={styles.linkText}>Privacy Policy</Text>
+            <Text
+              style={styles.linkText}
+              onPress={() => navigation.navigate('TermsAndConditions')}
+              accessibilityRole="link"
+            >
+              Terms of Service
+            </Text>{' '}
+            &{' '}
+            <Text
+              style={styles.linkText}
+              onPress={() => navigation.navigate('PrivacyPolicy')}
+              accessibilityRole="link"
+            >
+              Privacy Policy
+            </Text>
           </Text>
         </View>
       </ScrollView>

@@ -9,3 +9,6 @@ declare namespace NodeJS {
     [key: string]: string | undefined;
   }
 }
+
+declare const process: NodeJS.Process;
+

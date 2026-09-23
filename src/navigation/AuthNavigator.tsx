@@ -1,6 +1,8 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LoginScreen } from '@/features/auth/screens/LoginScreen';
+import { PrivacyPolicyScreen } from '@/features/profile/screens/PrivacyPolicyScreen';
+import { TermsScreen } from '@/features/profile/screens/TermsScreen';
 import type { AuthStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -13,6 +15,8 @@ export function AuthNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="TermsAndConditions" component={TermsScreen} />
     </Stack.Navigator>
   );
 }

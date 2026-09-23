@@ -21,6 +21,8 @@ import { KycScreen } from '@/features/kyc/screens/KycScreen';
 import { PendingVerificationScreen } from '@/features/kyc/screens/PendingVerificationScreen';
 import { IncentivesScreen } from '@/features/home/screens/IncentivesScreen';
 import { CashDepositScreen } from '@/features/wallet/screens/CashDepositScreen';
+import { PrivacyPolicyScreen } from '@/features/profile/screens/PrivacyPolicyScreen';
+import { TermsScreen } from '@/features/profile/screens/TermsScreen';
 import type { MainStackParamList } from './types';
 import { BottomNav } from './BottomNav';
 import { View } from 'react-native';
@@ -133,6 +135,16 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
       <Stack.Screen
         name="CashDeposit"
         component={CashDepositScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="PrivacyPolicy"
+        component={PrivacyPolicyScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="TermsAndConditions"
+        component={TermsScreen}
         options={{ presentation: 'modal', headerShown: false }}
       />
     </Stack.Navigator>
