@@ -52,12 +52,9 @@ export function PendingVerificationScreen({ navigation }: Props) {
   useEffect(() => {
     if (profile?.kycStatus === 'VERIFIED') {
       setToast({ message: 'KYC Verified! Taking you online...', variant: 'success' });
-      setTimeout(() => {
-        dispatch(clearIsNewUser());
-        navigation.replace('DeliveryHome' as any);
-      }, 1500);
+      dispatch(clearIsNewUser());
     }
-  }, [profile?.kycStatus, dispatch, navigation]);
+  }, [profile?.kycStatus, dispatch]);
 
   const onRefresh = () => {
     trackAnalyticsEvent('refresh_tapped');

@@ -18,9 +18,10 @@ export function RootNavigator() {
   const authStatus = useAppSelector(selectAuthStatus);
   const isNewUser = useAppSelector(selectIsNewUser);
 
-  // Conditionally fetch profile only when authenticated
+  // Conditionally fetch profile only when authenticated, with 3s polling for live KYC status updates
   const profileQuery = useGetDeliveryProfileQuery(undefined, {
     skip: authStatus !== 'authenticated',
+    pollingInterval: 3000,
   });
 
   if (authStatus === 'authenticating' || authStatus === 'idle') {
