@@ -1,12 +1,12 @@
-import React, { useEffect } from 'react';
-import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Feather } from '@expo/vector-icons';
 import { Text } from '@/components/Text';
 import { formatMoneyInr } from '@/utils/money';
 import { trackAnalyticsEvent } from '@/utils/analytics';
-import { useGetPayoutDetailQuery } from '@/api/endpoints/walletApi';
+import { useGetPayoutDetailQuery, useCompletePayoutMutation } from '@/api/endpoints/walletApi';
 import type { MainStackParamList } from '@/navigation/types';
 import type { PayoutStatus } from '../types';
 
@@ -28,8 +28,12 @@ type Props = NativeStackScreenProps<MainStackParamList, 'PayoutDetail'>;
 function getStatusColor(status: PayoutStatus) {
     switch (status) {
         case 'SUCCESS':
+        case 'COMPLETED':
             return { text: '#10B981', bg: '#D1FAE5', icon: 'check-circle' };
+        case 'APPROVED':
+            return { text: '#059669', bg: '#D1FAE5', icon: 'check-circle' };
         case 'FAILED':
+        case 'REJECTED':
             return { text: '#EF4444', bg: '#FEE2E2', icon: 'x-circle' };
         case 'PROCESSING':
             return { text: '#F59E0B', bg: '#FEF3C7', icon: 'clock' };
@@ -45,10 +49,24 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
     const { data, isLoading, isError, refetch } = useGetPayoutDetailQuery(payoutId, {
         refetchOnMountOrArgChange: true,
     });
+    const [completePayout, { isLoading: isCompleting }] = useCompletePayoutMutation();
+    const [actionMessage, setActionMessage] = useState<{ text: string; error?: boolean } | null>(null);
 
     useEffect(() => {
         trackAnalyticsEvent('payout_detail_viewed', { payoutId });
     }, [payoutId]);
+
+    const handleCompleteWithdrawal = async () => {
+        try {
+            setActionMessage(null);
+            await completePayout(payoutId).unwrap();
+            setActionMessage({ text: 'Withdrawal completed successfully! Funds debited from wallet.' });
+            void refetch();
+        } catch (err: any) {
+            const msg = err?.data?.message || err?.message || 'Failed to complete withdrawal.';
+            setActionMessage({ text: msg, error: true });
+        }
+    };
 
     if (isLoading) {
         return (
@@ -117,6 +135,102 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                         </Text>
                     </View>
                 </View>
+
+                {/* Status Notice / Action Banners */}
+                {actionMessage && (
+                    <View style={{
+                        backgroundColor: actionMessage.error ? '#FEF2F2' : '#F0FDF4',
+                        borderWidth: 1,
+                        borderColor: actionMessage.error ? '#FCA5A5' : '#86EFAC',
+                        borderRadius: 14,
+                        padding: 14,
+                        marginBottom: 20,
+                    }}>
+                        <Text style={{
+                            color: actionMessage.error ? '#991B1B' : '#166534',
+                            fontSize: 13,
+                            fontWeight: '700',
+                        }}>
+                            {actionMessage.text}
+                        </Text>
+                    </View>
+                )}
+
+                {data.status === 'APPROVED' && (
+                    <View style={{
+                        backgroundColor: '#F0FDF4',
+                        borderWidth: 1,
+                        borderColor: '#86EFAC',
+                        borderRadius: 16,
+                        padding: 18,
+                        marginBottom: 20,
+                    }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                            <Feather name="check-circle" size={18} color="#166534" style={{ marginRight: 8 }} />
+                            <Text style={{ color: '#166534', fontSize: 15, fontWeight: '800' }}>
+                                Payout Approved!
+                            </Text>
+                        </View>
+                        <Text style={{ color: '#15803D', fontSize: 13, lineHeight: 18, marginBottom: 14 }}>
+                            Admin has approved your withdrawal request of {formatMoneyInr(Number(data.amount) || 0)}. Tap below to complete the transfer and update your wallet.
+                        </Text>
+                        <Pressable
+                            disabled={isCompleting}
+                            onPress={handleCompleteWithdrawal}
+                            style={({ pressed }) => ({
+                                backgroundColor: '#14532D',
+                                borderRadius: 12,
+                                height: 48,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                opacity: pressed || isCompleting ? 0.85 : 1,
+                            })}
+                        >
+                            {isCompleting ? (
+                                <ActivityIndicator color="#FFF" />
+                            ) : (
+                                <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '800' }}>
+                                    Complete Withdrawal
+                                </Text>
+                            )}
+                        </Pressable>
+                    </View>
+                )}
+
+                {data.status === 'REQUESTED' && (
+                    <View style={{
+                        backgroundColor: '#EFF6FF',
+                        borderWidth: 1,
+                        borderColor: '#BFDBFE',
+                        borderRadius: 14,
+                        padding: 14,
+                        marginBottom: 20,
+                    }}>
+                        <Text style={{ color: '#1E40AF', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
+                            ⏳ This payout request is waiting for Admin approval. Your wallet balance will remain intact until you complete the withdrawal after approval.
+                        </Text>
+                    </View>
+                )}
+
+                {data.status === 'REJECTED' && (
+                    <View style={{
+                        backgroundColor: '#FEF2F2',
+                        borderWidth: 1,
+                        borderColor: '#FCA5A5',
+                        borderRadius: 14,
+                        padding: 14,
+                        marginBottom: 20,
+                    }}>
+                        <Text style={{ color: '#991B1B', fontSize: 13, fontWeight: '700' }}>
+                            Withdrawal request was rejected by admin.
+                        </Text>
+                        {data.failureReason ? (
+                            <Text style={{ color: '#B91C1C', fontSize: 12, marginTop: 4 }}>
+                                Reason: {data.failureReason}
+                            </Text>
+                        ) : null}
+                    </View>
+                )}
 
                 <View style={styles.detailsCard}>
                     <Text style={styles.sectionTitle}>Transaction Info</Text>

@@ -42,7 +42,7 @@ export type LedgerQueryParams = {
   createdAtTo?: string;
 };
 
-export type PayoutStatus = 'REQUESTED' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | string;
+export type PayoutStatus = 'REQUESTED' | 'APPROVED' | 'PROCESSING' | 'SUCCESS' | 'COMPLETED' | 'FAILED' | 'REJECTED' | string;
 
 export type PayoutInfo = {
   payoutId: string;
