@@ -78,6 +78,17 @@ export const walletApi = baseApi.injectEndpoints({
       query: (payoutId) => `/api/v1/wallet/payouts/${payoutId}`,
       providesTags: (result, error, id) => [{ type: 'Wallet', id: `PAYOUT-${id}` }],
     }),
+    completePayout: builder.mutation<PayoutInfo, string>({
+      query: (payoutId) => ({
+        url: `/api/v1/wallet/payouts/${payoutId}/complete`,
+        method: 'POST',
+      }),
+      invalidatesTags: [
+        { type: 'Wallet', id: 'BALANCE' },
+        { type: 'Wallet', id: 'LIST' },
+        'Wallet',
+      ],
+    }),
   }),
 });
 
@@ -87,4 +98,6 @@ export const {
   useRequestPayoutMutation,
   useGetPayoutHistoryQuery,
   useGetPayoutDetailQuery,
+  useCompletePayoutMutation,
 } = walletApi;
+

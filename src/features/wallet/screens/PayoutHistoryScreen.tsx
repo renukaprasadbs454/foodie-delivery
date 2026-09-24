@@ -35,8 +35,12 @@ type Props = NativeStackScreenProps<MainStackParamList, 'PayoutHistory'>;
 function getStatusColor(status: PayoutStatus) {
     switch (status) {
         case 'SUCCESS':
+        case 'COMPLETED':
             return { text: '#10B981', bg: '#D1FAE5', icon: 'check-circle' };
+        case 'APPROVED':
+            return { text: '#059669', bg: '#D1FAE5', icon: 'check-circle' };
         case 'FAILED':
+        case 'REJECTED':
             return { text: '#EF4444', bg: '#FEE2E2', icon: 'x-circle' };
         case 'PROCESSING':
             return { text: '#F59E0B', bg: '#FEF3C7', icon: 'clock' };
