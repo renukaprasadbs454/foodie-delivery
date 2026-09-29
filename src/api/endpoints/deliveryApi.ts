@@ -116,6 +116,18 @@ export const deliveryApi = baseApi.injectEndpoints({
         { type: 'Order', id: 'LIST' },
       ],
     }),
+    rejectAssignment: builder.mutation<void, string>({
+      query: (assignmentId) => ({
+        url: `/api/v1/delivery/assignments/${assignmentId}/reject`,
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: {},
+      }),
+      invalidatesTags: (_result, _error, assignmentId) => [
+        { type: 'Delivery', id: 'OFFERS' },
+        { type: 'Delivery', id: `OFFER-${assignmentId}` },
+      ],
+    }),
     locationPing: builder.mutation<null, LocationPingPayload>({
       query: (body) => ({
         url: '/api/v1/delivery/location-ping',
@@ -231,6 +243,7 @@ export const {
   useSetAvailabilityMutation,
   useGetDeliveryOffersQuery,
   useAcceptAssignmentMutation,
+  useRejectAssignmentMutation,
   useLocationPingMutation,
   useVerifyPickupOtpMutation,
   useVerifyDeliveryOtpMutation,

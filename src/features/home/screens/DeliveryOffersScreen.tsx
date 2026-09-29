@@ -23,7 +23,7 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useApiErrorHandler } from '@/hooks/useApiErrorHandler';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
-import { useAcceptAssignmentMutation, useGetDeliveryOffersQuery, useGetDeliveryProfileQuery } from '@/api/endpoints/deliveryApi';
+import { useAcceptAssignmentMutation, useRejectAssignmentMutation, useGetDeliveryOffersQuery, useGetDeliveryProfileQuery } from '@/api/endpoints/deliveryApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { selectUserId } from '../../auth/authSlice';
@@ -62,6 +62,7 @@ export function DeliveryOffersScreen({ navigation }: Props) {
     refetchOnFocus: true,
   });
   const [acceptAssignment] = useAcceptAssignmentMutation();
+  const [rejectAssignment] = useRejectAssignmentMutation();
 
   const handleError = useApiErrorHandler({
     onToast: (error) => setToast({ message: error.message, variant: 'error' }),
@@ -343,6 +344,7 @@ export function DeliveryOffersScreen({ navigation }: Props) {
               acceptDisabled={!isConnected || acceptingId !== null}
               onReject={() => {
                 dispatch(addRejectedOffer(offer.assignmentId));
+                void rejectAssignment(offer.assignmentId);
               }}
               onAccept={() => {
                 void onAccept(offer.assignmentId, offer.orderId);
