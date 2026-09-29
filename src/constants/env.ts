@@ -57,29 +57,18 @@ function normalizeUrl(url: string): string {
 
 function resolveApiBaseUrl(): string {
   // 1. Explicit environment variable (injected at build time or via .env)
-  const envUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || process.env.FOODIE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
     return normalizeUrl(envUrl.trim());
   }
 
-  // 2. In local development mode, use local backend port 8082
-  if (__DEV__ || process.env.NODE_ENV === 'development') {
-    const devHost = resolveDevHost();
-    return `http://${devHost}:8082`;
-  }
-
-  // 3. Extra config provided by app.config.ts / EAS Build
+  // 2. Extra config provided by app.config.ts / EAS Build
   if (extra.apiBaseUrl && extra.apiBaseUrl.trim()) {
     return normalizeUrl(extra.apiBaseUrl.trim());
   }
 
-  // 4. Web runtime same-origin default
-  if (Platform.OS === 'web') {
-    return '';
-  }
-
-  const devHost = resolveDevHost();
-  return `http://${devHost}:8082`;
+  // 3. Deployed production backend default
+  return 'https://api.foodie.kwiko.org';
 }
 
 function resolveWsUrl(apiBase: string): string {
