@@ -6,7 +6,6 @@ module.exports = ({ config }) => {
     process.env.EXPO_PUBLIC_API_URL ||
     process.env.EXPO_PUBLIC_API_BASE_URL ||
     process.env.API_BASE_URL ||
-    (config.extra && config.extra.apiBaseUrl) ||
     'http://localhost:8082';
 
   const wsUrl =

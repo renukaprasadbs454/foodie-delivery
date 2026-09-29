@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking, Switch } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -415,24 +415,29 @@ export function DeliveryHomeScreen({ navigation }: Props) {
             </View>
           </Pressable>
 
-          <Pressable
-            style={[styles.toggleButton, isOnline ? styles.toggleButtonOnline : null, pendingOrRejected && styles.toggleButtonDisabled]}
-            onPress={toggleAvailability}
-          >
-            {isOnline ? (
-              <View style={styles.onlineBadge}>
-                <View style={styles.pulseDot} />
-                <Text style={styles.toggleButtonTextOnline}>Swipe to Offline</Text>
+          {/* Simple Online / Offline Toggle Switch */}
+          <View style={[styles.toggleSwitchContainer, isOnline ? styles.toggleSwitchContainerOnline : styles.toggleSwitchContainerOffline]}>
+            <View style={styles.toggleSwitchLeft}>
+              <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
+              <View>
+                <Text style={styles.toggleSwitchTitle}>
+                  {isOnline ? 'Online' : 'Offline'}
+                </Text>
+                <Text style={styles.toggleSwitchSubtitle}>
+                  {isOnline ? 'Receiving order offers' : 'Turn on to start receiving orders'}
+                </Text>
               </View>
-            ) : (
-              <View style={styles.offlineActionRow}>
-                <Text style={styles.toggleButtonText}>GO ONLINE</Text>
-                <View style={styles.arrowCircle}>
-                  <Feather name="arrow-right" size={20} color={THEME_PRIMARY} />
-                </View>
-              </View>
-            )}
-          </Pressable>
+            </View>
+
+            <Switch
+              trackColor={{ false: '#CBD5E1', true: '#A7F3D0' }}
+              thumbColor={isOnline ? '#10B981' : '#64748B'}
+              ios_backgroundColor="#CBD5E1"
+              onValueChange={toggleAvailability}
+              value={isOnline}
+              disabled={pendingOrRejected || availabilityState.isLoading || !isConnected}
+            />
+          </View>
 
           {pendingOrRejected && (
             <Pressable
@@ -763,10 +768,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  toggleButtonOnline: {
-    backgroundColor: '#F1F5F9',
-    shadowOpacity: 0,
-    elevation: 0,
+  toggleSwitchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  toggleSwitchContainerOnline: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#86EFAC',
+  },
+  toggleSwitchContainerOffline: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  toggleSwitchLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  statusDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginRight: 12,
+  },
+  toggleSwitchTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  toggleSwitchSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 2,
   },
   toggleButtonDisabled: {
     backgroundColor: '#CBD5E0',
@@ -778,21 +818,12 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
   },
-  onlineBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   pulseDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
     backgroundColor: '#10B981',
     marginRight: 10,
-  },
-  toggleButtonTextOnline: {
-    color: '#4A5568',
-    fontSize: 18,
-    fontWeight: '700',
   },
   kycWarningBox: {
     marginTop: 16,

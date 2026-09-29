@@ -62,17 +62,22 @@ function resolveApiBaseUrl(): string {
     return normalizeUrl(envUrl.trim());
   }
 
-  // 2. Extra config provided by app.config.ts / EAS Build
+  // 2. In local development mode, use local backend port 8082
+  if (__DEV__ || process.env.NODE_ENV === 'development') {
+    const devHost = resolveDevHost();
+    return `http://${devHost}:8082`;
+  }
+
+  // 3. Extra config provided by app.config.ts / EAS Build
   if (extra.apiBaseUrl && extra.apiBaseUrl.trim()) {
     return normalizeUrl(extra.apiBaseUrl.trim());
   }
 
-  // 3. Web runtime same-origin default
+  // 4. Web runtime same-origin default
   if (Platform.OS === 'web') {
     return '';
   }
 
-  // 4. Local development fallback
   const devHost = resolveDevHost();
   return `http://${devHost}:8082`;
 }

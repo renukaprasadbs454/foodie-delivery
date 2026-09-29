@@ -131,12 +131,13 @@ export function createBaseApi<TagTypes extends string = string>(
 
     if (result.error) {
       const fetchError = result.error as FetchBaseQueryError;
-      const errorMsg = ('error' in fetchError && typeof fetchError.error === 'string') ? fetchError.error : 'check your connection';
+      const rawErrorMsg = ('error' in fetchError && typeof fetchError.error === 'string') ? fetchError.error : null;
+      const errorMsg = rawErrorMsg || (fetchError.status === 502 ? 'Server Gateway Error (502)' : fetchError.status === 'PARSING_ERROR' ? 'Invalid Server Response' : 'Server Request Failed');
       const networkError: EnvelopeAwareError = {
         status: fetchError.status,
         data: {
           code: 'NETWORK_ERROR',
-          message: `Network error: ${errorMsg}`,
+          message: errorMsg,
           fields: null,
         },
       };

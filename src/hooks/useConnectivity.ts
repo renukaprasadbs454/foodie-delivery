@@ -14,22 +14,39 @@ export type ConnectivityState = {
 export function useConnectivity(): ConnectivityState {
   const [state, setState] = useState<ConnectivityState>({
     isConnected: true,
-    isInternetReachable: null,
+    isInternetReachable: true,
     type: null,
   });
 
   useEffect(() => {
     const apply = (next: NetInfoState) => {
+      const webOnline = typeof window !== 'undefined' && typeof navigator !== 'undefined' ? navigator.onLine : true;
+      const connected = next.isConnected === false && !webOnline ? false : true;
       setState({
-        isConnected: Boolean(next.isConnected),
-        isInternetReachable: next.isInternetReachable,
+        isConnected: connected,
+        isInternetReachable: next.isInternetReachable ?? webOnline,
         type: next.type ?? null,
       });
     };
 
     const unsubscribe = NetInfo.addEventListener(apply);
     void NetInfo.fetch().then(apply);
-    return unsubscribe;
+
+    const handleWebOnline = () => apply({ isConnected: true, isInternetReachable: true, type: 'wifi', details: null });
+    const handleWebOffline = () => apply({ isConnected: false, isInternetReachable: false, type: 'none', details: null });
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', handleWebOnline);
+      window.addEventListener('offline', handleWebOffline);
+    }
+
+    return () => {
+      unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleWebOnline);
+        window.removeEventListener('offline', handleWebOffline);
+      }
+    };
   }, []);
 
   return state;
