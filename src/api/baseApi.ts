@@ -11,8 +11,8 @@ type AuthRoot = { auth: AuthState };
  */
 export const baseApi = createBaseApi({
   baseUrl: ENV.apiBaseUrl,
-  /** UI-API cache tags — Auth / Delivery / Order / Wallet / Notification */
-  tagTypes: ['Auth', 'Delivery', 'Order', 'Wallet', 'Notification'] as const,
+  /** UI-API cache tags — Auth / Delivery / Order / Wallet / Notification / Support */
+  tagTypes: ['Auth', 'Delivery', 'Order', 'Wallet', 'Notification', 'Support'] as const,
   getAccessToken: (state: unknown): string | null =>
     selectAccessToken(state as AuthRoot),
   getRefreshToken: (state: unknown): string | null =>

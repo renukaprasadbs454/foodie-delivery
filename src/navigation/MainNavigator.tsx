@@ -23,6 +23,7 @@ import { IncentivesScreen } from '@/features/home/screens/IncentivesScreen';
 import { CashDepositScreen } from '@/features/wallet/screens/CashDepositScreen';
 import { PrivacyPolicyScreen } from '@/features/profile/screens/PrivacyPolicyScreen';
 import { TermsScreen } from '@/features/profile/screens/TermsScreen';
+import { HelpAndSupportScreen } from '@/features/support/screens/HelpAndSupportScreen';
 import type { MainStackParamList } from './types';
 import { BottomNav } from './BottomNav';
 import { View } from 'react-native';
@@ -135,6 +136,11 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
       <Stack.Screen
         name="CashDeposit"
         component={CashDepositScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="HelpAndSupport"
+        component={HelpAndSupportScreen}
         options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen

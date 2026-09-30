@@ -258,6 +258,26 @@ export function DeliveryProfileScreen({ navigation }: Props) {
             </Pressable>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
 
+            {/* Help & Support */}
+            <Pressable
+              onPress={() => navigation.navigate('HelpAndSupport' as any)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="help-circle" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>Help & Support</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
             {/* Legal Documents */}
             <Pressable
               onPress={() => navigation.navigate('TermsAndConditions' as any)}

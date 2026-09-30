@@ -53,6 +53,7 @@ export type MainStackParamList = {
   PendingVerification: undefined;
   Incentives: undefined;
   CashDeposit: undefined;
+  HelpAndSupport: undefined;
   PrivacyPolicy: undefined;
   TermsAndConditions: undefined;
 };

@@ -49,11 +49,14 @@ config.server = {
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
       if (req.url && req.url.startsWith('/api/')) {
-        const targetHost = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://127.0.0.1:8082';
+        let targetHost = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.foodie.kwiko.org').replace(/\/+$/, '');
+        if (targetHost.includes('127.0.0.1:8082') || targetHost.includes('localhost:8082')) {
+          targetHost = 'https://api.foodie.kwiko.org';
+        }
         const targetUrl = targetHost + req.url;
         const isHttps = targetHost.startsWith('https');
         const httpLib = isHttps ? require('https') : require('http');
-        const hostHeader = targetHost.replace(/^https?:\/\//, '');
+        const hostHeader = targetHost.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
         const options = {
           method: req.method,
           headers: {
@@ -61,6 +64,9 @@ config.server = {
             host: hostHeader,
           },
         };
+        if (isHttps) {
+          options.servername = hostHeader;
+        }
         const proxyReq = httpLib.request(targetUrl, options, (proxyRes) => {
           res.writeHead(proxyRes.statusCode || 200, {
             ...proxyRes.headers,
@@ -71,6 +77,7 @@ config.server = {
           proxyRes.pipe(res, { end: true });
         });
         proxyReq.on('error', (err) => {
+          console.error('[Metro API Proxy Error]:', err.message);
           res.writeHead(502, {
             'Content-Type': 'application/json',
             'access-control-allow-origin': '*',

@@ -67,9 +67,9 @@ function resolveApiBaseUrl(): string {
     return normalizeUrl(extra.apiBaseUrl.trim());
   }
 
-  // 3. Local development fallback
-  if (typeof __DEV__ !== 'undefined' && __DEV__) {
-    return `http://${resolveDevHost()}:8080`;
+  // 3. Web runtime same-origin default
+  if (Platform.OS === 'web') {
+    return '';
   }
 
   // 4. Deployed production backend default
@@ -92,7 +92,7 @@ function resolveWsUrl(apiBase: string): string {
   if (apiBase.startsWith('http://')) {
     return `${apiBase.replace(/^http:\/\//, 'ws://')}/ws`;
   }
-  return `ws://${resolveDevHost()}:8082/ws`;
+  return 'wss://api.foodie.kwiko.org/ws';
 }
 
 const computedApiBaseUrl = resolveApiBaseUrl();
