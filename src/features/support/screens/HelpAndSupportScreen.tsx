@@ -539,7 +539,7 @@ export function HelpAndSupportScreen({ navigation }: Props) {
                 • Live assignment emergencies are escalated to our 24/7 dispatch supervisor.
               </Text>
               <Text style={styles.tipsText}>
-                • You will receive direct message replies from support agents in the "My Complaints" tab.
+                • You will receive direct message replies from support agents in the &quot;My Complaints&quot; tab.
               </Text>
             </View>
           </View>
@@ -571,8 +571,8 @@ export function HelpAndSupportScreen({ navigation }: Props) {
                 </View>
                 <Text style={styles.emptyStateTitle}>No Complaints Raised</Text>
                 <Text style={styles.emptyStateText}>
-                  You haven't submitted any support complaints yet. If you have questions regarding
-                  payouts, assignments, or app issues, tap "Raise Complaint" above.
+                  You haven&apos;t submitted any support complaints yet. If you have questions regarding
+                  payouts, assignments, or app issues, tap &quot;Raise Complaint&quot; above.
                 </Text>
                 <Pressable
                   style={styles.emptyStateBtn}
