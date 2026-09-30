@@ -1,9 +1,44 @@
+import { Platform } from 'react-native';
 import { baseApi } from '../baseApi';
 import type { DeliveryDocType, DeliveryDocumentUploadResult, DeliveryProfile } from '@/features/kyc/types';
 import type { AvailabilityState, DeliveryAssignment, DeliveryOffer } from '@/features/home/types';
 import { normalizeOffers } from '@/features/home/types';
 import type { LocationPingPayload } from '@/features/navigation/types';
 import { setIsOnline } from '@/features/home/availabilitySlice';
+
+async function createUploadFormData(
+  fields: Record<string, string | undefined>,
+  fileField: { name: string; uri: string; mimeType: string; fileName: string; webFile?: any }
+): Promise<FormData> {
+  const formData = new FormData();
+  Object.entries(fields).forEach(([k, v]) => {
+    if (v !== undefined) formData.append(k, v);
+  });
+
+  if (Platform.OS === 'web') {
+    if (fileField.webFile instanceof Blob || (typeof File !== 'undefined' && fileField.webFile instanceof File)) {
+      formData.append(fileField.name, fileField.webFile, fileField.fileName || 'document.pdf');
+      return formData;
+    }
+    if (fileField.uri) {
+      try {
+        const res = await fetch(fileField.uri);
+        const blob = await res.blob();
+        formData.append(fileField.name, blob, fileField.fileName || 'document.pdf');
+        return formData;
+      } catch (err) {
+        console.warn('[Upload] Failed to convert URI to blob', err);
+      }
+    }
+  }
+
+  formData.append(fileField.name, {
+    uri: fileField.uri,
+    type: fileField.mimeType,
+    name: fileField.fileName,
+  } as unknown as Blob);
+  return formData;
+}
 
 /**
  * Delivery RTK — P2-DEL-01…03.
@@ -44,27 +79,30 @@ export const deliveryApi = baseApi.injectEndpoints({
         webFile?: any;
       }
     >({
-      query: ({ docType, uri, mimeType, fileName, webFile }) => {
-        const formData = new FormData();
-        formData.append('docType', docType);
-
-        if (webFile) {
-          formData.append('file', webFile);
-        } else {
-          formData.append('file', {
-            uri,
-            type: mimeType,
-            name: fileName,
-          } as unknown as Blob);
+      queryFn: async (args, _queryApi, _extraOptions, fetchWithBQ) => {
+        try {
+          const formData = await createUploadFormData(
+            { docType: args.docType },
+            {
+              name: 'file',
+              uri: args.uri,
+              mimeType: args.mimeType,
+              fileName: args.fileName,
+              webFile: args.webFile,
+            }
+          );
+          const result = await fetchWithBQ({
+            url: `/api/v1/delivery/me/documents?docType=${encodeURIComponent(args.docType)}`,
+            method: 'POST',
+            body: formData,
+          });
+          if (result.error) return { error: result.error };
+          return { data: result.data as DeliveryDocumentUploadResult };
+        } catch (e: any) {
+          return { error: { status: 'CUSTOM_ERROR', error: e.message } as any };
         }
-
-        return {
-          url: '/api/v1/delivery/me/documents',
-          method: 'POST',
-          body: formData,
-        };
       },
-      invalidatesTags: [{ type: 'Delivery', id: 'DOCS' }],
+      invalidatesTags: [{ type: 'Delivery', id: 'DOCS' }, { type: 'Delivery', id: 'PROFILE' }],
     }),
     setAvailability: builder.mutation<AvailabilityState, { isOnline: boolean }>(
       {
@@ -180,58 +218,98 @@ export const deliveryApi = baseApi.injectEndpoints({
     }),
     uploadDeliveryProfileImage: builder.mutation<
       { profileImageKey: string; uploadedAt: string },
-      { uri: string; mimeType: string; fileName: string }
+      { uri: string; mimeType: string; fileName: string; webFile?: any }
     >({
-      query: ({ uri, mimeType, fileName }) => {
-        const formData = new FormData();
-        formData.append('file', {
-          uri,
-          type: mimeType,
-          name: fileName,
-        } as unknown as Blob);
-        return {
-          url: '/api/v1/delivery/me/profile-image',
-          method: 'POST',
-          body: formData,
-        };
+      queryFn: async (args, _queryApi, _extraOptions, fetchWithBQ) => {
+        try {
+          const formData = await createUploadFormData({}, {
+            name: 'file',
+            uri: args.uri,
+            mimeType: args.mimeType,
+            fileName: args.fileName,
+            webFile: args.webFile,
+          });
+          const result = await fetchWithBQ({
+            url: '/api/v1/delivery/me/profile-image',
+            method: 'POST',
+            body: formData,
+          });
+          if (result.error) return { error: result.error };
+          return { data: result.data as { profileImageKey: string; uploadedAt: string } };
+        } catch (e: any) {
+          return { error: { status: 'CUSTOM_ERROR', error: e.message } as any };
+        }
       },
       invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
     }),
     verifyFace: builder.mutation<
       boolean,
-      { assignmentId: string; uri: string; mimeType: string; fileName: string }
+      { assignmentId: string; uri: string; mimeType: string; fileName: string; webFile?: any }
     >({
-      query: ({ assignmentId, uri, mimeType, fileName }) => {
-        const formData = new FormData();
-        formData.append('file', {
-          uri,
-          type: mimeType,
-          name: fileName,
-        } as unknown as Blob);
-        return {
-          url: `/api/v1/delivery/assignments/${assignmentId}/verify-face`,
-          method: 'POST',
-          body: formData,
-        };
+      queryFn: async (args, _queryApi, _extraOptions, fetchWithBQ) => {
+        try {
+          const formData = await createUploadFormData({}, {
+            name: 'file',
+            uri: args.uri,
+            mimeType: args.mimeType,
+            fileName: args.fileName,
+            webFile: args.webFile,
+          });
+          const result = await fetchWithBQ({
+            url: `/api/v1/delivery/assignments/${args.assignmentId}/verify-face`,
+            method: 'POST',
+            body: formData,
+          });
+          if (result.error) return { error: result.error };
+          return { data: result.data as boolean };
+        } catch (e: any) {
+          return { error: { status: 'CUSTOM_ERROR', error: e.message } as any };
+        }
       },
     }),
     verifyFaceForOnline: builder.mutation<
       boolean,
-      { uri: string; mimeType: string; fileName: string }
+      { uri: string; mimeType: string; fileName: string; webFile?: any }
     >({
-      query: ({ uri, mimeType, fileName }) => {
-        const formData = new FormData();
-        formData.append('file', {
-          uri,
-          type: mimeType,
-          name: fileName,
-        } as unknown as Blob);
-        return {
-          url: '/api/v1/delivery/me/verify-face',
-          method: 'POST',
-          body: formData,
-        };
+      queryFn: async (args, _queryApi, _extraOptions, fetchWithBQ) => {
+        try {
+          const formData = await createUploadFormData({}, {
+            name: 'file',
+            uri: args.uri,
+            mimeType: args.mimeType,
+            fileName: args.fileName,
+            webFile: args.webFile,
+          });
+          const result = await fetchWithBQ({
+            url: '/api/v1/delivery/me/verify-face',
+            method: 'POST',
+            body: formData,
+          });
+          if (result.error) return { error: result.error };
+          return { data: result.data as boolean };
+        } catch (e: any) {
+          return { error: { status: 'CUSTOM_ERROR', error: e.message } as any };
+        }
       },
+    }),
+    getDeliveryBankDetails: builder.query<
+      { accountHolderName: string; accountNumber: string; ifscCode: string; bankName: string },
+      void
+    >({
+      query: () => '/api/v1/delivery/me/bank-details',
+      providesTags: [{ type: 'Delivery', id: 'BANK_DETAILS' }],
+    }),
+    updateDeliveryBankDetails: builder.mutation<
+      { accountHolderName: string; accountNumber: string; ifscCode: string; bankName: string },
+      { accountHolderName: string; accountNumber: string; ifscCode: string; bankName: string }
+    >({
+      query: (body) => ({
+        url: '/api/v1/delivery/me/bank-details',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+      invalidatesTags: [{ type: 'Delivery', id: 'BANK_DETAILS' }, { type: 'Delivery', id: 'PROFILE' }],
     }),
   }),
 });
@@ -250,4 +328,6 @@ export const {
   useUploadDeliveryProfileImageMutation,
   useVerifyFaceMutation,
   useVerifyFaceForOnlineMutation,
+  useGetDeliveryBankDetailsQuery,
+  useUpdateDeliveryBankDetailsMutation,
 } = deliveryApi;

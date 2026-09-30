@@ -190,6 +190,15 @@ export function PendingVerificationScreen({ navigation }: Props) {
           />
         )}
 
+        {!isVerified && !isRejected && (
+          <Button
+            label="📄 Upload / Update KYC Documents"
+            accessibilityLabel="Upload / Update KYC Documents"
+            variant="secondary"
+            onPress={() => navigation.navigate('Kyc')}
+          />
+        )}
+
         {isVerified ? (
           <Button
             label="Go to Online Dashboard"

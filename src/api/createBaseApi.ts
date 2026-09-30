@@ -131,6 +131,39 @@ export function createBaseApi<TagTypes extends string = string>(
 
     if (result.error) {
       const fetchError = result.error as FetchBaseQueryError;
+
+      // Handle 401 / 403 Unauthorized / Forbidden on protected endpoints
+      if (
+        (fetchError.status === 401 || fetchError.status === 403) &&
+        !isRefreshEndpoint(extractUrl(requestArgs))
+      ) {
+        const refreshToken = config.getRefreshToken(api.getState());
+        if (refreshToken) {
+          const pair = await performTokenRefresh({
+            baseUrl: config.baseUrl,
+            refreshToken,
+            callbacks: refreshCallbacks,
+          });
+          if (pair) {
+            const retryResult = await rawBaseQuery(
+              requestArgs,
+              api,
+              extraOptions ?? {},
+            );
+            if (!retryResult.error) {
+              const retryEnvelope = parseEnvelopeFromUnknown(retryResult.data);
+              recordRequestId(retryEnvelope?.meta?.requestId);
+              if (retryEnvelope?.success) {
+                return { data: retryEnvelope.data, meta: retryResult.meta };
+              }
+            }
+          }
+        } else {
+          // No refresh token or unauthenticated state — reset stale session
+          await config.onRefreshFailed(fetchError.status === 403 ? 'FORBIDDEN' : 'UNAUTHORIZED');
+        }
+      }
+
       const rawErrorMsg = ('error' in fetchError && typeof fetchError.error === 'string') ? fetchError.error : null;
       const errorMsg = rawErrorMsg || (fetchError.status === 502 ? 'Server Gateway Error (502)' : fetchError.status === 'PARSING_ERROR' ? 'Invalid Server Response' : 'Server Request Failed');
       const networkError: EnvelopeAwareError = {

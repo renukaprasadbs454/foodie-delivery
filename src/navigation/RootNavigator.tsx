@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAppSelector } from '@/store/hooks';
-import { selectAuthStatus, selectIsNewUser } from '@/features/auth/authSlice';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { clearCredentials, selectAuthStatus, selectIsNewUser } from '@/features/auth/authSlice';
 import { SplashScreen } from '@/features/auth/screens/SplashScreen';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
@@ -15,6 +15,7 @@ import { KycNavigator } from './KycNavigator';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function RootNavigator() {
+  const dispatch = useAppDispatch();
   const authStatus = useAppSelector(selectAuthStatus);
   const isNewUser = useAppSelector(selectIsNewUser);
 
@@ -23,13 +24,23 @@ export function RootNavigator() {
     skip: authStatus !== 'authenticated',
   });
 
+  useEffect(() => {
+    if (authStatus === 'authenticated' && profileQuery.isError) {
+      const err = profileQuery.error as any;
+      const status = err?.status ?? err?.data?.status;
+      if (status === 401 || status === 403) {
+        dispatch(clearCredentials());
+      }
+    }
+  }, [authStatus, profileQuery.isError, profileQuery.error, dispatch]);
+
   if (authStatus === 'authenticating' || authStatus === 'idle') {
     return <SplashScreen />;
   }
 
   // Wait for profile query to initialize and finish its first fetch
   if (authStatus === 'authenticated' && (profileQuery.isLoading || profileQuery.isFetching || profileQuery.isUninitialized)) {
-    if (!profileQuery.data) {
+    if (!profileQuery.data && !profileQuery.isError) {
       return <SplashScreen />;
     }
   }
@@ -54,13 +65,12 @@ export function RootNavigator() {
       flow = 'main';
       initialRouteName = 'DeliveryHome';
     }
-  } else if (authStatus === 'authenticated') {
-      // In case we are still authenticated but no data yet (e.g. error) we fallback
-      // Don't default to main for new users
-      flow = isNewUser ? 'kyc' : 'main';
-      if (flow === 'kyc') {
-        initialRouteName = 'Kyc';
-      }
+  } else if (authStatus === 'authenticated' && !profileQuery.isError) {
+    // In case we are still authenticated but no data yet (e.g. pending first load)
+    flow = isNewUser ? 'kyc' : 'main';
+    if (flow === 'kyc') {
+      initialRouteName = 'Kyc';
+    }
   }
 
   return (

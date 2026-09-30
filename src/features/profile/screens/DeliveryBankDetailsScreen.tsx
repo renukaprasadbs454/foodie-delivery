@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,19 +9,33 @@ import { TextInput } from '@/components/TextInput';
 import { Toast } from '@/components/Toast';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import type { MainStackParamList } from '@/navigation/types';
+import { useGetDeliveryBankDetailsQuery, useUpdateDeliveryBankDetailsMutation } from '@/api/endpoints/deliveryApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryBankDetails'>;
 
 export function DeliveryBankDetailsScreen({ navigation }: Props) {
     const { isConnected } = useConnectivity();
+    const { data: initialBankDetails, isLoading: isFetching } = useGetDeliveryBankDetailsQuery();
+    const [updateBankDetails, { isLoading: isSaving }] = useUpdateDeliveryBankDetailsMutation();
+
     const [accountHolderName, setAccountHolderName] = useState('');
     const [accountNumber, setAccountNumber] = useState('');
     const [ifscCode, setIfscCode] = useState('');
     const [bankName, setBankName] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const [toast, setToast] = useState<{ message: string; variant: 'info' | 'success' | 'error' } | null>(null);
 
-    const onSubmit = () => {
+    useEffect(() => {
+        if (initialBankDetails) {
+            if (initialBankDetails.accountHolderName) setAccountHolderName(initialBankDetails.accountHolderName);
+            if (initialBankDetails.accountNumber) setAccountNumber(initialBankDetails.accountNumber);
+            if (initialBankDetails.ifscCode) setIfscCode(initialBankDetails.ifscCode);
+            if (initialBankDetails.bankName) setBankName(initialBankDetails.bankName);
+        }
+    }, [initialBankDetails]);
+
+    const isLoading = isFetching || isSaving;
+
+    const onSubmit = async () => {
         if (!isConnected) {
             setToast({ message: 'Connect to the internet to save details.', variant: 'error' });
             return;
@@ -31,12 +45,22 @@ export function DeliveryBankDetailsScreen({ navigation }: Props) {
             return;
         }
 
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
+        try {
+            await updateBankDetails({
+                accountHolderName: accountHolderName.trim(),
+                accountNumber: accountNumber.trim(),
+                ifscCode: ifscCode.trim().toUpperCase(),
+                bankName: bankName.trim(),
+            }).unwrap();
+
             setToast({ message: 'Bank details saved successfully.', variant: 'success' });
             setTimeout(() => navigation.goBack(), 1000);
-        }, 1000);
+        } catch (err: any) {
+            setToast({
+                message: err?.data?.message || err?.message || 'Failed to save bank details.',
+                variant: 'error',
+            });
+        }
     };
 
     return (

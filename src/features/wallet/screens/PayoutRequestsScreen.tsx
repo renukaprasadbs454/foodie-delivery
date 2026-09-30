@@ -22,6 +22,7 @@ import { parseMoneyAmount, validatePayoutAmount } from '../types';
 import type { PayoutInfo, PayoutStatus } from '../types';
 import type { MainStackParamList } from '@/navigation/types';
 import { BottomNav } from '@/navigation/BottomNav';
+import { useGetDeliveryBankDetailsQuery } from '@/api/endpoints/deliveryApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PayoutRequests'>;
 
@@ -69,6 +70,9 @@ export function PayoutRequestsScreen({ navigation }: Props) {
     refetchOnMountOrArgChange: true,
   });
   const historyQuery = useGetPayoutHistoryQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
+  const { data: savedBankDetails } = useGetDeliveryBankDetailsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
   const { refetch: refetchBalance } = balanceQuery;
@@ -128,10 +132,10 @@ export function PayoutRequestsScreen({ navigation }: Props) {
     try {
       const result = await requestPayout({
         amount: validated.amount,
-        accountHolderName: 'Saved in Profile',
-        accountNumber: '****',
-        ifscCode: '****',
-        bankName: 'Saved in Profile',
+        accountHolderName: savedBankDetails?.accountHolderName || '',
+        accountNumber: savedBankDetails?.accountNumber || '',
+        ifscCode: savedBankDetails?.ifscCode || '',
+        bankName: savedBankDetails?.bankName || '',
         idempotencyKey: attemptKey.current,
       }).unwrap();
       trackAnalyticsEvent('payout_requested', {

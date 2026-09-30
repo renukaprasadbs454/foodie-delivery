@@ -67,7 +67,12 @@ function resolveApiBaseUrl(): string {
     return normalizeUrl(extra.apiBaseUrl.trim());
   }
 
-  // 3. Deployed production backend default
+  // 3. Local development fallback
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    return `http://${resolveDevHost()}:8080`;
+  }
+
+  // 4. Deployed production backend default
   return 'https://api.foodie.kwiko.org';
 }
 
