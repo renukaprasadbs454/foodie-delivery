@@ -170,7 +170,7 @@ export function DeliveryOffersScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <View>
                 <Text style={{ fontSize: 34, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5 }}>
-                  Live Offers
+                  Live Orders
                 </Text>
                 <Text style={{ fontSize: 15, color: '#A7F3D0', fontWeight: '600', marginTop: 2 }}>
                   Nearby shifts available for you

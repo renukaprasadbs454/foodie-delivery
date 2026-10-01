@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, StyleSheet, ActivityIndicator, Image, Platform } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -91,6 +91,7 @@ export function TrackingMap({ lastPing, orderStatus, leg, restaurantLocation, cu
     <View style={styles.container}>
       <MapView
         ref={mapRef}
+        provider="google"
         style={styles.map}
         initialRegion={{
           latitude: centerLat,

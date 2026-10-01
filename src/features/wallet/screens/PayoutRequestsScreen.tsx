@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, View, Pressable, StyleSheet } from 'react-native';
+import { RefreshControl, ScrollView, View, Pressable, StyleSheet, Modal } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,7 +22,7 @@ import { parseMoneyAmount, validatePayoutAmount } from '../types';
 import type { PayoutInfo, PayoutStatus } from '../types';
 import type { MainStackParamList } from '@/navigation/types';
 import { BottomNav } from '@/navigation/BottomNav';
-import { useGetDeliveryBankDetailsQuery } from '@/api/endpoints/deliveryApi';
+import { useGetDeliveryBankDetailsQuery, useUpdateDeliveryBankDetailsMutation } from '@/api/endpoints/deliveryApi';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PayoutRequests'>;
 
@@ -72,9 +72,11 @@ export function PayoutRequestsScreen({ navigation }: Props) {
   const historyQuery = useGetPayoutHistoryQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
-  const { data: savedBankDetails } = useGetDeliveryBankDetailsQuery(undefined, {
+  const { data: savedBankDetails, refetch: refetchBankDetails } = useGetDeliveryBankDetailsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
+  const [updateBankDetails, { isLoading: isSavingBank }] = useUpdateDeliveryBankDetailsMutation();
+
   const { refetch: refetchBalance } = balanceQuery;
   const [requestPayout, payoutState] = useRequestPayoutMutation();
   const [amountText, setAmountText] = useState('');
@@ -84,6 +86,54 @@ export function PayoutRequestsScreen({ navigation }: Props) {
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
   } | null>(null);
+
+  // Bank Form State
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankHolderName, setBankHolderName] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [bankAccountNumber, setBankAccountNumber] = useState('');
+  const [bankIfscCode, setBankIfscCode] = useState('');
+  const [bankFormError, setBankFormError] = useState<string | null>(null);
+
+  const openBankModal = () => {
+    setBankHolderName(savedBankDetails?.accountHolderName || '');
+    setBankName(savedBankDetails?.bankName || '');
+    setBankAccountNumber(savedBankDetails?.accountNumber || '');
+    setBankIfscCode(savedBankDetails?.ifscCode || '');
+    setBankFormError(null);
+    setShowBankModal(true);
+  };
+
+  const handleSaveBankDetails = async () => {
+    if (!isConnected) {
+      setToast({
+        message: 'Connect to the internet to save bank details.',
+        variant: 'warning',
+      });
+      return;
+    }
+    if (!bankName.trim() || !bankAccountNumber.trim() || !bankIfscCode.trim()) {
+      setBankFormError('Please fill in Bank Name, Account Number, and IFSC Code.');
+      return;
+    }
+    setBankFormError(null);
+    try {
+      await updateBankDetails({
+        accountHolderName: bankHolderName.trim() || savedBankDetails?.accountHolderName || 'Delivery Partner',
+        bankName: bankName.trim(),
+        accountNumber: bankAccountNumber.trim(),
+        ifscCode: bankIfscCode.trim().toUpperCase(),
+      }).unwrap();
+      setShowBankModal(false);
+      setToast({
+        message: 'Bank details updated successfully.',
+        variant: 'success',
+      });
+      void refetchBankDetails();
+    } catch (err: any) {
+      setBankFormError(err?.data?.message || err?.message || 'Failed to save bank details.');
+    }
+  };
 
   const handleError = useApiErrorHandler({
     onToast: (error) => setToast({ message: error.message, variant: 'error' }),
@@ -102,7 +152,8 @@ export function PayoutRequestsScreen({ navigation }: Props) {
     useCallback(() => {
       void refetchBalance();
       void historyQuery.refetch();
-    }, [refetchBalance, historyQuery.refetch]),
+      void refetchBankDetails();
+    }, [refetchBalance, historyQuery.refetch, refetchBankDetails]),
   );
 
   useEffect(() => {
@@ -181,6 +232,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
             onRefresh={() => {
               void balanceQuery.refetch();
               void historyQuery.refetch();
+              void refetchBankDetails();
             }}
             tintColor="#FFF"
             colors={['#FCD34D']}
@@ -217,7 +269,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           style={{
             borderRadius: 24,
             padding: 24,
-            marginBottom: 24,
+            marginBottom: 20,
             borderWidth: 2,
             borderColor: '#FCD34D',
             shadowColor: '#000',
@@ -237,6 +289,71 @@ export function PayoutRequestsScreen({ navigation }: Props) {
             Note: Requested amount does not debit until processed.
           </Text>
         </LinearGradient>
+
+        {/* Receiving Bank Details & Change Bank Account */}
+        <View style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 24,
+          padding: 20,
+          marginBottom: 24,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.05,
+          shadowRadius: 12,
+          elevation: 3,
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
+              <View style={{
+                width: 44,
+                height: 44,
+                borderRadius: 22,
+                backgroundColor: 'rgba(20, 83, 45, 0.08)',
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}>
+                <Feather name="credit-card" size={22} color="#14532D" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, color: '#718096', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Receiving Bank
+                </Text>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: '#14532D', marginTop: 2 }} numberOfLines={1}>
+                  {savedBankDetails?.bankName ? savedBankDetails.bankName : 'No Bank Configured'}
+                </Text>
+                {savedBankDetails?.accountNumber ? (
+                  <Text style={{ fontSize: 13, color: '#4A5568', fontWeight: '600', marginTop: 2 }}>
+                    A/C: •••• {savedBankDetails.accountNumber.slice(-4)} {savedBankDetails.ifscCode ? `(${savedBankDetails.ifscCode})` : ''}
+                  </Text>
+                ) : (
+                  <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', marginTop: 2 }}>
+                    Tap button to configure bank details
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <Pressable
+              onPress={openBankModal}
+              accessibilityLabel="Change Bank Account"
+              style={({ pressed }) => ({
+                backgroundColor: '#ECFDF5',
+                borderWidth: 1,
+                borderColor: '#10B981',
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                borderRadius: 14,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ color: '#047857', fontSize: 13, fontWeight: '800' }}>
+                Change Bank Account
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
         <View style={{
           backgroundColor: '#FFFFFF',
@@ -412,6 +529,177 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Change Bank Account Modal Form */}
+      <Modal
+        visible={showBankModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!isSavingBank) setShowBankModal(false);
+        }}
+      >
+        <Pressable
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+          onPress={() => {
+            if (!isSavingBank) setShowBankModal(false);
+          }}
+        >
+          <Pressable
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 24,
+              padding: 24,
+              width: '100%',
+              maxWidth: 440,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 10 },
+              shadowOpacity: 0.25,
+              shadowRadius: 20,
+              elevation: 10,
+            }}
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#14532D' }}>
+                Bank Account Details
+              </Text>
+              <Pressable
+                onPress={() => setShowBankModal(false)}
+                disabled={isSavingBank}
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: '#F1F5F9',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Feather name="x" size={18} color="#64748B" />
+              </Pressable>
+            </View>
+            <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 20 }}>
+              Update your bank details for future payout transfers.
+            </Text>
+
+            {bankFormError && (
+              <View style={{
+                backgroundColor: '#FEF2F2',
+                borderWidth: 1,
+                borderColor: '#FCA5A5',
+                borderRadius: 12,
+                padding: 12,
+                marginBottom: 16,
+              }}>
+                <Text style={{ color: '#B91C1C', fontSize: 13, fontWeight: '600' }}>
+                  {bankFormError}
+                </Text>
+              </View>
+            )}
+
+            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ maxHeight: 380 }}>
+              <View style={{ marginBottom: 14 }}>
+                <TextInput
+                  label="Account Holder Name"
+                  accessibilityLabel="Account Holder Name"
+                  value={bankHolderName}
+                  onChangeText={setBankHolderName}
+                  editable={!isSavingBank}
+                  placeholder="e.g. Rahul Sharma"
+                />
+              </View>
+
+              <View style={{ marginBottom: 14 }}>
+                <TextInput
+                  label="Bank Name"
+                  accessibilityLabel="Bank Name"
+                  value={bankName}
+                  onChangeText={setBankName}
+                  editable={!isSavingBank}
+                  placeholder="e.g. HDFC Bank, SBI, ICICI"
+                />
+              </View>
+
+              <View style={{ marginBottom: 14 }}>
+                <TextInput
+                  label="Account Number"
+                  accessibilityLabel="Account Number"
+                  value={bankAccountNumber}
+                  onChangeText={setBankAccountNumber}
+                  keyboardType="number-pad"
+                  editable={!isSavingBank}
+                  placeholder="e.g. 1234567890"
+                />
+              </View>
+
+              <View style={{ marginBottom: 20 }}>
+                <TextInput
+                  label="IFSC Code"
+                  accessibilityLabel="IFSC Code"
+                  value={bankIfscCode}
+                  onChangeText={setBankIfscCode}
+                  autoCapitalize="characters"
+                  editable={!isSavingBank}
+                  placeholder="e.g. HDFC0001234"
+                />
+              </View>
+
+              <Pressable
+                disabled={isSavingBank}
+                onPress={handleSaveBankDetails}
+                accessibilityLabel="Save Bank Details"
+                style={({ pressed }) => [
+                  {
+                    borderRadius: 16,
+                    height: 52,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    overflow: 'hidden',
+                    opacity: pressed ? 0.9 : 1,
+                    marginBottom: 8,
+                  },
+                  isSavingBank && { opacity: 0.7 },
+                ]}
+              >
+                <LinearGradient
+                  colors={['#14532D', '#1B6A3A']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 16, fontWeight: '800' }}>
+                    {isSavingBank ? 'Saving Details...' : 'Save Bank Details'}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+
+              <Pressable
+                disabled={isSavingBank}
+                onPress={() => setShowBankModal(false)}
+                style={{
+                  height: 44,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: '#64748B', fontSize: 14, fontWeight: '700' }}>Cancel</Text>
+              </Pressable>
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Toast
         visible={Boolean(toast)}
