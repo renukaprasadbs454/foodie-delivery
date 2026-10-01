@@ -512,7 +512,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
             <View style={[styles.menuIconCircle, { backgroundColor: 'rgba(252, 211, 77, 0.12)' }]}>
               <Feather name="map" size={28} color="#FCD34D" />
             </View>
-            <Text style={styles.menuItemTitle}>Offers</Text>
+            <Text style={styles.menuItemTitle}>Orders</Text>
             <Text style={styles.menuItemSubtitle}>Nearby Shifts</Text>
           </Pressable>
 
