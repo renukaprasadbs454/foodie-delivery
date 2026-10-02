@@ -17,6 +17,7 @@ import { DeliveryNotificationsScreen } from '@/features/notifications/screens/De
 import { DeliveryProfileScreen } from '@/features/profile/screens/DeliveryProfileScreen';
 import { DeliverySettingsScreen } from '@/features/profile/screens/DeliverySettingsScreen';
 import { DeliveryBankDetailsScreen } from '@/features/profile/screens/DeliveryBankDetailsScreen';
+import { DeliveryAddressScreen } from '@/features/profile/screens/DeliveryAddressScreen';
 import { KycScreen } from '@/features/kyc/screens/KycScreen';
 import { PendingVerificationScreen } from '@/features/kyc/screens/PendingVerificationScreen';
 import { IncentivesScreen } from '@/features/home/screens/IncentivesScreen';
@@ -116,6 +117,11 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
       <Stack.Screen
         name="DeliveryBankDetails"
         component={DeliveryBankDetailsScreen}
+        options={{ presentation: 'modal', headerShown: false }}
+      />
+      <Stack.Screen
+        name="DeliveryAddress"
+        component={DeliveryAddressScreen}
         options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen

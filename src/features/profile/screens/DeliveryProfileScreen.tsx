@@ -238,6 +238,25 @@ export function DeliveryProfileScreen({ navigation }: Props) {
             </Pressable>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
 
+            <Pressable
+              onPress={() => navigation.navigate('DeliveryAddress')}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 16,
+                paddingHorizontal: 16,
+                backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
+              })}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather name="map-pin" size={20} color="#14532D" style={{ marginRight: 12 }} />
+                <Text style={{ fontSize: 16, color: '#111827' }}>Delivery Address</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color="#D1D5DB" />
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
+
             {/* COD Cash Deposit */}
             <Pressable
               onPress={() => navigation.navigate('CashDeposit' as any)}

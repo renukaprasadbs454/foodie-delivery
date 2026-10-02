@@ -11,8 +11,11 @@ export type AvailabilityState = {
 export type DeliveryOffer = {
   assignmentId: string;
   orderId: string;
+  orderNumber?: string;
   restaurantName: string;
   pickupAddress: string;
+  deliveryAddress?: string;
+  expectedFoodReadyTime?: string;
   estimatedDistance: number;
 };
 
@@ -66,6 +69,9 @@ export type OrderDetail = {
   taxAmount: number | string;
   totalAmount: number | string;
   placedAt?: string;
+  preparationTime?: number;
+  foodReadyAt?: string;
+  assignmentScheduledAt?: string;
   items?: OrderLineItem[];
   orderStatusEvents?: OrderStatusEvent[];
 };

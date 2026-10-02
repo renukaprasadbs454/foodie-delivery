@@ -49,6 +49,7 @@ export type MainStackParamList = {
   DeliveryProfile: undefined;
   DeliverySettings: undefined;
   DeliveryBankDetails: undefined;
+  DeliveryAddress: undefined;
   Kyc: undefined;
   PendingVerification: undefined;
   Incentives: undefined;

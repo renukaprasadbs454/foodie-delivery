@@ -174,10 +174,17 @@ export function createBaseApi<TagTypes extends string = string>(
           fields: null,
         },
       };
-      logger.error('API network failure', {
-        url: extractUrl(requestArgs),
-        status: String(fetchError.status),
-      });
+      if (fetchError.status === 401 || fetchError.status === 403) {
+        logger.warn('API access unauthorized or forbidden', {
+          url: extractUrl(requestArgs),
+          status: String(fetchError.status),
+        });
+      } else {
+        logger.error('API network failure', {
+          url: extractUrl(requestArgs),
+          status: String(fetchError.status),
+        });
+      }
       return { error: networkError, meta: result.meta };
     }
 

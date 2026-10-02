@@ -60,7 +60,19 @@ export const deliveryApi = baseApi.injectEndpoints({
         }
       },
     }),
-    upsertDeliveryProfile: builder.mutation<DeliveryProfile, { fullName: string; vehicleType: string; vehicleNumber?: string }>({
+    upsertDeliveryProfile: builder.mutation<
+      DeliveryProfile,
+      {
+        fullName?: string;
+        vehicleType?: string;
+        vehicleNumber?: string;
+        addressLine1?: string;
+        addressLine2?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+      }
+    >({
       query: (body) => ({
         url: '/api/v1/delivery/me',
         method: 'PUT',

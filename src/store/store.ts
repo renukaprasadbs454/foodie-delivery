@@ -33,11 +33,13 @@ const stripAuthTokensTransform = createTransform<AuthState, AuthState>(
     ...inbound,
     accessToken: null,
     refreshToken: null,
+    authStatus: 'unauthenticated',
   }),
   (outbound) => ({
     ...outbound,
     accessToken: null,
     refreshToken: null,
+    authStatus: 'unauthenticated',
   }),
   { whitelist: ['auth'] },
 );
