@@ -851,9 +851,9 @@ export function DeliverySettingsScreen(_props: Props) {
             <Text style={styles.modalTitle}>Browser Permissions</Text>
             <Text style={styles.modalBody}>
               To manage permissions in your browser:
-              {'\n\n'}1. Look at the left side of your browser's address bar.
+              {'\n\n'}1. Look at the left side of your browser&apos;s address bar.
               {'\n'}2. Click the <Text style={{ fontWeight: 'bold' }}>Tune / Padlock icon</Text>.
-              {'\n'}3. Toggle <Text style={{ fontWeight: 'bold' }}>Camera, Microphone, and Location</Text> to "Allow".
+              {'\n'}3. Toggle <Text style={{ fontWeight: 'bold' }}>Camera, Microphone, and Location</Text> to &quot;Allow&quot;.
               {'\n'}4. Refresh the page to apply changes.
             </Text>
             <Pressable style={styles.modalConfirmBtn} onPress={() => setBrowserSettingsModal(false)}>

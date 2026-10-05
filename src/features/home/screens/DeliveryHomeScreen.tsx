@@ -825,7 +825,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
                     {/* Customer Comment */}
                     {item.comment ? (
                       <View style={styles.revCommentBox}>
-                        <Text style={styles.revCommentText}>"{item.comment}"</Text>
+                        <Text style={styles.revCommentText}>&ldquo;{item.comment}&rdquo;</Text>
                       </View>
                     ) : null}
                   </View>
