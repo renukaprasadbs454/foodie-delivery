@@ -36,8 +36,23 @@ export function OfferCard({
           </View>
         </View>
         <View style={styles.titleContainer}>
-          <Text style={styles.restaurantTitle} numberOfLines={1}>{offer.restaurantName}</Text>
-          <Text style={styles.addressSubtitle} numberOfLines={2}>{offer.pickupAddress}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <Text style={styles.restaurantTitle} numberOfLines={1}>{offer.restaurantName}</Text>
+            {offer.orderNumber ? (
+              <Text style={{ fontSize: 12, fontWeight: '800', color: '#14532D', backgroundColor: '#F0FDF4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                #{offer.orderNumber}
+              </Text>
+            ) : null}
+          </View>
+          <Text style={styles.addressSubtitle} numberOfLines={2}>📍 Pickup: {offer.pickupAddress}</Text>
+          {offer.deliveryAddress ? (
+            <Text style={[styles.addressSubtitle, { color: '#475569' }]} numberOfLines={2}>🏠 Drop: {offer.deliveryAddress}</Text>
+          ) : null}
+          {offer.expectedFoodReadyTime ? (
+            <Text style={{ fontSize: 12, fontWeight: '700', color: '#B45309', marginBottom: 6 }}>
+              ⏱ Food Ready: {new Date(offer.expectedFoodReadyTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          ) : null}
           <View style={styles.distanceBadge}>
             <Ionicons name="navigate-circle" size={14} color="#14532D" />
             <Text style={styles.distanceText}>{formatDistanceKm(offer.estimatedDistance)} away</Text>

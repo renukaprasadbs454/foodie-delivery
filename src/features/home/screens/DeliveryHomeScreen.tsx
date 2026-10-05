@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking, Switch } from 'react-native';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking, Switch, Modal } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -12,25 +12,26 @@ import { Image } from 'react-native';
 import { Text } from '@/components/Text';
 import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
-import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation, useUploadDeliveryProfileImageMutation } from '@/api/endpoints/deliveryApi';
+import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation, useUploadDeliveryProfileImageMutation, useGetDeliveryReviewsQuery, captureFrameFromWebVideo, useAcceptAssignmentMutation, useRejectAssignmentMutation } from '@/api/endpoints/deliveryApi';
 import { useGetWalletLedgerQuery } from '@/api/endpoints/walletApi';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
+import { useGetIncentivesProgressQuery, type IncentiveOfferProgress } from '@/api/endpoints/incentivesApi';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { selectActiveAssignment, selectIsOnline, setIsOnline, selectRejectedOffers, setActiveAssignment } from '../availabilitySlice';
+import { selectActiveAssignment, selectIsOnline, setIsOnline, selectRejectedOffers, setActiveAssignment, addRejectedOffer } from '../availabilitySlice';
 import { DeliveryHomeSkeleton } from '@/features/home/components/DeliveryHomeSkeleton';
 import { useAssignmentOrderSubscription } from '@/features/home/hooks/useAssignmentOrderSubscription';
 import { formatMoney } from '../types';
 import type { MainStackParamList } from '@/navigation/types';
 import { ensureLocalPushRegistration } from '../../notifications/pushRegistration';
 import { selectUserId } from '../../auth/authSlice';
-import { Audio } from 'expo-av';
 import { OfferCard } from '@/features/home/components/OfferCard';
-import { useAcceptAssignmentMutation } from '@/api/endpoints/deliveryApi';
+import { startOrderOfferAlert, stopOrderOfferAlert } from '@/utils/orderOfferAlert';
 import { ENV } from '@/constants/env';
 import { toUnwrappedApiError } from '../../auth/apiError';
-import { addRejectedOffer } from '../availabilitySlice';
 import { Toast } from '@/components/Toast';
 import { BottomNav } from '@/navigation/BottomNav';
+import { useLocationTracker, requestAllLocationPermissions } from '@/features/location';
+import { ensureBackgroundLocationForOnline } from '@/features/home/locationPermission';
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 
@@ -52,6 +53,9 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const userId = useAppSelector(selectUserId);
   const rejectedOffers = useAppSelector(selectRejectedOffers);
   const dispatch = useAppDispatch();
+
+  // Automatic status-based location tracker (Req 3, 5, 7)
+  const locationTracker = useLocationTracker();
 
   const [setAvailability, availabilityState] = useSetAvailabilityMutation();
   const [verifyFace] = useVerifyFaceForOnlineMutation();
@@ -77,10 +81,12 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const lastVerifiedAtRef = useRef<number | null>(null);
 
   const [acceptAssignment] = useAcceptAssignmentMutation();
+  const [rejectAssignment] = useRejectAssignmentMutation();
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, variant: 'info' | 'success' | 'error' | 'warning' } | null>(null);
 
   const onAccept = async (assignmentId: string, orderId: string) => {
+    stopOrderOfferAlert();
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to accept an offer.', variant: 'warning' });
       return;
@@ -128,8 +134,68 @@ export function DeliveryHomeScreen({ navigation }: Props) {
     .filter(e => e.entryType === 'CREDIT')
     .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
+  const incentivesProgressQuery = useGetIncentivesProgressQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
+  const activeOffers: IncentiveOfferProgress[] = useMemo(() => {
+    return incentivesProgressQuery.data?.offers?.filter((o: IncentiveOfferProgress) => o.active) || [];
+  }, [incentivesProgressQuery.data?.offers]);
+
+  const maxExtraEarning = useMemo(() => {
+    if (!activeOffers.length) return 0;
+    const unearned = activeOffers.filter((o: IncentiveOfferProgress) => !o.isEarned);
+    const candidateOffers = unearned.length > 0 ? unearned : activeOffers;
+    return candidateOffers.reduce((sum: number, o: IncentiveOfferProgress) => sum + Number(o.rewardAmount || 0), 0);
+  }, [activeOffers]);
+
+  const milestoneSummaryText = useMemo(() => {
+    if (!activeOffers.length) return 'Active bonus offers available';
+    const milestoneOffers = activeOffers.filter((o: IncentiveOfferProgress) => o.target > 1);
+    if (milestoneOffers.length > 0) {
+      const targets = milestoneOffers.map((o: IncentiveOfferProgress) => `${o.target} trips`);
+      if (targets.length === 1) {
+        const single = milestoneOffers[0];
+        if (single.remaining != null && single.remaining > 0 && single.currentProgress > 0) {
+          return `${single.remaining} more trips to reach ${single.target} trips milestone`;
+        }
+        return `${targets[0]} milestone`;
+      }
+      return `${targets.join(' and ')} milestones`;
+    }
+    const titles = activeOffers.map((o: IncentiveOfferProgress) => o.title);
+    if (titles.length === 1) {
+      return `${titles[0]} active`;
+    }
+    return `${titles[0]} & ${titles[1]}`;
+  }, [activeOffers]);
+
   const offersQuery = useGetDeliveryOffersQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
   const orderQuery = useGetOrderQuery(active?.orderId ?? '', { skip: !active?.orderId, pollingInterval: active?.orderId ? 5000 : 0 });
+
+  // Delivery Partner Ratings & Reviews state and query
+  const [isReviewsModalVisible, setIsReviewsModalVisible] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | '5' | '4' | '3_BELOW' | 'WITH_COMMENTS'>('ALL');
+  const reviewsQuery = useGetDeliveryReviewsQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
+
+  const reviewsData = reviewsQuery.data ?? {
+    averageRating: 0.0,
+    totalReviews: 0,
+    positivePercentage: 0,
+    ratingBreakdown: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } as Record<string, number>,
+    compliments: [
+      { label: 'Super Fast Delivery', count: 0, icon: 'zap' },
+      { label: 'Polite & Friendly', count: 0, icon: 'smile' },
+      { label: 'Handled With Care', count: 0, icon: 'package' },
+      { label: 'Followed Instructions', count: 0, icon: 'check-circle' },
+    ],
+    reviews: [],
+  };
+
+  const filteredReviews = (reviewsData.reviews || []).filter((item) => {
+    if (reviewFilter === '5') return item.rating === 5;
+    if (reviewFilter === '4') return item.rating === 4;
+    if (reviewFilter === '3_BELOW') return item.rating <= 3;
+    if (reviewFilter === 'WITH_COMMENTS') return Boolean(item.comment && item.comment.trim().length > 0);
+    return true;
+  });
 
   useAssignmentOrderSubscription(active?.orderId, orderQuery.data?.status);
 
@@ -139,8 +205,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
     async function requestCorePermissions() {
       try {
-        await Location.requestForegroundPermissionsAsync();
-        await Location.requestBackgroundPermissionsAsync();
+        await requestAllLocationPermissions();
         if (userId) {
           await ensureLocalPushRegistration(userId);
         }
@@ -155,21 +220,20 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const visibleOffers = rawOffers.filter((o: any) => !rejectedOffers.includes(o.assignmentId));
 
   useEffect(() => {
-    async function playSoundAndVibrate() {
-      if (visibleOffers.length > 0 && isOnline && !active?.orderId) {
-        Vibration.vibrate([0, 500, 200, 500]);
-        try {
-          // Play default system notification sound via Audio (creating a beep sequence)
-          const { sound } = await Audio.Sound.createAsync(
-            require('../../../../assets/adaptive-icon.png'), // placeholder, actually we'll just not load a file if we don't have one
-            { shouldPlay: false }
-          );
-          // Wait, I shouldn't load a PNG as sound. Let me just use a generic expo-av hack or just skip the file.
-        } catch (e) { }
-      }
+    if (visibleOffers.length > 0 && isOnline && !active?.orderId) {
+      const firstOffer = visibleOffers[0];
+      void startOrderOfferAlert(firstOffer.assignmentId, {
+        restaurantName: firstOffer.restaurantName,
+        orderNumber: firstOffer.orderNumber,
+      });
+    } else {
+      stopOrderOfferAlert();
     }
-    void playSoundAndVibrate();
-  }, [visibleOffers.length, isOnline, active?.orderId]);
+
+    return () => {
+      stopOrderOfferAlert();
+    };
+  }, [visibleOffers, isOnline, active?.orderId]);
 
   const loading = (offersQuery.isLoading && !offersQuery.data) || (Boolean(active?.orderId) && orderQuery.isLoading && !orderQuery.data) || (profileQuery.isLoading && !profileQuery.data);
 
@@ -179,37 +243,78 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   // Handle photo capture and go-online transition
   const handleCapturePhoto = useCallback(async () => {
-    if (!cameraRef.current) return;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+      let captureUri = '';
+      let captureBlob: Blob | undefined;
+
+      if (Platform.OS === 'web' || typeof document !== 'undefined') {
+        const webCapture = captureFrameFromWebVideo();
+        if (webCapture) {
+          captureUri = webCapture.dataUri;
+          captureBlob = webCapture.blob;
+          console.info('[FaceVerify] Web capture success:', {
+            width: webCapture.width,
+            height: webCapture.height,
+            blobSize: webCapture.blob.size,
+            dataUriPrefix: webCapture.dataUri.substring(0, 30),
+            previewUrl: webCapture.previewUrl,
+          });
+        }
+      }
+
+      if (!captureUri && cameraRef.current) {
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.95 });
+        if (photo?.uri) {
+          captureUri = photo.uri;
+          captureBlob = (photo as any).file;
+        }
+      }
+
       setIsCameraVisible(false);
-      if (!photo || !photo.uri) {
-        setToast({ message: 'Photo capture failed. Please try again.', variant: 'error' });
+
+      if (!captureUri) {
+        setToast({ message: 'Photo capture failed. Please ensure camera is active and try again.', variant: 'error' });
         return;
       }
 
-      setToast({ message: 'Processing verification photo...', variant: 'info' });
+      console.info('[FaceVerify] Sending verification request with safe metadata:', {
+        hasCaptureBlob: Boolean(captureBlob),
+        blobSize: captureBlob?.size,
+        blobType: captureBlob?.type,
+        formDataField: 'file',
+        fileName: 'go-online-verification.jpg',
+      });
 
-      // Attempt verification upload if backend endpoint is supported
-      try {
-        await verifyFace({
-          uri: photo.uri,
-          mimeType: 'image/jpeg',
-          fileName: 'go-online-verification.jpg',
-        }).unwrap();
-      } catch (_err) {
-        // Continue to setAvailability once photo is captured
+      // Strict biometric verification against approved KYC profile photo
+      const isVerified = await verifyFace({
+        uri: captureUri,
+        mimeType: 'image/jpeg',
+        fileName: 'go-online-verification.jpg',
+        webFile: captureBlob,
+      }).unwrap();
+
+      if (!isVerified) {
+        setToast({
+          message: 'Face verification failed. The scanned face does not match your KYC profile photo.',
+          variant: 'error',
+        });
+        return;
       }
 
-      // Only after successful photo capture, call availability API
+      // Only after successful face verification match, call availability API
       const result = await setAvailability({ isOnline: true }).unwrap();
       dispatch(setIsOnline(Boolean(result.isOnline ?? true)));
       trackAnalyticsEvent('delivery_availability_changed', { isOnline: true });
       trackAnalyticsEvent('go_online_photo_verified');
-      setToast({ message: 'Photo verified. You are now online!', variant: 'success' });
+      setToast({ message: 'Face verified! You are now online.', variant: 'success' });
     } catch (error: any) {
       setIsCameraVisible(false);
-      const errMsg = error?.data?.error?.message || error?.data?.message || 'Failed to update availability. Please try again.';
+      const errMsg =
+        error?.data?.error?.message ||
+        error?.data?.message ||
+        error?.error ||
+        error?.message ||
+        'Face verification failed. Please try again.';
       setToast({ message: errMsg, variant: 'error' });
     }
   }, [verifyFace, setAvailability, dispatch]);
@@ -227,7 +332,24 @@ export function DeliveryHomeScreen({ navigation }: Props) {
     }
 
     if (!isOnline) {
-      // 1. Request camera permission
+      // 1. Verify Location services and permissions gate (Req 1, 4, 6)
+      const locationGate = await ensureBackgroundLocationForOnline();
+      if (!locationGate.ok) {
+        setToast({ message: locationGate.message, variant: 'warning' });
+        if (locationGate.code === 'GPS_DISABLED' || locationGate.code === 'PERMISSION_DENIED') {
+          Alert.alert(
+            locationGate.code === 'GPS_DISABLED' ? 'GPS Location Required' : 'Location Permission Required',
+            locationGate.message,
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => void Linking.openSettings() },
+            ]
+          );
+        }
+        return;
+      }
+
+      // 2. Request camera permission
       let hasPermission = permission?.granted;
       if (!hasPermission) {
         try {
@@ -253,13 +375,14 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         }
       }
 
-      // 2. Permission granted -> Open camera for mandatory photo capture (do NOT go online yet)
+      // 3. Permission granted -> Open camera for mandatory photo capture (do NOT go online yet)
       setIsCameraVisible(true);
       return;
     }
 
     // Going offline
     try {
+      stopOrderOfferAlert();
       await setAvailability({ isOnline: false }).unwrap();
       dispatch(setIsOnline(false));
       trackAnalyticsEvent('delivery_availability_changed', { isOnline: false });
@@ -284,8 +407,9 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         setToast({ message: 'Uploading photo...', variant: 'info' });
         await uploadImage({
           uri: asset.uri,
-          mimeType: 'image/jpeg',
-          fileName: 'profile.jpg',
+          mimeType: asset.mimeType || 'image/jpeg',
+          fileName: asset.fileName || 'profile.jpg',
+          webFile: (asset as any).file,
         }).unwrap();
         setToast({ message: 'Profile photo updated!', variant: 'success' });
         profileQuery.refetch();
@@ -398,22 +522,24 @@ export function DeliveryHomeScreen({ navigation }: Props) {
             <Text style={styles.earningsAmount}>{totalEarningsToday.toFixed(2)}</Text>
           </View>
 
-          <Pressable
-            style={styles.incentiveMiniCard}
-            onPress={() => navigation.navigate('Incentives' as any)}
-          >
-            <View style={styles.incentiveMiniLeft}>
-              <Text style={styles.incentiveMiniTitle}>Earn upto ₹450 extra</Text>
-              <View style={styles.milestoneRow}>
-                <Ionicons name="bicycle" size={14} color="#F59E0B" />
-                <Text style={styles.milestoneMiniText}> 20 and 33 trips milestones</Text>
+          {activeOffers.length > 0 && maxExtraEarning > 0 && (
+            <Pressable
+              style={styles.incentiveMiniCard}
+              onPress={() => navigation.navigate('Incentives' as any)}
+            >
+              <View style={styles.incentiveMiniLeft}>
+                <Text style={styles.incentiveMiniTitle}>Earn upto ₹{maxExtraEarning} extra</Text>
+                <View style={styles.milestoneRow}>
+                  <Ionicons name="bicycle" size={14} color="#F59E0B" />
+                  <Text style={styles.milestoneMiniText}> {milestoneSummaryText}</Text>
+                </View>
               </View>
-            </View>
-            <View style={styles.incentiveMiniRight}>
-              <Text style={styles.viewDetailsText}>View details</Text>
-              <Feather name="chevron-right" size={16} color="#DD6B20" />
-            </View>
-          </Pressable>
+              <View style={styles.incentiveMiniRight}>
+                <Text style={styles.viewDetailsText}>View details</Text>
+                <Feather name="chevron-right" size={16} color="#DD6B20" />
+              </View>
+            </Pressable>
+          )}
 
           {/* Simple Online / Offline Toggle Switch */}
           <View style={[styles.toggleSwitchContainer, isOnline ? styles.toggleSwitchContainerOnline : styles.toggleSwitchContainerOffline]}>
@@ -497,7 +623,9 @@ export function DeliveryHomeScreen({ navigation }: Props) {
                 accepting={acceptingId === offer.assignmentId}
                 acceptDisabled={!isConnected || acceptingId !== null}
                 onReject={() => {
+                  stopOrderOfferAlert();
                   dispatch(addRejectedOffer(offer.assignmentId));
+                  void rejectAssignment(offer.assignmentId);
                 }}
                 onAccept={() => void onAccept(offer.assignmentId, offer.orderId)}
               />
@@ -533,6 +661,48 @@ export function DeliveryHomeScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
+        {/* Delivery Partner Ratings and Reviews Card */}
+        <Pressable
+          style={styles.ratingsCard}
+          onPress={() => setIsReviewsModalVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Delivery Partner ratings and reviews"
+        >
+          <View style={styles.ratingsCardLeft}>
+            <View style={styles.ratingsStarIconCircle}>
+              <Ionicons name="star" size={22} color="#F59E0B" />
+            </View>
+            <View style={styles.ratingsTextColumn}>
+              <Text style={styles.ratingsCardTitle}>Delivery Partner Ratings and Reviews</Text>
+              <View style={styles.ratingsSubtitleRow}>
+                {reviewsData.totalReviews > 0 ? (
+                  <>
+                    <View style={styles.ratingsScoreBadge}>
+                      <Ionicons name="star" size={11} color="#FFF" />
+                      <Text style={styles.ratingsScoreBadgeText}>
+                        {reviewsData.averageRating.toFixed(1)}
+                      </Text>
+                    </View>
+                    <Text style={styles.ratingsCardSubtitle}>
+                      {reviewsData.totalReviews} {reviewsData.totalReviews === 1 ? 'rating' : 'ratings'} • {reviewsData.positivePercentage}% Positive
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.ratingsCardSubtitle}>
+                    No ratings yet • Complete orders to get rated
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+          <View style={styles.ratingsCardRight}>
+            <View style={styles.ratingsViewBtn}>
+              <Text style={styles.ratingsViewBtnText}>View</Text>
+              <Feather name="chevron-right" size={16} color="#B45309" />
+            </View>
+          </View>
+        </Pressable>
+
       </ScrollView>
       <Toast
         visible={Boolean(toast)}
@@ -541,6 +711,231 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
+
+      {/* Customer Ratings and Reviews Modal */}
+      <Modal
+        visible={isReviewsModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setIsReviewsModalVisible(false)}
+      >
+        <View style={[styles.reviewsModalContainer, { paddingTop: insets.top || 16 }]}>
+          {/* Top Nav Bar */}
+          <View style={styles.reviewsModalHeader}>
+            <Pressable
+              style={styles.reviewsModalBackBtn}
+              onPress={() => setIsReviewsModalVisible(false)}
+            >
+              <Feather name="arrow-left" size={24} color="#1E293B" />
+            </Pressable>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.reviewsModalHeaderTitle}>Ratings & Reviews</Text>
+              <Text style={styles.reviewsModalHeaderSubtitle}>Customer feedback & compliments</Text>
+            </View>
+            <Pressable
+              style={styles.reviewsModalRefreshBtn}
+              onPress={() => void reviewsQuery.refetch()}
+            >
+              <Feather name="refresh-cw" size={18} color="#475569" />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.reviewsModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Main Score & Distribution Card */}
+            <View style={styles.reviewsScoreCard}>
+              <View style={styles.scoreOverviewLeft}>
+                <Text style={styles.bigScoreText}>
+                  {reviewsData.totalReviews > 0 ? reviewsData.averageRating.toFixed(1) : '0.0'}
+                </Text>
+                <View style={styles.starRow}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Ionicons
+                      key={s}
+                      name="star"
+                      size={18}
+                      color={s <= Math.round(reviewsData.averageRating) && reviewsData.totalReviews > 0 ? '#F59E0B' : '#CBD5E1'}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.totalReviewsText}>
+                  {reviewsData.totalReviews} Customer {reviewsData.totalReviews === 1 ? 'Review' : 'Reviews'}
+                </Text>
+                <View style={[styles.satisfactionBadge, reviewsData.totalReviews === 0 && { backgroundColor: '#F1F5F9' }]}>
+                  <Feather
+                    name={reviewsData.totalReviews > 0 ? 'check-circle' : 'info'}
+                    size={12}
+                    color={reviewsData.totalReviews > 0 ? '#10B981' : '#64748B'}
+                  />
+                  <Text style={[styles.satisfactionBadgeText, reviewsData.totalReviews === 0 && { color: '#64748B' }]}>
+                    {reviewsData.totalReviews > 0 ? `${reviewsData.positivePercentage}% Positive Rating` : 'No ratings yet'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.scoreDivider} />
+
+              <View style={styles.scoreDistributionRight}>
+                {[5, 4, 3, 2, 1].map((starNum) => {
+                  const count = reviewsData.ratingBreakdown?.[String(starNum)] ?? 0;
+                  const total = reviewsData.totalReviews;
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <View key={starNum} style={styles.distRow}>
+                      <Text style={styles.distStarLabel}>{starNum} ★</Text>
+                      <View style={styles.distBarTrack}>
+                        <View style={[styles.distBarFill, { width: `${pct}%` }]} />
+                      </View>
+                      <Text style={styles.distCountLabel}>{count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Customer Compliments */}
+            <View style={styles.complimentsContainer}>
+              <Text style={styles.sectionHeading}>Customer Compliments</Text>
+              <View style={styles.complimentsGrid}>
+                {(reviewsData.compliments || []).map((comp, idx) => (
+                  <View key={idx} style={styles.complimentChip}>
+                    <View style={styles.complimentIconCircle}>
+                      <Ionicons
+                        name={
+                          comp.icon === 'zap' || comp.icon === 'flash' ? 'flash' :
+                          comp.icon === 'smile' || comp.icon === 'happy' ? 'happy' :
+                          comp.icon === 'package' || comp.icon === 'cube' ? 'cube' : 'checkmark-circle'
+                        }
+                        size={16}
+                        color="#D97706"
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.complimentLabel}>{comp.label}</Text>
+                      <Text style={styles.complimentCount}>{comp.count} {comp.count === 1 ? 'customer' : 'customers'}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Filter Tabs */}
+            <View style={styles.filterSection}>
+              <Text style={styles.sectionHeading}>Customer Reviews</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterTabsRow}
+              >
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === 'ALL' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('ALL')}
+                >
+                  <Text style={[styles.filterChipText, reviewFilter === 'ALL' && styles.filterChipTextActive]}>
+                    All ({reviewsData.reviews?.length || 0})
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === '5' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('5')}
+                >
+                  <Ionicons name="star" size={13} color={reviewFilter === '5' ? '#FFF' : '#F59E0B'} />
+                  <Text style={[styles.filterChipText, reviewFilter === '5' && styles.filterChipTextActive]}>
+                    5 Star
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === '4' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('4')}
+                >
+                  <Ionicons name="star" size={13} color={reviewFilter === '4' ? '#FFF' : '#F59E0B'} />
+                  <Text style={[styles.filterChipText, reviewFilter === '4' && styles.filterChipTextActive]}>
+                    4 Star
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === '3_BELOW' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('3_BELOW')}
+                >
+                  <Text style={[styles.filterChipText, reviewFilter === '3_BELOW' && styles.filterChipTextActive]}>
+                    ≤ 3 Star
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === 'WITH_COMMENTS' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('WITH_COMMENTS')}
+                >
+                  <Text style={[styles.filterChipText, reviewFilter === 'WITH_COMMENTS' && styles.filterChipTextActive]}>
+                    With Comments
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            </View>
+
+            {/* Customer Review Cards */}
+            <View style={styles.reviewsList}>
+              {filteredReviews.length === 0 ? (
+                <View style={styles.emptyReviewsCard}>
+                  <Ionicons name="chatbox-ellipses-outline" size={44} color="#94A3B8" />
+                  <Text style={styles.emptyReviewsTitle}>
+                    {reviewsData.totalReviews === 0 ? 'No customer reviews yet' : 'No reviews match this filter'}
+                  </Text>
+                  <Text style={styles.emptyReviewsSubtitle}>
+                    {reviewsData.totalReviews === 0
+                      ? 'Customer ratings, compliments and feedback will appear here in real-time as you deliver orders.'
+                      : 'Try selecting a different rating filter above.'}
+                  </Text>
+                </View>
+              ) : (
+                filteredReviews.map((item) => (
+                  <View key={item.id} style={styles.customerReviewCard}>
+                    {/* Review Header */}
+                    <View style={styles.revHeader}>
+                      <View style={styles.revAvatar}>
+                        <Text style={styles.revAvatarText}>
+                          {item.customerName ? item.customerName.charAt(0).toUpperCase() : 'C'}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.revCustomerName}>{item.customerName || 'Customer'}</Text>
+                        <Text style={styles.revTimeAgo}>
+                          {item.timeAgo}{item.orderNumber ? ` • Order ${item.orderNumber}` : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.revRatingBadge}>
+                        <Ionicons name="star" size={12} color="#FFF" />
+                        <Text style={styles.revRatingBadgeText}>{item.rating}.0</Text>
+                      </View>
+                    </View>
+
+                    {/* Compliment Tags */}
+                    {item.tags && item.tags.length > 0 && (
+                      <View style={styles.revTagsRow}>
+                        {item.tags.map((tag, tIdx) => (
+                          <View key={tIdx} style={styles.revTagChip}>
+                            <Feather name="thumbs-up" size={11} color="#D97706" />
+                            <Text style={styles.revTagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Customer Comment */}
+                    {item.comment ? (
+                      <View style={styles.revCommentBox}>
+                        <Text style={styles.revCommentText}>&ldquo;{item.comment}&rdquo;</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
 
 
@@ -1155,5 +1550,415 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: '#718096',
     fontWeight: '600',
-  }
+  },
+  ratingsCard: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  ratingsCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  ratingsStarIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  ratingsTextColumn: {
+    flex: 1,
+  },
+  ratingsCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  ratingsSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  ratingsScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D97706',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 3,
+  },
+  ratingsScoreBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  ratingsCardSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#78350F',
+  },
+  ratingsCardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingsViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 2,
+  },
+  ratingsViewBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  reviewsModalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  reviewsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  reviewsModalBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewsModalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  reviewsModalHeaderSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  reviewsModalRefreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewsModalContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  reviewsScoreCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  scoreOverviewLeft: {
+    alignItems: 'center',
+    flex: 1.1,
+  },
+  bigScoreText: {
+    fontSize: 44,
+    fontWeight: '900',
+    color: '#0F172A',
+    lineHeight: 48,
+  },
+  starRow: {
+    flexDirection: 'row',
+    gap: 3,
+    marginVertical: 4,
+  },
+  totalReviewsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  satisfactionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  satisfactionBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  scoreDivider: {
+    width: 1,
+    height: '80%',
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 16,
+  },
+  scoreDistributionRight: {
+    flex: 1.4,
+    gap: 6,
+  },
+  distRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  distStarLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    width: 26,
+  },
+  distBarTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  distBarFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: '#F59E0B',
+  },
+  distCountLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    width: 24,
+    textAlign: 'right',
+  },
+  complimentsContainer: {
+    marginBottom: 20,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  complimentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  complimentChip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    flexBasis: '48%',
+    flexGrow: 1,
+    gap: 10,
+  },
+  complimentIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  complimentLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  complimentCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D97706',
+    marginTop: 1,
+  },
+  filterSection: {
+    marginBottom: 14,
+  },
+  filterTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 4,
+  },
+  filterChipActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  reviewsList: {
+    gap: 12,
+  },
+  customerReviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  revHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  revAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  revAvatarText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  revCustomerName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  revTimeAgo: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 1,
+  },
+  revRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+  },
+  revRatingBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  revTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  revTagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  revTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  revCommentBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  revCommentText: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+  emptyReviewsCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyReviewsTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 10,
+  },
+  emptyReviewsSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    textAlign: 'center',
+  },
 });

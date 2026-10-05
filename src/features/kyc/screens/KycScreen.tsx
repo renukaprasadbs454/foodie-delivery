@@ -153,6 +153,7 @@ export function KycScreen({ navigation }: Props) {
         uri: result.uri,
         mimeType,
         fileName: 'selfie.jpg',
+        webFile: (result as any).file,
       }).unwrap();
 
       trackAnalyticsEvent('profile_photo_uploaded');

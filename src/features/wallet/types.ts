@@ -49,7 +49,12 @@ export type PayoutInfo = {
   amount: number | string;
   requestedDate: string;
   processedDate?: string;
+  updatedAt?: string;
   status: PayoutStatus;
+  accountHolderName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  bankName?: string;
   provider?: string;
   transactionId?: string;
   providerReference?: string;
@@ -110,6 +115,18 @@ export function parseMoneyAmount(
   return n;
 }
 
+export function hasConfiguredBankDetails(bankDetails?: {
+  accountNumber?: string | null;
+  bankName?: string | null;
+  ifscCode?: string | null;
+  accountHolderName?: string | null;
+} | null): boolean {
+  if (!bankDetails) return false;
+  const accNum = bankDetails.accountNumber?.trim();
+  const bank = bankDetails.bankName?.trim();
+  return Boolean(accNum && bank);
+}
+
 export function validatePayoutAmount(
   raw: string,
   balance: number | null,
@@ -133,3 +150,47 @@ export function validatePayoutAmount(
   }
   return { ok: true, amount: Math.round((amount + Number.EPSILON) * 100) / 100 };
 }
+
+export function getWithdrawalStatusInfo(status: PayoutStatus) {
+  const upper = String(status || '').toUpperCase();
+  switch (upper) {
+    case 'COMPLETED':
+    case 'SUCCESS':
+    case 'APPROVED':
+      return {
+        label: 'Withdraw Success',
+        text: '#065F46',
+        bg: '#D1FAE5',
+        border: '#A7F3D0',
+        icon: 'check-circle' as const,
+      };
+    case 'REJECTED':
+    case 'FAILED':
+      return {
+        label: 'Rejected',
+        text: '#991B1B',
+        bg: '#FEE2E2',
+        border: '#FECACA',
+        icon: 'x-circle' as const,
+      };
+    case 'PROCESSING':
+      return {
+        label: 'Processing',
+        text: '#B45309',
+        bg: '#FEF3C7',
+        border: '#FDE68A',
+        icon: 'clock' as const,
+      };
+    case 'REQUESTED':
+    case 'PENDING':
+    default:
+      return {
+        label: 'Pending',
+        text: '#B45309',
+        bg: '#FEF3C7',
+        border: '#FDE68A',
+        icon: 'clock' as const,
+      };
+  }
+}
+

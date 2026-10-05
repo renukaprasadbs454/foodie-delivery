@@ -17,10 +17,19 @@ if (Platform.OS !== 'web') {
 
     if (Platform.OS === 'android') {
         Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
+            name: 'Default',
+            importance: Notifications.AndroidImportance.HIGH,
             vibrationPattern: [0, 500, 200, 500],
             lightColor: '#F59E0B',
+        });
+        Notifications.setNotificationChannelAsync('delivery-offers', {
+            name: 'New Order Offers',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 800, 400, 800, 400, 800],
+            sound: 'default',
+            lightColor: '#F59E0B',
+            lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+            bypassDnd: true,
         });
     }
 }

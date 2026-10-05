@@ -164,20 +164,33 @@ export function createBaseApi<TagTypes extends string = string>(
         }
       }
 
+      const serverEnvelope = parseEnvelopeFromUnknown(fetchError.data);
+      const serverError = serverEnvelope?.error || (fetchError.data as any)?.error;
       const rawErrorMsg = ('error' in fetchError && typeof fetchError.error === 'string') ? fetchError.error : null;
-      const errorMsg = rawErrorMsg || (fetchError.status === 502 ? 'Server Gateway Error (502)' : fetchError.status === 'PARSING_ERROR' ? 'Invalid Server Response' : 'Server Request Failed');
+      const errorMsg = serverError?.message || (fetchError.data as any)?.message || rawErrorMsg || (fetchError.status === 502 ? 'Server Gateway Error (502)' : fetchError.status === 'PARSING_ERROR' ? 'Invalid Server Response' : 'Server Request Failed');
+      const errorCode = serverError?.code || (fetchError.data as any)?.code || (fetchError.status === 'FETCH_ERROR' ? 'NETWORK_ERROR' : 'SERVER_ERROR');
+      const errorFields = serverError?.fields || (fetchError.data as any)?.fields || null;
+
       const networkError: EnvelopeAwareError = {
         status: fetchError.status,
         data: {
-          code: 'NETWORK_ERROR',
+          code: errorCode,
           message: errorMsg,
-          fields: null,
+          fields: errorFields,
         },
       };
-      logger.error('API network failure', {
-        url: extractUrl(requestArgs),
-        status: String(fetchError.status),
-      });
+      if (fetchError.status === 401 || fetchError.status === 403) {
+        logger.warn('API access unauthorized or forbidden', {
+          url: extractUrl(requestArgs),
+          status: String(fetchError.status),
+        });
+      } else {
+        logger.error('API network failure', {
+          url: extractUrl(requestArgs),
+          status: String(fetchError.status),
+          errorBody: fetchError.data,
+        });
+      }
       return { error: networkError, meta: result.meta };
     }
 

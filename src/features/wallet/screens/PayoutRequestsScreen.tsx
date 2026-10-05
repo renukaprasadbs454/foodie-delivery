@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, View, Pressable, StyleSheet, Modal } from 'react-native';
+import { RefreshControl, ScrollView, View, Pressable, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,7 +18,7 @@ import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { useGetWalletBalanceQuery, useRequestPayoutMutation, useGetPayoutHistoryQuery } from '@/api/endpoints/walletApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
-import { parseMoneyAmount, validatePayoutAmount } from '../types';
+import { parseMoneyAmount, validatePayoutAmount, hasConfiguredBankDetails, getWithdrawalStatusInfo } from '../types';
 import type { PayoutInfo, PayoutStatus } from '../types';
 import type { MainStackParamList } from '@/navigation/types';
 import { BottomNav } from '@/navigation/BottomNav';
@@ -26,40 +26,29 @@ import { useGetDeliveryBankDetailsQuery, useUpdateDeliveryBankDetailsMutation } 
 
 type Props = NativeStackScreenProps<MainStackParamList, 'PayoutRequests'>;
 
-/**
- * P2-DEL-04 — POST /wallet/payout-requests + balance.
- * History list is GAP-API-11 — create + balance only (Partial shell).
- * Offline payout blocked. Idempotency-Key per attempt.
- */
-function formatDate(isoString?: string): string {
-  if (!isoString) return 'Pending';
-  const d = new Date(isoString);
-  return d.toLocaleString('en-IN', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+function formatDateTime(isoString?: string): string {
+  if (!isoString) return '—';
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleString('en-IN', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    });
+  } catch {
+    return '—';
+  }
 }
 
-function getStatusColor(status: PayoutStatus) {
-  switch (status) {
-    case 'SUCCESS':
-    case 'COMPLETED':
-      return { text: '#10B981', bg: '#D1FAE5', icon: 'check-circle' };
-    case 'APPROVED':
-      return { text: '#059669', bg: '#D1FAE5', icon: 'check-circle' };
-    case 'FAILED':
-    case 'REJECTED':
-      return { text: '#EF4444', bg: '#FEE2E2', icon: 'x-circle' };
-    case 'PROCESSING':
-      return { text: '#F59E0B', bg: '#FEF3C7', icon: 'clock' };
-    case 'REQUESTED':
-    default:
-      return { text: '#3B82F6', bg: '#DBEAFE', icon: 'arrow-up-circle' };
-  }
+function maskAccountNumber(accountNumber?: string): string {
+  if (!accountNumber) return '•••• ----';
+  const clean = accountNumber.replace(/\s+/g, '');
+  if (clean.length <= 4) return `•••• ${clean}`;
+  return `•••• ${clean.slice(-4)}`;
 }
 
 export function PayoutRequestsScreen({ navigation }: Props) {
@@ -71,17 +60,22 @@ export function PayoutRequestsScreen({ navigation }: Props) {
   });
   const historyQuery = useGetPayoutHistoryQuery(undefined, {
     refetchOnMountOrArgChange: true,
+    pollingInterval: 10000,
   });
   const { data: savedBankDetails, refetch: refetchBankDetails } = useGetDeliveryBankDetailsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
   const [updateBankDetails, { isLoading: isSavingBank }] = useUpdateDeliveryBankDetailsMutation();
 
+  const isBankConfigured = hasConfiguredBankDetails(savedBankDetails);
+
   const { refetch: refetchBalance } = balanceQuery;
   const [requestPayout, payoutState] = useRequestPayoutMutation();
   const [amountText, setAmountText] = useState('');
   const [fieldError, setFieldError] = useState<string | undefined>();
+  const [bankError, setBankError] = useState<string | null>(null);
   const attemptKey = useRef<string | null>(null);
+  const [isRefreshingHistory, setIsRefreshingHistory] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     variant: 'info' | 'success' | 'error' | 'warning';
@@ -101,6 +95,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
     setBankAccountNumber(savedBankDetails?.accountNumber || '');
     setBankIfscCode(savedBankDetails?.ifscCode || '');
     setBankFormError(null);
+    setBankError(null);
     setShowBankModal(true);
   };
 
@@ -125,6 +120,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
         ifscCode: bankIfscCode.trim().toUpperCase(),
       }).unwrap();
       setShowBankModal(false);
+      setBankError(null);
       setToast({
         message: 'Bank details updated successfully.',
         variant: 'success',
@@ -132,6 +128,17 @@ export function PayoutRequestsScreen({ navigation }: Props) {
       void refetchBankDetails();
     } catch (err: any) {
       setBankFormError(err?.data?.message || err?.message || 'Failed to save bank details.');
+    }
+  };
+
+  const handleManualRefreshHistory = async () => {
+    setIsRefreshingHistory(true);
+    try {
+      await historyQuery.refetch().unwrap();
+    } catch {
+      // handled by RTK
+    } finally {
+      setIsRefreshingHistory(false);
     }
   };
 
@@ -170,6 +177,17 @@ export function PayoutRequestsScreen({ navigation }: Props) {
       });
       return;
     }
+
+    if (!isBankConfigured) {
+      setBankError('Please enter your bank details before requesting a withdrawal.');
+      setToast({
+        message: 'Please enter your bank details before requesting a withdrawal.',
+        variant: 'error',
+      });
+      return;
+    }
+    setBankError(null);
+
     const validated = validatePayoutAmount(amountText, balance);
     if (!validated.ok) {
       setFieldError(validated.message);
@@ -194,7 +212,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
         status: result.status,
       });
       setToast({
-        message: `Payout ${result.status}. Balance is not debited until processing completes.`,
+        message: `Withdrawal request for ${formatMoneyInr(validated.amount)} submitted successfully. Status: Pending.`,
         variant: 'success',
       });
       setAmountText('');
@@ -205,6 +223,8 @@ export function PayoutRequestsScreen({ navigation }: Props) {
       handleError(toUnwrappedApiError(error));
     }
   };
+
+  const historyList = historyQuery.data || [];
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
@@ -223,7 +243,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
       />
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 80, paddingBottom: 80 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 80, paddingBottom: 90 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -240,7 +260,11 @@ export function PayoutRequestsScreen({ navigation }: Props) {
         }
       >
         <View style={{ paddingTop: 16, marginBottom: 24, flexDirection: 'row', alignItems: 'center' }}>
-          <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            accessibilityLabel="Go back"
+            style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}
+          >
             <Feather name="arrow-left" size={22} color="#FFF" />
           </Pressable>
           <View>
@@ -290,7 +314,47 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           </Text>
         </LinearGradient>
 
-        {/* Receiving Bank Details & Change Bank Account */}
+        {/* Missing Bank Details Warning Banner */}
+        {bankError && !isBankConfigured && (
+          <View
+            style={{
+              backgroundColor: '#FEF2F2',
+              borderWidth: 1,
+              borderColor: '#F87171',
+              borderRadius: 16,
+              padding: 16,
+              marginBottom: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Feather name="alert-circle" size={20} color="#DC2626" />
+              <Text style={{ color: '#B91C1C', fontSize: 13, fontWeight: '700', flex: 1 }}>
+                Please enter your bank details before requesting a withdrawal.
+              </Text>
+            </View>
+            <Pressable
+              onPress={openBankModal}
+              accessibilityLabel="Add Bank Details"
+              style={({ pressed }) => ({
+                backgroundColor: '#DC2626',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 10,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '800' }}>
+                Add Bank Details
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Receiving Bank Details & Change / Add Bank Account */}
         <View style={{
           backgroundColor: '#FFFFFF',
           borderRadius: 24,
@@ -302,7 +366,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           shadowRadius: 12,
           elevation: 3,
           borderWidth: 1,
-          borderColor: '#E2E8F0',
+          borderColor: bankError && !isBankConfigured ? '#F87171' : '#E2E8F0',
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
@@ -310,22 +374,22 @@ export function PayoutRequestsScreen({ navigation }: Props) {
                 width: 44,
                 height: 44,
                 borderRadius: 22,
-                backgroundColor: 'rgba(20, 83, 45, 0.08)',
+                backgroundColor: isBankConfigured ? 'rgba(20, 83, 45, 0.08)' : 'rgba(220, 38, 38, 0.08)',
                 justifyContent: 'center',
                 alignItems: 'center',
               }}>
-                <Feather name="credit-card" size={22} color="#14532D" />
+                <Feather name="credit-card" size={22} color={isBankConfigured ? '#14532D' : '#DC2626'} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 11, color: '#718096', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                   Receiving Bank
                 </Text>
-                <Text style={{ fontSize: 15, fontWeight: '800', color: '#14532D', marginTop: 2 }} numberOfLines={1}>
-                  {savedBankDetails?.bankName ? savedBankDetails.bankName : 'No Bank Configured'}
+                <Text style={{ fontSize: 15, fontWeight: '800', color: isBankConfigured ? '#14532D' : '#DC2626', marginTop: 2 }} numberOfLines={1}>
+                  {isBankConfigured ? savedBankDetails?.bankName : 'No Bank Configured'}
                 </Text>
-                {savedBankDetails?.accountNumber ? (
+                {isBankConfigured ? (
                   <Text style={{ fontSize: 13, color: '#4A5568', fontWeight: '600', marginTop: 2 }}>
-                    A/C: •••• {savedBankDetails.accountNumber.slice(-4)} {savedBankDetails.ifscCode ? `(${savedBankDetails.ifscCode})` : ''}
+                    A/C: •••• {savedBankDetails?.accountNumber?.slice(-4)} {savedBankDetails?.ifscCode ? `(${savedBankDetails.ifscCode})` : ''}
                   </Text>
                 ) : (
                   <Text style={{ fontSize: 12, color: '#DC2626', fontWeight: '600', marginTop: 2 }}>
@@ -337,24 +401,25 @@ export function PayoutRequestsScreen({ navigation }: Props) {
 
             <Pressable
               onPress={openBankModal}
-              accessibilityLabel="Change Bank Account"
+              accessibilityLabel={isBankConfigured ? "Change Bank Account" : "Add Bank Details"}
               style={({ pressed }) => ({
-                backgroundColor: '#ECFDF5',
+                backgroundColor: isBankConfigured ? '#ECFDF5' : '#FEF2F2',
                 borderWidth: 1,
-                borderColor: '#10B981',
+                borderColor: isBankConfigured ? '#10B981' : '#EF4444',
                 paddingHorizontal: 14,
                 paddingVertical: 10,
                 borderRadius: 14,
                 opacity: pressed ? 0.8 : 1,
               })}
             >
-              <Text style={{ color: '#047857', fontSize: 13, fontWeight: '800' }}>
-                Change Bank Account
+              <Text style={{ color: isBankConfigured ? '#047857' : '#DC2626', fontSize: 13, fontWeight: '800' }}>
+                {isBankConfigured ? 'Change Bank Account' : 'Add Bank Details'}
               </Text>
             </Pressable>
           </View>
         </View>
 
+        {/* Amount to Withdraw Card */}
         <View style={{
           backgroundColor: '#FFFFFF',
           borderRadius: 28,
@@ -368,7 +433,6 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           borderWidth: 1,
           borderColor: '#E2E8F0',
         }}>
-
           <Text style={{ fontSize: 18, fontWeight: '800', color: '#14532D', marginBottom: 16 }}>Amount to Withdraw</Text>
           <TextInput
             label="Amount (INR)"
@@ -388,6 +452,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
             onPress={() => {
               if (isConnected && !payoutState.isLoading) void onSubmit();
             }}
+            accessibilityLabel="Submit withdrawal request"
             style={({ pressed }) => [
               {
                 borderRadius: 16,
@@ -413,80 +478,282 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               }}
             >
               <Text style={{ color: (!isConnected || payoutState.isLoading) ? '#718096' : '#0F3E22', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 }}>
-                {payoutState.isLoading ? 'Processing...' : 'Submit Request'}
+                {payoutState.isLoading ? 'Submitting Request...' : 'Submit Request'}
               </Text>
             </LinearGradient>
           </Pressable>
         </View>
 
-        <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A202C', marginBottom: 16 }}>Recent Payouts</Text>
+        {/* ---------------------------------------------------- */}
+        {/* NEW CARD: Withdrawal History Card                    */}
+        {/* ---------------------------------------------------- */}
+        <View style={{
+          backgroundColor: '#FFFFFF',
+          borderRadius: 28,
+          padding: 22,
+          marginBottom: 24,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 3,
+          borderWidth: 1,
+          borderColor: '#E2E8F0',
+        }}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+            <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(20, 83, 45, 0.1)',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Feather name="clock" size={17} color="#14532D" />
+                </View>
+                <Text style={{ fontSize: 19, fontWeight: '900', color: '#14532D', letterSpacing: 0.2 }}>
+                  Withdrawal History
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: '#718096', fontWeight: '500', marginTop: 3, marginLeft: 40 }}>
+                Live status of all your submitted payout requests
+              </Text>
+            </View>
 
-        {historyQuery.isLoading ? (
-          <Text style={{ color: '#718096', marginBottom: 24, textAlign: 'center' }}>Loading payouts...</Text>
-        ) : historyQuery.data && historyQuery.data.length > 0 ? (
-          <View style={{ marginBottom: 24 }}>
-            {historyQuery.data.slice(0, 5).map((entry: PayoutInfo) => {
-              const statusInfo = getStatusColor(entry.status);
-              const displayDate = entry.requestedDate || entry.date || new Date().toISOString();
-              return (
-                <Pressable
-                  key={entry.payoutId}
-                  style={({ pressed }) => ([
-                    {
-                      flexDirection: 'row',
-                      backgroundColor: '#FFF',
-                      borderRadius: 16,
+            <Pressable
+              onPress={handleManualRefreshHistory}
+              disabled={historyQuery.isFetching || isRefreshingHistory}
+              accessibilityLabel="Refresh withdrawal history"
+              style={({ pressed }) => ({
+                width: 38,
+                height: 38,
+                borderRadius: 19,
+                backgroundColor: '#F8FAFC',
+                borderWidth: 1,
+                borderColor: '#E2E8F0',
+                justifyContent: 'center',
+                alignItems: 'center',
+                opacity: pressed || historyQuery.isFetching ? 0.6 : 1,
+              })}
+            >
+              {historyQuery.isFetching || isRefreshingHistory ? (
+                <ActivityIndicator size="small" color="#14532D" />
+              ) : (
+                <Feather name="refresh-cw" size={16} color="#14532D" />
+              )}
+            </Pressable>
+          </View>
+
+          {/* Body Content */}
+          {historyQuery.isLoading ? (
+            <View style={{ paddingVertical: 36, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+              <ActivityIndicator size="large" color="#14532D" />
+              <Text style={{ color: '#718096', fontSize: 14, fontWeight: '600' }}>
+                Fetching withdrawal history...
+              </Text>
+            </View>
+          ) : historyQuery.isError ? (
+            <View style={{
+              backgroundColor: '#FEF2F2',
+              borderRadius: 16,
+              padding: 20,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: '#FCA5A5',
+              gap: 10,
+            }}>
+              <Feather name="alert-triangle" size={28} color="#DC2626" />
+              <Text style={{ color: '#991B1B', fontSize: 14, fontWeight: '700', textAlign: 'center' }}>
+                Failed to load withdrawal history.
+              </Text>
+              <Pressable
+                onPress={handleManualRefreshHistory}
+                style={{
+                  backgroundColor: '#DC2626',
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                }}
+              >
+                <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>Retry</Text>
+              </Pressable>
+            </View>
+          ) : historyList.length === 0 ? (
+            <View style={{
+              backgroundColor: '#F8FAFC',
+              borderRadius: 18,
+              paddingVertical: 36,
+              paddingHorizontal: 20,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: '#E2E8F0',
+              borderStyle: 'dashed',
+            }}>
+              <View style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: '#EDF2F7',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 12,
+              }}>
+                <Feather name="file-minus" size={28} color="#A0AEC0" />
+              </View>
+              <Text style={{ color: '#2D3748', fontSize: 15, fontWeight: '800', textAlign: 'center', marginBottom: 4 }}>
+                No withdrawal history available yet.
+              </Text>
+              <Text style={{ color: '#718096', fontSize: 12, textAlign: 'center', fontWeight: '500' }}>
+                When you submit a withdrawal request, its details and live status will appear here.
+              </Text>
+            </View>
+          ) : (
+            <View style={{ gap: 14 }}>
+              {historyList.map((entry: PayoutInfo) => {
+                const statusInfo = getWithdrawalStatusInfo(entry.status);
+                const reqDate = entry.requestedDate || entry.date || (entry as any).createdAt;
+                const updDate = entry.updatedAt || entry.processedDate || reqDate;
+                const formattedReqDate = formatDateTime(reqDate);
+                const formattedUpdDate = formatDateTime(updDate);
+                const accountDisplay = entry.accountNumber
+                  ? `${entry.bankName ? entry.bankName + ' • ' : ''}${maskAccountNumber(entry.accountNumber)}`
+                  : isBankConfigured
+                  ? `${savedBankDetails?.bankName ? savedBankDetails.bankName + ' • ' : ''}${maskAccountNumber(savedBankDetails?.accountNumber)}`
+                  : 'Bank Account';
+                const ifscDisplay = entry.ifscCode || savedBankDetails?.ifscCode;
+
+                return (
+                  <Pressable
+                    key={entry.payoutId}
+                    onPress={() => navigation.navigate('PayoutDetail', { payoutId: entry.payoutId })}
+                    accessibilityLabel={`Withdrawal request ${entry.payoutId}`}
+                    style={({ pressed }) => ({
+                      backgroundColor: '#F8FAFC',
+                      borderRadius: 18,
                       padding: 16,
-                      marginBottom: 12,
-                      alignItems: 'center',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.05,
-                      shadowRadius: 8,
-                      elevation: 2,
                       borderWidth: 1,
                       borderColor: '#E2E8F0',
-                    },
-                    pressed && { opacity: 0.8 }
-                  ])}
-                  onPress={() => navigation.navigate('PayoutDetail', { payoutId: entry.payoutId })}
-                >
-                  <View style={[{ width: 48, height: 48, borderRadius: 24, justifyContent: 'center', alignItems: 'center', marginRight: 16 }, { backgroundColor: statusInfo.bg }]}>
-                    <Feather name={statusInfo.icon as any} size={20} color={statusInfo.text} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A202C', marginBottom: 4 }}>{formatMoneyInr(Number(entry.amount) || 0)}</Text>
-                    <Text style={{ fontSize: 13, color: '#718096', marginBottom: 4 }}>
-                      {formatDate(displayDate)}
-                    </Text>
-                    <Text style={{ fontSize: 12, color: '#A0AEC0' }}>
-                      ID: {entry.payoutId.slice(-8).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={{ alignItems: 'flex-end' }}>
-                    <View style={[{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }, { backgroundColor: statusInfo.bg }]}>
-                      <Text style={[{ fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }, { color: statusInfo.text }]}>
-                        {entry.status}
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.03,
+                      shadowRadius: 4,
+                      elevation: 1,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    {/* Top Row: Amount + Status Badge */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <Text style={{ fontSize: 20, fontWeight: '900', color: '#14532D', letterSpacing: 0.2 }}>
+                        {formatMoneyInr(Number(entry.amount) || 0)}
                       </Text>
+                      <View style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 5,
+                        backgroundColor: statusInfo.bg,
+                        paddingHorizontal: 10,
+                        paddingVertical: 5,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: statusInfo.border,
+                      }}>
+                        <Feather name={statusInfo.icon} size={13} color={statusInfo.text} />
+                        <Text style={{ fontSize: 12, fontWeight: '800', color: statusInfo.text }}>
+                          {statusInfo.label}
+                        </Text>
+                      </View>
                     </View>
-                    <Feather name="chevron-right" size={20} color="#A0AEC0" style={{ marginTop: 8 }} />
-                  </View>
-                </Pressable>
-              );
-            })}
-            {historyQuery.data.length > 5 && (
-              <Pressable onPress={() => navigation.navigate('PayoutHistory')} style={{ alignItems: 'center', paddingVertical: 12 }}>
-                <Text style={{ color: '#10B981', fontWeight: '700' }}>View All Payouts</Text>
-              </Pressable>
-            )}
-          </View>
-        ) : (
-          <View style={{ backgroundColor: '#F8FAFC', borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#E2E8F0' }}>
-            <Feather name="file-minus" size={32} color="#CBD5E0" style={{ marginBottom: 12 }} />
-            <Text style={{ color: '#4A5568', fontWeight: '600' }}>No Payouts Yet</Text>
-          </View>
-        )}
 
+                    {/* Metadata Grid */}
+                    <View style={{ gap: 6 }}>
+                      {/* Request ID */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="hash" size={13} color="#718096" />
+                        <Text style={{ fontSize: 12, color: '#718096', fontWeight: '600' }}>
+                          Request ID:
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#2D3748', fontWeight: '700', flex: 1 }} numberOfLines={1}>
+                          {entry.payoutId}
+                        </Text>
+                      </View>
+
+                      {/* Bank Account */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="credit-card" size={13} color="#718096" />
+                        <Text style={{ fontSize: 12, color: '#718096', fontWeight: '600' }}>
+                          Bank:
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#2D3748', fontWeight: '700', flex: 1 }} numberOfLines={1}>
+                          {accountDisplay} {ifscDisplay ? `(${ifscDisplay})` : ''}
+                        </Text>
+                      </View>
+
+                      {/* Request Date & Time */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="calendar" size={13} color="#718096" />
+                        <Text style={{ fontSize: 12, color: '#718096', fontWeight: '600' }}>
+                          Requested:
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#4A5568', fontWeight: '600' }}>
+                          {formattedReqDate}
+                        </Text>
+                      </View>
+
+                      {/* Last Updated Date & Time */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Feather name="check-square" size={13} color="#718096" />
+                        <Text style={{ fontSize: 12, color: '#718096', fontWeight: '600' }}>
+                          Last Updated:
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#4A5568', fontWeight: '600' }}>
+                          {formattedUpdDate}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Admin Rejection Remarks (if available) */}
+                    {Boolean(entry.failureReason && (String(entry.status).toUpperCase() === 'REJECTED' || String(entry.status).toUpperCase() === 'FAILED')) && (
+                      <View style={{
+                        marginTop: 10,
+                        backgroundColor: '#FEF2F2',
+                        borderWidth: 1,
+                        borderColor: '#FCA5A5',
+                        borderRadius: 10,
+                        padding: 10,
+                        flexDirection: 'row',
+                        alignItems: 'flex-start',
+                        gap: 8,
+                      }}>
+                        <Feather name="alert-circle" size={15} color="#DC2626" style={{ marginTop: 1 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '800', color: '#991B1B', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Rejection Reason
+                          </Text>
+                          <Text style={{ fontSize: 12, color: '#B91C1C', fontWeight: '600', marginTop: 2 }}>
+                            {entry.failureReason}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                    {/* View Details Hint */}
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 8, gap: 4 }}>
+                      <Text style={{ fontSize: 11, color: '#10B981', fontWeight: '700' }}>
+                        View Receipt
+                      </Text>
+                      <Feather name="chevron-right" size={14} color="#10B981" />
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
+        </View>
+
+        {/* Quick Navigation Buttons */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
           <Pressable
             style={({ pressed }) => ({
@@ -503,6 +770,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               opacity: pressed ? 0.9 : 1,
             })}
             onPress={() => navigation.navigate('Ledger')}
+            accessibilityLabel="View Ledger"
           >
             <Feather name="file-text" size={18} color="#14532D" />
             <Text style={{ color: '#14532D', fontSize: 14, fontWeight: '700' }}>View Ledger</Text>
@@ -523,6 +791,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               opacity: pressed ? 0.9 : 1,
             })}
             onPress={() => navigation.navigate('Wallet')}
+            accessibilityLabel="Back to Wallet"
           >
             <Feather name="arrow-left" size={18} color="#14532D" />
             <Text style={{ color: '#14532D', fontSize: 14, fontWeight: '700' }}>Back to Wallet</Text>
@@ -573,6 +842,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               <Pressable
                 onPress={() => setShowBankModal(false)}
                 disabled={isSavingBank}
+                accessibilityLabel="Close modal"
                 style={{
                   width: 34,
                   height: 34,
@@ -688,6 +958,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               <Pressable
                 disabled={isSavingBank}
                 onPress={() => setShowBankModal(false)}
+                accessibilityLabel="Cancel"
                 style={{
                   height: 44,
                   justifyContent: 'center',

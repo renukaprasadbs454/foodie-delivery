@@ -6,7 +6,90 @@ import { normalizeOffers } from '@/features/home/types';
 import type { LocationPingPayload } from '@/features/navigation/types';
 import { setIsOnline } from '@/features/home/availabilitySlice';
 
-async function createUploadFormData(
+export function dataUriToBlob(dataUri: string): Blob {
+  const parts = dataUri.split(',');
+  const mimeMatch = parts[0]?.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+  const byteString = atob(parts[1] || '');
+  const ab = new ArrayBuffer(byteString.length);
+  const ia = new Uint8Array(ab);
+  for (let i = 0; i < byteString.length; i++) {
+    ia[i] = byteString.charCodeAt(i);
+  }
+  return new Blob([ab], { type: mime });
+}
+
+export function captureFrameFromWebVideo(videoEl?: HTMLVideoElement | null): {
+  dataUri: string;
+  blob: Blob;
+  width: number;
+  height: number;
+  previewUrl: string;
+} | null {
+  if (typeof document === 'undefined') return null;
+
+  const video = videoEl || (document.querySelector('video') as HTMLVideoElement | null);
+  if (!video) {
+    console.warn('[CameraCapture] No HTMLVideoElement found in DOM.');
+    return null;
+  }
+
+  const vWidth = video.videoWidth || video.clientWidth || 0;
+  const vHeight = video.videoHeight || video.clientHeight || 0;
+
+  console.info('[CameraCapture] HTMLVideoElement state:', {
+    videoWidth: video.videoWidth,
+    videoHeight: video.videoHeight,
+    clientWidth: video.clientWidth,
+    clientHeight: video.clientHeight,
+    readyState: video.readyState,
+  });
+
+  if (vWidth === 0 || vHeight === 0) {
+    console.warn('[CameraCapture] Video stream has 0 dimensions.');
+    return null;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = vWidth;
+  canvas.height = vHeight;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    console.warn('[CameraCapture] Canvas 2d context unavailable.');
+    return null;
+  }
+
+  // Draw current uncompressed video frame
+  ctx.drawImage(video, 0, 0, vWidth, vHeight);
+
+  // Export high quality JPEG (quality 0.92)
+  const dataUri = canvas.toDataURL('image/jpeg', 0.92);
+  const blob = dataUriToBlob(dataUri);
+  const previewUrl = typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(blob) : '';
+
+  console.info('[CameraCapture] Safe captured frame metadata:', {
+    'video.readyState': video.readyState,
+    'video.videoWidth': video.videoWidth,
+    'video.videoHeight': video.videoHeight,
+    'canvas.width': canvas.width,
+    'canvas.height': canvas.height,
+    'Blob.size': blob.size,
+    'Blob.type': blob.type,
+    'FormData field name': 'file',
+    'filename': 'go-online-verification.jpg',
+    previewUrl,
+  });
+
+  return {
+    dataUri,
+    blob,
+    width: canvas.width,
+    height: canvas.height,
+    previewUrl,
+  };
+}
+
+export async function createUploadFormData(
   fields: Record<string, string | undefined>,
   fileField: { name: string; uri: string; mimeType: string; fileName: string; webFile?: any }
 ): Promise<FormData> {
@@ -15,27 +98,50 @@ async function createUploadFormData(
     if (v !== undefined) formData.append(k, v);
   });
 
-  if (Platform.OS === 'web') {
+  if (Platform.OS === 'web' || typeof window !== 'undefined') {
     if (fileField.webFile instanceof Blob || (typeof File !== 'undefined' && fileField.webFile instanceof File)) {
-      formData.append(fileField.name, fileField.webFile, fileField.fileName || 'document.pdf');
-      return formData;
+      if (fileField.webFile.size > 0) {
+        formData.append(fileField.name, fileField.webFile, fileField.fileName || 'file.jpg');
+        return formData;
+      }
     }
     if (fileField.uri) {
+      if (fileField.uri.startsWith('data:')) {
+        try {
+          const blob = dataUriToBlob(fileField.uri);
+          if (blob.size > 0) {
+            formData.append(fileField.name, blob, fileField.fileName || 'file.jpg');
+            return formData;
+          }
+        } catch (err) {
+          console.warn('[Upload] Failed to convert data URI to blob', err);
+        }
+      }
       try {
         const res = await fetch(fileField.uri);
         const blob = await res.blob();
-        formData.append(fileField.name, blob, fileField.fileName || 'document.pdf');
-        return formData;
+        if (blob.size > 0) {
+          formData.append(fileField.name, blob, fileField.fileName || 'file.jpg');
+          return formData;
+        }
       } catch (err) {
         console.warn('[Upload] Failed to convert URI to blob', err);
       }
+    }
+    // Fallback on web to avoid passing plain object to FormData
+    try {
+      const blob = new Blob([], { type: fileField.mimeType || 'image/jpeg' });
+      formData.append(fileField.name, blob, fileField.fileName || 'file.jpg');
+      return formData;
+    } catch {
+      // ignore
     }
   }
 
   formData.append(fileField.name, {
     uri: fileField.uri,
-    type: fileField.mimeType,
-    name: fileField.fileName,
+    type: fileField.mimeType || 'image/jpeg',
+    name: fileField.fileName || 'file.jpg',
   } as unknown as Blob);
   return formData;
 }
@@ -60,7 +166,19 @@ export const deliveryApi = baseApi.injectEndpoints({
         }
       },
     }),
-    upsertDeliveryProfile: builder.mutation<DeliveryProfile, { fullName: string; vehicleType: string; vehicleNumber?: string }>({
+    upsertDeliveryProfile: builder.mutation<
+      DeliveryProfile,
+      {
+        fullName?: string;
+        vehicleType?: string;
+        vehicleNumber?: string;
+        addressLine1?: string;
+        addressLine2?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+      }
+    >({
       query: (body) => ({
         url: '/api/v1/delivery/me',
         method: 'PUT',
@@ -311,6 +429,28 @@ export const deliveryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Delivery', id: 'BANK_DETAILS' }, { type: 'Delivery', id: 'PROFILE' }],
     }),
+    getDeliveryReviews: builder.query<
+      {
+        averageRating: number;
+        totalReviews: number;
+        positivePercentage: number;
+        ratingBreakdown: Record<string, number>;
+        compliments: { label: string; count: number; icon: string }[];
+        reviews: {
+          id: string;
+          customerName: string;
+          rating: number;
+          comment: string;
+          orderNumber: string;
+          timeAgo: string;
+          tags: string[];
+        }[];
+      },
+      void
+    >({
+      query: () => '/api/v1/delivery/me/reviews',
+      providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
   }),
 });
 
@@ -330,4 +470,6 @@ export const {
   useVerifyFaceForOnlineMutation,
   useGetDeliveryBankDetailsQuery,
   useUpdateDeliveryBankDetailsMutation,
+  useGetDeliveryReviewsQuery,
 } = deliveryApi;
+

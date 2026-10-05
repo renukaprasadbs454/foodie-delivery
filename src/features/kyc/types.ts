@@ -43,6 +43,11 @@ export type DeliveryProfile = {
   fullName?: string;
   vehicleType?: string;
   vehicleNumber?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
   kycStatus: 'PENDING' | 'VERIFIED' | 'REJECTED' | string;
   isOnline: boolean;
   profileImageUrl?: string;

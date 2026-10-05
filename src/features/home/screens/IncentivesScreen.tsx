@@ -2,9 +2,10 @@ import React, { useMemo, useState, useRef } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, FlatList } from 'react-native';
 import { Text } from '@/components/Text';
 import { useTheme } from '@/hooks/useTheme';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '@/navigation/types';
+import { useGetIncentivesProgressQuery, type IncentiveOfferProgress } from '@/api/endpoints/incentivesApi';
 import { useGetWalletLedgerQuery } from '@/api/endpoints/walletApi';
 import { BottomNav } from '@/navigation/BottomNav';
 
@@ -14,7 +15,6 @@ const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  *  We show 3 days before today and 3 days after, skipping Sundays. */
 function buildWorkingDays(today: Date, count = 7): Date[] {
     const days: Date[] = [];
-    // Go back up to 6 natural days to collect 3 working days before today
     const candidates: Date[] = [];
     for (let offset = -30; offset <= 30; offset++) {
         const d = new Date(today);
@@ -24,7 +24,6 @@ function buildWorkingDays(today: Date, count = 7): Date[] {
             candidates.push(d);
         }
     }
-    // Find today index in candidates
     const todayMidnight = new Date(today);
     todayMidnight.setHours(0, 0, 0, 0);
     const todayIdx = candidates.findIndex(d => d.getTime() === todayMidnight.getTime());
@@ -36,6 +35,13 @@ function isSameDay(a: Date, b: Date) {
     return a.getFullYear() === b.getFullYear() &&
         a.getMonth() === b.getMonth() &&
         a.getDate() === b.getDate();
+}
+
+function formatDateToIso(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
 }
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Incentives'>;
@@ -51,9 +57,14 @@ export function IncentivesScreen({ navigation }: Props) {
     const workingDays = useMemo(() => buildWorkingDays(now), []);
     const flatListRef = useRef<FlatList>(null);
 
+    const selectedDateIso = useMemo(() => formatDateToIso(selectedDate), [selectedDate]);
+
+    // Fetch real-time progress & active offers from backend
+    const { data: progressData, isLoading: isProgressLoading } = useGetIncentivesProgressQuery({ date: selectedDateIso });
     const ledgerQuery = useGetWalletLedgerQuery({ page: 0, size: 100, sort: 'createdAt' });
 
-    const { deliveriesToday, incentiveToday } = useMemo(() => {
+    // Fallback if progress query is pending or empty
+    const { fallbackDeliveries, fallbackIncentive } = useMemo(() => {
         const startOfDay = new Date(selectedDate);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(selectedDate);
@@ -65,7 +76,7 @@ export function IncentivesScreen({ navigation }: Props) {
             ledgerQuery.data.forEach((entry: any) => {
                 const entryDate = new Date(entry.createdAt);
                 if (entryDate >= startOfDay && entryDate <= endOfDay) {
-                    if (entry.referenceType === 'DELIVERY_EARNING') {
+                    if (entry.referenceType === 'DELIVERY_EARNING' || entry.referenceType === 'DELIVERY_ASSIGNMENT') {
                         deliveries++;
                     } else if (entry.referenceType === 'INCENTIVE') {
                         incentive += entry.amount;
@@ -73,11 +84,34 @@ export function IncentivesScreen({ navigation }: Props) {
                 }
             });
         }
-        return { deliveriesToday: deliveries, incentiveToday: incentive };
+        return { fallbackDeliveries: deliveries, fallbackIncentive: incentive };
     }, [ledgerQuery.data, selectedDate]);
+
+    const tripsCompleted = progressData?.tripsCompleted ?? fallbackDeliveries;
+    const incentivesEarned = progressData?.incentivesEarned ?? fallbackIncentive;
+    const activeOffers: IncentiveOfferProgress[] = progressData?.offers || [];
 
     const todayMidnight = new Date();
     todayMidnight.setHours(0, 0, 0, 0);
+
+    const renderCategoryIcon = (category: string, id: string) => {
+        if (id.includes('peak') || id.includes('Peak')) {
+            return <Feather name="zap" size={16} color="#F59E0B" />;
+        }
+        if (id.includes('rain') || id.includes('Rain') || category.includes('Weather')) {
+            return <Feather name="cloud-rain" size={16} color="#3B82F6" />;
+        }
+        if (id.includes('daily') || id.includes('Daily') || id.includes('weekly') || id.includes('Weekly')) {
+            return <Feather name="target" size={16} color="#10B981" />;
+        }
+        if (id.includes('distance') || id.includes('Distance')) {
+            return <Feather name="map-pin" size={16} color="#8B5CF6" />;
+        }
+        if (id.includes('referral') || id.includes('Referral')) {
+            return <Feather name="users" size={16} color="#EC4899" />;
+        }
+        return <Feather name="award" size={16} color="#14532D" />;
+    };
 
     return (
         <View style={styles.container}>
@@ -139,6 +173,7 @@ export function IncentivesScreen({ navigation }: Props) {
 
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
+                {/* ── Today's Incentives Progress ── */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>
                         {isSameDay(selectedDate, todayMidnight) ? "Today's Incentives Progress" : `${DAY_NAMES[selectedDate.getDay()]} ${selectedDate.getDate()} — Incentives`}
@@ -148,7 +183,7 @@ export function IncentivesScreen({ navigation }: Props) {
                         <View style={styles.statRow}>
                             <Feather name="truck" size={24} color="#F59E0B" />
                             <View style={styles.statInfo}>
-                                <Text style={styles.statValue}>{deliveriesToday}</Text>
+                                <Text style={styles.statValue}>{tripsCompleted}</Text>
                                 <Text style={styles.statLabel}>Trips Completed</Text>
                             </View>
                         </View>
@@ -156,25 +191,107 @@ export function IncentivesScreen({ navigation }: Props) {
                         <View style={styles.statRow}>
                             <Feather name="dollar-sign" size={24} color="#14532D" />
                             <View style={styles.statInfo}>
-                                <Text style={styles.statValue}>₹{incentiveToday.toFixed(2)}</Text>
+                                <Text style={styles.statValue}>₹{Number(incentivesEarned || 0).toFixed(2)}</Text>
                                 <Text style={styles.statLabel}>Incentives Earned</Text>
                             </View>
                         </View>
                     </View>
                 </View>
 
+                {/* ── Offer Conditions Header ── */}
                 <View style={styles.conditionsDivider}>
                     <View style={styles.dividerLine} />
                     <Text style={styles.conditionsHeader}>OFFER CONDITIONS</Text>
                     <View style={styles.dividerLine} />
                 </View>
 
-                <View style={styles.adminMessageCard}>
-                    <Ionicons name="information-circle-outline" size={32} color="#718096" style={{ marginBottom: 8 }} />
-                    <Text style={styles.adminMessageText}>
-                        Conditions are set by the Admin. Additional bonus conditions and details will appear here once the Admin configures them for your profile.
-                    </Text>
-                </View>
+                {/* ── Dynamic Real Active Offers List ── */}
+                {activeOffers.length > 0 ? (
+                    activeOffers.map((offer) => {
+                        const progressPct = offer.target > 0
+                            ? Math.min(100, Math.round((offer.currentProgress / offer.target) * 100))
+                            : 0;
+                        const isCompleted = offer.status === 'Completed' || offer.status === 'Earned' || offer.isEarned;
+                        const isInProgress = offer.status === 'In Progress';
+
+                        return (
+                            <View key={offer.id} style={styles.offerCard}>
+                                <View style={styles.offerHeader}>
+                                    <View style={styles.offerTitleRow}>
+                                        <View style={styles.offerIconWrap}>
+                                            {renderCategoryIcon(offer.category, offer.id)}
+                                        </View>
+                                        <View style={{ flex: 1, marginLeft: 10 }}>
+                                            <Text style={styles.offerTitle}>{offer.title}</Text>
+                                            <Text style={styles.offerValidity}>{offer.validityPeriod || offer.category}</Text>
+                                        </View>
+                                    </View>
+                                    <View style={[
+                                        styles.statusBadge,
+                                        isCompleted && styles.statusBadgeCompleted,
+                                        isInProgress && styles.statusBadgeInProgress,
+                                        !isCompleted && !isInProgress && styles.statusBadgeUpcoming,
+                                    ]}>
+                                        <Text style={[
+                                            styles.statusBadgeText,
+                                            isCompleted && styles.statusBadgeTextCompleted,
+                                            isInProgress && styles.statusBadgeTextInProgress,
+                                            !isCompleted && !isInProgress && styles.statusBadgeTextUpcoming,
+                                        ]}>
+                                            {isCompleted ? 'Completed' : (isInProgress ? 'In Progress' : 'Upcoming')}
+                                        </Text>
+                                    </View>
+                                </View>
+
+                                <Text style={styles.offerDescription}>{offer.description}</Text>
+
+                                {/* Progress Bar */}
+                                <View style={styles.progressBarSection}>
+                                    <View style={styles.progressLabelRow}>
+                                        <Text style={styles.progressCountText}>
+                                            Progress: <Text style={{ fontWeight: '800', color: '#1A202C' }}>{offer.currentProgress} / {offer.target} {offer.target > 1 ? 'orders' : 'condition'}</Text>
+                                        </Text>
+                                        <Text style={styles.progressPercentText}>{progressPct}%</Text>
+                                    </View>
+                                    <View style={styles.progressBarTrack}>
+                                        <View style={[
+                                            styles.progressBarFill,
+                                            { width: `${progressPct}%` },
+                                            isCompleted && { backgroundColor: '#10B981' }
+                                        ]} />
+                                    </View>
+                                </View>
+
+                                {/* Reward & Details Footer */}
+                                <View style={styles.offerFooter}>
+                                    <View style={styles.rewardTag}>
+                                        <Feather name="gift" size={14} color="#14532D" style={{ marginRight: 4 }} />
+                                        <Text style={styles.rewardTagText}>
+                                            Reward: <Text style={styles.rewardTagAmount}>₹{offer.rewardAmount}</Text> {offer.unit ? `(${offer.unit})` : ''}
+                                        </Text>
+                                    </View>
+                                    {offer.remaining != null && offer.remaining > 0 ? (
+                                        <Text style={styles.remainingText}>{offer.remaining} remaining</Text>
+                                    ) : (
+                                        isCompleted ? (
+                                            <View style={styles.earnedPill}>
+                                                <Feather name="check-circle" size={12} color="#10B981" style={{ marginRight: 4 }} />
+                                                <Text style={styles.earnedPillText}>Target Achieved</Text>
+                                            </View>
+                                        ) : null
+                                    )}
+                                </View>
+                            </View>
+                        );
+                    })
+                ) : (
+                    <View style={styles.adminMessageCard}>
+                        <Ionicons name="information-circle-outline" size={32} color="#718096" style={{ marginBottom: 8 }} />
+                        <Text style={styles.adminMessageText}>
+                            Conditions are set by the Admin. Active bonus offers configured by the Admin will appear here for your profile.
+                        </Text>
+                    </View>
+                )}
             </ScrollView>
             <BottomNav />
         </View>
@@ -347,6 +464,161 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         color: '#1A202C',
         letterSpacing: 1,
+    },
+    // ── Real Incentive Offer Cards ──
+    offerCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    offerHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8,
+    },
+    offerTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+        marginRight: 8,
+    },
+    offerIconWrap: {
+        width: 32,
+        height: 32,
+        borderRadius: 8,
+        backgroundColor: '#F1F5F9',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    offerTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#1A202C',
+    },
+    offerValidity: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#718096',
+        marginTop: 2,
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    statusBadgeCompleted: {
+        backgroundColor: '#ECFDF5',
+        borderColor: '#A7F3D0',
+    },
+    statusBadgeInProgress: {
+        backgroundColor: '#FFFBEB',
+        borderColor: '#FDE68A',
+    },
+    statusBadgeUpcoming: {
+        backgroundColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+    },
+    statusBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    statusBadgeTextCompleted: {
+        color: '#047857',
+    },
+    statusBadgeTextInProgress: {
+        color: '#D97706',
+    },
+    statusBadgeTextUpcoming: {
+        color: '#64748B',
+    },
+    offerDescription: {
+        fontSize: 13,
+        color: '#4A5568',
+        lineHeight: 18,
+        marginBottom: 12,
+    },
+    progressBarSection: {
+        backgroundColor: '#F8FAFC',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#EDF2F7',
+    },
+    progressLabelRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 6,
+    },
+    progressCountText: {
+        fontSize: 12,
+        color: '#718096',
+    },
+    progressPercentText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#14532D',
+    },
+    progressBarTrack: {
+        height: 8,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#F59E0B',
+        borderRadius: 4,
+    },
+    offerFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderColor: '#F1F5F9',
+    },
+    rewardTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    rewardTagText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#4A5568',
+    },
+    rewardTagAmount: {
+        fontSize: 14,
+        fontWeight: '800',
+        color: '#14532D',
+    },
+    remainingText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#D97706',
+    },
+    earnedPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    earnedPillText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#059669',
     },
     adminMessageCard: {
         backgroundColor: '#F1F5F9',

@@ -37,6 +37,7 @@ import { OfferCard } from '@/features/home/components/OfferCard';
 import { OfferListSkeleton } from '@/features/home/components/OfferListSkeleton';
 import type { MainStackParamList } from '@/navigation/types';
 import { BottomNav } from '@/navigation/BottomNav';
+import { startOrderOfferAlert, stopOrderOfferAlert } from '@/utils/orderOfferAlert';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryOffers'>;
 
@@ -58,7 +59,7 @@ export function DeliveryOffersScreen({ navigation }: Props) {
   } | null>(null);
 
   const offersQuery = useGetDeliveryOffersQuery(undefined, {
-    pollingInterval: 20_000,
+    pollingInterval: 5000,
     refetchOnFocus: true,
   });
   const [acceptAssignment] = useAcceptAssignmentMutation();
@@ -84,27 +85,23 @@ export function DeliveryOffersScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    async function showNotification() {
-      if (visibleOffers.length > 0 && isOnline) {
-        try {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: "🚀 New Delivery Offer!",
-              body: "A new order is ready for pickup near you. Tap to accept it now!",
-              sound: true,
-              priority: Notifications.AndroidNotificationPriority.HIGH,
-            },
-            trigger: null,
-          });
-        } catch (e) {
-          console.warn('Could not show notification:', e);
-        }
-      }
+    if (visibleOffers.length > 0 && isOnline) {
+      const firstOffer = visibleOffers[0];
+      void startOrderOfferAlert(firstOffer.assignmentId, {
+        restaurantName: firstOffer.restaurantName,
+        orderNumber: firstOffer.orderNumber,
+      });
+    } else {
+      stopOrderOfferAlert();
     }
-    showNotification();
-  }, [visibleOffers.length, isOnline]);
+
+    return () => {
+      stopOrderOfferAlert();
+    };
+  }, [visibleOffers, isOnline]);
 
   const onAccept = async (assignmentId: string, orderId: string) => {
+    stopOrderOfferAlert();
     if (!isConnected) {
       setToast({
         message: 'Connect to the internet to accept an offer.',
@@ -343,6 +340,7 @@ export function DeliveryOffersScreen({ navigation }: Props) {
               accepting={acceptingId === offer.assignmentId}
               acceptDisabled={!isConnected || acceptingId !== null}
               onReject={() => {
+                stopOrderOfferAlert();
                 dispatch(addRejectedOffer(offer.assignmentId));
                 void rejectAssignment(offer.assignmentId);
               }}

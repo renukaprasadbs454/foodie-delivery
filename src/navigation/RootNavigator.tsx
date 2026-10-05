@@ -2,8 +2,10 @@ import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { selectAccessToken, selectAuthStatus, selectIsNewUser, clearCredentials } from '@/features/auth/authSlice';
+import { clearRefreshToken } from '@/auth/secureStorage';
+import { baseApi } from '@/api/baseApi';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { clearCredentials, selectAuthStatus, selectIsNewUser } from '@/features/auth/authSlice';
 import { SplashScreen } from '@/features/auth/screens/SplashScreen';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
@@ -17,19 +19,26 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export function RootNavigator() {
   const dispatch = useAppDispatch();
   const authStatus = useAppSelector(selectAuthStatus);
+  const accessToken = useAppSelector(selectAccessToken);
   const isNewUser = useAppSelector(selectIsNewUser);
 
-  // Conditionally fetch profile only when authenticated
+  // Conditionally fetch profile only when authenticated and access token is present
   const profileQuery = useGetDeliveryProfileQuery(undefined, {
-    skip: authStatus !== 'authenticated',
+    skip: authStatus !== 'authenticated' || !accessToken,
   });
 
   useEffect(() => {
     if (authStatus === 'authenticated' && profileQuery.isError) {
       const err = profileQuery.error as any;
       const status = err?.status ?? err?.data?.status;
-      if (status === 401 || status === 403) {
-        dispatch(clearCredentials());
+      const code = err?.data?.code;
+      if (status === 401 || status === 403 || code === 'FORBIDDEN' || code === 'UNAUTHORIZED') {
+        // Automatically clear invalid session and redirect to login
+        void (async () => {
+          await clearRefreshToken();
+          dispatch(clearCredentials());
+          dispatch(baseApi.util.resetApiState());
+        })();
       }
     }
   }, [authStatus, profileQuery.isError, profileQuery.error, dispatch]);
@@ -38,8 +47,8 @@ export function RootNavigator() {
     return <SplashScreen />;
   }
 
-  // Wait for profile query to initialize and finish its first fetch
-  if (authStatus === 'authenticated' && (profileQuery.isLoading || profileQuery.isFetching || profileQuery.isUninitialized)) {
+  // Wait for profile query to initialize and finish its first fetch if loading
+  if (authStatus === 'authenticated' && accessToken && (profileQuery.isLoading || profileQuery.isFetching || profileQuery.isUninitialized)) {
     if (!profileQuery.data && !profileQuery.isError) {
       return <SplashScreen />;
     }
@@ -48,7 +57,7 @@ export function RootNavigator() {
   let flow: 'auth' | 'kyc' | 'main' = 'auth';
   let initialRouteName: any = undefined;
 
-  if (authStatus === 'authenticated' && profileQuery.data) {
+  if (authStatus === 'authenticated' && accessToken && profileQuery.data) {
     const kycStatus = profileQuery.data.kycStatus;
     const hasUploadedDocs = profileQuery.data.documents && profileQuery.data.documents.length >= 3;
     const hasProfileImage = !!profileQuery.data.profileImageUrl;
@@ -65,8 +74,7 @@ export function RootNavigator() {
       flow = 'main';
       initialRouteName = 'DeliveryHome';
     }
-  } else if (authStatus === 'authenticated' && !profileQuery.isError) {
-    // In case we are still authenticated but no data yet (e.g. pending first load)
+  } else if (authStatus === 'authenticated' && accessToken && !profileQuery.isError) {
     flow = isNewUser ? 'kyc' : 'main';
     if (flow === 'kyc') {
       initialRouteName = 'Kyc';

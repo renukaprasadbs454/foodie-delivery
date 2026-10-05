@@ -1,4 +1,11 @@
-import { hasMoreLedgerPages, isLedgerSort, normalizeLedgerList, parseMoneyAmount, validatePayoutAmount } from '@/features/wallet/types';
+import {
+  hasConfiguredBankDetails,
+  hasMoreLedgerPages,
+  isLedgerSort,
+  normalizeLedgerList,
+  parseMoneyAmount,
+  validatePayoutAmount,
+} from '@/features/wallet/types';
 
 describe('wallet types (P2-DEL-04)', () => {
   it('whitelists ledger sort values', () => {
@@ -32,4 +39,45 @@ describe('wallet types (P2-DEL-04)', () => {
     expect(parseMoneyAmount('10.00')).toBe(10);
     expect(parseMoneyAmount('x')).toBeNull();
   });
+
+  it('validates bank details configuration', () => {
+    expect(hasConfiguredBankDetails(undefined)).toBe(false);
+    expect(hasConfiguredBankDetails(null)).toBe(false);
+    expect(hasConfiguredBankDetails({ accountNumber: '', bankName: '' })).toBe(false);
+    expect(hasConfiguredBankDetails({ accountNumber: '1234567890', bankName: '   ' })).toBe(false);
+    expect(hasConfiguredBankDetails({ accountNumber: '   ', bankName: 'HDFC Bank' })).toBe(false);
+    expect(
+      hasConfiguredBankDetails({
+        accountNumber: '1234567890',
+        bankName: 'HDFC Bank',
+        ifscCode: 'HDFC0001234',
+        accountHolderName: 'Rahul',
+      }),
+    ).toBe(true);
+  });
+
+  it('maps withdrawal statuses correctly for UI badges', () => {
+    const { getWithdrawalStatusInfo } = require('@/features/wallet/types');
+    
+    // REQUESTED / PENDING -> Pending
+    expect(getWithdrawalStatusInfo('REQUESTED').label).toBe('Pending');
+    expect(getWithdrawalStatusInfo('PENDING').label).toBe('Pending');
+    expect(getWithdrawalStatusInfo('REQUESTED').text).toBe('#B45309');
+
+    // APPROVED / COMPLETED / SUCCESS -> Withdraw Success
+    expect(getWithdrawalStatusInfo('APPROVED').label).toBe('Withdraw Success');
+    expect(getWithdrawalStatusInfo('COMPLETED').label).toBe('Withdraw Success');
+    expect(getWithdrawalStatusInfo('SUCCESS').label).toBe('Withdraw Success');
+    expect(getWithdrawalStatusInfo('COMPLETED').text).toBe('#065F46');
+
+    // REJECTED / FAILED -> Rejected
+    expect(getWithdrawalStatusInfo('REJECTED').label).toBe('Rejected');
+    expect(getWithdrawalStatusInfo('FAILED').label).toBe('Rejected');
+    expect(getWithdrawalStatusInfo('REJECTED').text).toBe('#991B1B');
+
+    // PROCESSING -> Processing
+    expect(getWithdrawalStatusInfo('PROCESSING').label).toBe('Processing');
+    expect(getWithdrawalStatusInfo('PROCESSING').text).toBe('#B45309');
+  });
 });
+
