@@ -323,6 +323,28 @@ export const deliveryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Delivery', id: 'BANK_DETAILS' }, { type: 'Delivery', id: 'PROFILE' }],
     }),
+    getDeliveryReviews: builder.query<
+      {
+        averageRating: number;
+        totalReviews: number;
+        positivePercentage: number;
+        ratingBreakdown: Record<string, number>;
+        compliments: { label: string; count: number; icon: string }[];
+        reviews: {
+          id: string;
+          customerName: string;
+          rating: number;
+          comment: string;
+          orderNumber: string;
+          timeAgo: string;
+          tags: string[];
+        }[];
+      },
+      void
+    >({
+      query: () => '/api/v1/delivery/me/reviews',
+      providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
   }),
 });
 
@@ -342,4 +364,6 @@ export const {
   useVerifyFaceForOnlineMutation,
   useGetDeliveryBankDetailsQuery,
   useUpdateDeliveryBankDetailsMutation,
+  useGetDeliveryReviewsQuery,
 } = deliveryApi;
+

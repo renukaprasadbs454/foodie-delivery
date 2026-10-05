@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking, Switch } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking, Switch, Modal } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,7 @@ import { Image } from 'react-native';
 import { Text } from '@/components/Text';
 import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
-import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation, useUploadDeliveryProfileImageMutation } from '@/api/endpoints/deliveryApi';
+import { useGetDeliveryOffersQuery, useGetDeliveryProfileQuery, useSetAvailabilityMutation, useVerifyFaceForOnlineMutation, useUploadDeliveryProfileImageMutation, useGetDeliveryReviewsQuery } from '@/api/endpoints/deliveryApi';
 import { useGetWalletLedgerQuery } from '@/api/endpoints/walletApi';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
@@ -130,6 +130,33 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   const offersQuery = useGetDeliveryOffersQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
   const orderQuery = useGetOrderQuery(active?.orderId ?? '', { skip: !active?.orderId, pollingInterval: active?.orderId ? 5000 : 0 });
+
+  // Delivery Partner Ratings & Reviews state and query
+  const [isReviewsModalVisible, setIsReviewsModalVisible] = useState(false);
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | '5' | '4' | '3_BELOW' | 'WITH_COMMENTS'>('ALL');
+  const reviewsQuery = useGetDeliveryReviewsQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
+
+  const reviewsData = reviewsQuery.data ?? {
+    averageRating: 0.0,
+    totalReviews: 0,
+    positivePercentage: 0,
+    ratingBreakdown: { '5': 0, '4': 0, '3': 0, '2': 0, '1': 0 } as Record<string, number>,
+    compliments: [
+      { label: 'Super Fast Delivery', count: 0, icon: 'zap' },
+      { label: 'Polite & Friendly', count: 0, icon: 'smile' },
+      { label: 'Handled With Care', count: 0, icon: 'package' },
+      { label: 'Followed Instructions', count: 0, icon: 'check-circle' },
+    ],
+    reviews: [],
+  };
+
+  const filteredReviews = (reviewsData.reviews || []).filter((item) => {
+    if (reviewFilter === '5') return item.rating === 5;
+    if (reviewFilter === '4') return item.rating === 4;
+    if (reviewFilter === '3_BELOW') return item.rating <= 3;
+    if (reviewFilter === 'WITH_COMMENTS') return Boolean(item.comment && item.comment.trim().length > 0);
+    return true;
+  });
 
   useAssignmentOrderSubscription(active?.orderId, orderQuery.data?.status);
 
@@ -533,6 +560,48 @@ export function DeliveryHomeScreen({ navigation }: Props) {
           </Pressable>
         </View>
 
+        {/* Delivery Partner Ratings and Reviews Card */}
+        <Pressable
+          style={styles.ratingsCard}
+          onPress={() => setIsReviewsModalVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Delivery Partner ratings and reviews"
+        >
+          <View style={styles.ratingsCardLeft}>
+            <View style={styles.ratingsStarIconCircle}>
+              <Ionicons name="star" size={22} color="#F59E0B" />
+            </View>
+            <View style={styles.ratingsTextColumn}>
+              <Text style={styles.ratingsCardTitle}>Delivery Partner Ratings and Reviews</Text>
+              <View style={styles.ratingsSubtitleRow}>
+                {reviewsData.totalReviews > 0 ? (
+                  <>
+                    <View style={styles.ratingsScoreBadge}>
+                      <Ionicons name="star" size={11} color="#FFF" />
+                      <Text style={styles.ratingsScoreBadgeText}>
+                        {reviewsData.averageRating.toFixed(1)}
+                      </Text>
+                    </View>
+                    <Text style={styles.ratingsCardSubtitle}>
+                      {reviewsData.totalReviews} {reviewsData.totalReviews === 1 ? 'rating' : 'ratings'} • {reviewsData.positivePercentage}% Positive
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.ratingsCardSubtitle}>
+                    No ratings yet • Complete orders to get rated
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+          <View style={styles.ratingsCardRight}>
+            <View style={styles.ratingsViewBtn}>
+              <Text style={styles.ratingsViewBtnText}>View</Text>
+              <Feather name="chevron-right" size={16} color="#B45309" />
+            </View>
+          </View>
+        </Pressable>
+
       </ScrollView>
       <Toast
         visible={Boolean(toast)}
@@ -541,6 +610,231 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
       />
+
+      {/* Customer Ratings and Reviews Modal */}
+      <Modal
+        visible={isReviewsModalVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setIsReviewsModalVisible(false)}
+      >
+        <View style={[styles.reviewsModalContainer, { paddingTop: insets.top || 16 }]}>
+          {/* Top Nav Bar */}
+          <View style={styles.reviewsModalHeader}>
+            <Pressable
+              style={styles.reviewsModalBackBtn}
+              onPress={() => setIsReviewsModalVisible(false)}
+            >
+              <Feather name="arrow-left" size={24} color="#1E293B" />
+            </Pressable>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.reviewsModalHeaderTitle}>Ratings & Reviews</Text>
+              <Text style={styles.reviewsModalHeaderSubtitle}>Customer feedback & compliments</Text>
+            </View>
+            <Pressable
+              style={styles.reviewsModalRefreshBtn}
+              onPress={() => void reviewsQuery.refetch()}
+            >
+              <Feather name="refresh-cw" size={18} color="#475569" />
+            </Pressable>
+          </View>
+
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.reviewsModalContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Main Score & Distribution Card */}
+            <View style={styles.reviewsScoreCard}>
+              <View style={styles.scoreOverviewLeft}>
+                <Text style={styles.bigScoreText}>
+                  {reviewsData.totalReviews > 0 ? reviewsData.averageRating.toFixed(1) : '0.0'}
+                </Text>
+                <View style={styles.starRow}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Ionicons
+                      key={s}
+                      name="star"
+                      size={18}
+                      color={s <= Math.round(reviewsData.averageRating) && reviewsData.totalReviews > 0 ? '#F59E0B' : '#CBD5E1'}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.totalReviewsText}>
+                  {reviewsData.totalReviews} Customer {reviewsData.totalReviews === 1 ? 'Review' : 'Reviews'}
+                </Text>
+                <View style={[styles.satisfactionBadge, reviewsData.totalReviews === 0 && { backgroundColor: '#F1F5F9' }]}>
+                  <Feather
+                    name={reviewsData.totalReviews > 0 ? 'check-circle' : 'info'}
+                    size={12}
+                    color={reviewsData.totalReviews > 0 ? '#10B981' : '#64748B'}
+                  />
+                  <Text style={[styles.satisfactionBadgeText, reviewsData.totalReviews === 0 && { color: '#64748B' }]}>
+                    {reviewsData.totalReviews > 0 ? `${reviewsData.positivePercentage}% Positive Rating` : 'No ratings yet'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.scoreDivider} />
+
+              <View style={styles.scoreDistributionRight}>
+                {[5, 4, 3, 2, 1].map((starNum) => {
+                  const count = reviewsData.ratingBreakdown?.[String(starNum)] ?? 0;
+                  const total = reviewsData.totalReviews;
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <View key={starNum} style={styles.distRow}>
+                      <Text style={styles.distStarLabel}>{starNum} ★</Text>
+                      <View style={styles.distBarTrack}>
+                        <View style={[styles.distBarFill, { width: `${pct}%` }]} />
+                      </View>
+                      <Text style={styles.distCountLabel}>{count}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Customer Compliments */}
+            <View style={styles.complimentsContainer}>
+              <Text style={styles.sectionHeading}>Customer Compliments</Text>
+              <View style={styles.complimentsGrid}>
+                {(reviewsData.compliments || []).map((comp, idx) => (
+                  <View key={idx} style={styles.complimentChip}>
+                    <View style={styles.complimentIconCircle}>
+                      <Ionicons
+                        name={
+                          comp.icon === 'zap' || comp.icon === 'flash' ? 'flash' :
+                          comp.icon === 'smile' || comp.icon === 'happy' ? 'happy' :
+                          comp.icon === 'package' || comp.icon === 'cube' ? 'cube' : 'checkmark-circle'
+                        }
+                        size={16}
+                        color="#D97706"
+                      />
+                    </View>
+                    <View>
+                      <Text style={styles.complimentLabel}>{comp.label}</Text>
+                      <Text style={styles.complimentCount}>{comp.count} {comp.count === 1 ? 'customer' : 'customers'}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Filter Tabs */}
+            <View style={styles.filterSection}>
+              <Text style={styles.sectionHeading}>Customer Reviews</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterTabsRow}
+              >
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === 'ALL' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('ALL')}
+                >
+                  <Text style={[styles.filterChipText, reviewFilter === 'ALL' && styles.filterChipTextActive]}>
+                    All ({reviewsData.reviews?.length || 0})
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === '5' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('5')}
+                >
+                  <Ionicons name="star" size={13} color={reviewFilter === '5' ? '#FFF' : '#F59E0B'} />
+                  <Text style={[styles.filterChipText, reviewFilter === '5' && styles.filterChipTextActive]}>
+                    5 Star
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === '4' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('4')}
+                >
+                  <Ionicons name="star" size={13} color={reviewFilter === '4' ? '#FFF' : '#F59E0B'} />
+                  <Text style={[styles.filterChipText, reviewFilter === '4' && styles.filterChipTextActive]}>
+                    4 Star
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === '3_BELOW' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('3_BELOW')}
+                >
+                  <Text style={[styles.filterChipText, reviewFilter === '3_BELOW' && styles.filterChipTextActive]}>
+                    ≤ 3 Star
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.filterChip, reviewFilter === 'WITH_COMMENTS' && styles.filterChipActive]}
+                  onPress={() => setReviewFilter('WITH_COMMENTS')}
+                >
+                  <Text style={[styles.filterChipText, reviewFilter === 'WITH_COMMENTS' && styles.filterChipTextActive]}>
+                    With Comments
+                  </Text>
+                </Pressable>
+              </ScrollView>
+            </View>
+
+            {/* Customer Review Cards */}
+            <View style={styles.reviewsList}>
+              {filteredReviews.length === 0 ? (
+                <View style={styles.emptyReviewsCard}>
+                  <Ionicons name="chatbox-ellipses-outline" size={44} color="#94A3B8" />
+                  <Text style={styles.emptyReviewsTitle}>
+                    {reviewsData.totalReviews === 0 ? 'No customer reviews yet' : 'No reviews match this filter'}
+                  </Text>
+                  <Text style={styles.emptyReviewsSubtitle}>
+                    {reviewsData.totalReviews === 0
+                      ? 'Customer ratings, compliments and feedback will appear here in real-time as you deliver orders.'
+                      : 'Try selecting a different rating filter above.'}
+                  </Text>
+                </View>
+              ) : (
+                filteredReviews.map((item) => (
+                  <View key={item.id} style={styles.customerReviewCard}>
+                    {/* Review Header */}
+                    <View style={styles.revHeader}>
+                      <View style={styles.revAvatar}>
+                        <Text style={styles.revAvatarText}>
+                          {item.customerName ? item.customerName.charAt(0).toUpperCase() : 'C'}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.revCustomerName}>{item.customerName || 'Customer'}</Text>
+                        <Text style={styles.revTimeAgo}>
+                          {item.timeAgo}{item.orderNumber ? ` • Order ${item.orderNumber}` : ''}
+                        </Text>
+                      </View>
+                      <View style={styles.revRatingBadge}>
+                        <Ionicons name="star" size={12} color="#FFF" />
+                        <Text style={styles.revRatingBadgeText}>{item.rating}.0</Text>
+                      </View>
+                    </View>
+
+                    {/* Compliment Tags */}
+                    {item.tags && item.tags.length > 0 && (
+                      <View style={styles.revTagsRow}>
+                        {item.tags.map((tag, tIdx) => (
+                          <View key={tIdx} style={styles.revTagChip}>
+                            <Feather name="thumbs-up" size={11} color="#D97706" />
+                            <Text style={styles.revTagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Customer Comment */}
+                    {item.comment ? (
+                      <View style={styles.revCommentBox}>
+                        <Text style={styles.revCommentText}>"{item.comment}"</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
 
 
 
@@ -1155,5 +1449,415 @@ const styles = StyleSheet.create({
     marginTop: 4,
     color: '#718096',
     fontWeight: '600',
-  }
+  },
+  ratingsCard: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FDE68A',
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    shadowColor: '#D97706',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  ratingsCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  ratingsStarIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  ratingsTextColumn: {
+    flex: 1,
+  },
+  ratingsCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  ratingsSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  ratingsScoreBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D97706',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    gap: 3,
+  },
+  ratingsScoreBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  ratingsCardSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#78350F',
+  },
+  ratingsCardRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  ratingsViewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 2,
+  },
+  ratingsViewBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  reviewsModalContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  reviewsModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  reviewsModalBackBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewsModalHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  reviewsModalHeaderSubtitle: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+  },
+  reviewsModalRefreshBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  reviewsModalContent: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  reviewsScoreCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  scoreOverviewLeft: {
+    alignItems: 'center',
+    flex: 1.1,
+  },
+  bigScoreText: {
+    fontSize: 44,
+    fontWeight: '900',
+    color: '#0F172A',
+    lineHeight: 48,
+  },
+  starRow: {
+    flexDirection: 'row',
+    gap: 3,
+    marginVertical: 4,
+  },
+  totalReviewsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  satisfactionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  satisfactionBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#15803D',
+  },
+  scoreDivider: {
+    width: 1,
+    height: '80%',
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 16,
+  },
+  scoreDistributionRight: {
+    flex: 1.4,
+    gap: 6,
+  },
+  distRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  distStarLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#475569',
+    width: 26,
+  },
+  distBarTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#F1F5F9',
+    overflow: 'hidden',
+  },
+  distBarFill: {
+    height: '100%',
+    borderRadius: 4,
+    backgroundColor: '#F59E0B',
+  },
+  distCountLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#64748B',
+    width: 24,
+    textAlign: 'right',
+  },
+  complimentsContainer: {
+    marginBottom: 20,
+  },
+  sectionHeading: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 12,
+  },
+  complimentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  complimentChip: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+    flexBasis: '48%',
+    flexGrow: 1,
+    gap: 10,
+  },
+  complimentIconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#FEF3C7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  complimentLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  complimentCount: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#D97706',
+    marginTop: 1,
+  },
+  filterSection: {
+    marginBottom: 14,
+  },
+  filterTabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 4,
+  },
+  filterChipActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  reviewsList: {
+    gap: 12,
+  },
+  customerReviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  revHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  revAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  revAvatarText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#B45309',
+  },
+  revCustomerName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  revTimeAgo: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 1,
+  },
+  revRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+  },
+  revRatingBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  revTagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 10,
+  },
+  revTagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFBEB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  revTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#B45309',
+  },
+  revCommentBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#F59E0B',
+  },
+  revCommentText: {
+    fontSize: 13,
+    color: '#334155',
+    lineHeight: 19,
+    fontStyle: 'italic',
+  },
+  emptyReviewsCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  emptyReviewsTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginTop: 10,
+  },
+  emptyReviewsSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+    textAlign: 'center',
+  },
 });
