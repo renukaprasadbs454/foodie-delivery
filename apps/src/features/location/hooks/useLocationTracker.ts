@@ -8,6 +8,7 @@ import { toUnwrappedApiError } from '../../auth/apiError';
 import { LocationPingBuffer } from '../../navigation/pingBuffer';
 import { validatePingCoords, type LocationPingPayload } from '../../navigation/types';
 import { getCurrentDeviceLocation } from '../locationService';
+import { startBackgroundLocationTracking, stopBackgroundLocationTracking } from '../backgroundTask';
 import {
   LOCATION_INTERVALS,
   type LocationCoordinates,
@@ -111,11 +112,13 @@ export function useLocationTracker() {
   useEffect(() => {
     // If offline, ensure tracking is completely stopped (Req 3 & 7)
     if (trackingTier === 'offline') {
+      stopBackgroundLocationTracking();
       return;
     }
 
     // Immediate initial sample
     void sampleAndPing();
+    void startBackgroundLocationTracking();
 
     const intervalMs =
       trackingTier === 'active_delivery'

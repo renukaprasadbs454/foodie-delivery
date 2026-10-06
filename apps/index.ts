@@ -3,6 +3,7 @@ import { registerRootComponent } from 'expo';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import App from './src/core/App';
+import './src/features/location/backgroundTask';
 
 if (Platform.OS !== 'web') {
     Notifications.setNotificationHandler({

@@ -68,7 +68,7 @@ export function RootNavigator() {
       if (hasUploadedDocs && hasProfileImage && hasName) {
         initialRouteName = 'PendingVerification';
       } else {
-        initialRouteName = 'Kyc';
+        initialRouteName = 'KycForm';
       }
     } else {
       flow = 'main';
@@ -77,7 +77,7 @@ export function RootNavigator() {
   } else if (authStatus === 'authenticated' && accessToken && !profileQuery.isError) {
     flow = isNewUser ? 'kyc' : 'main';
     if (flow === 'kyc') {
-      initialRouteName = 'Kyc';
+      initialRouteName = 'KycForm';
     }
   }
 

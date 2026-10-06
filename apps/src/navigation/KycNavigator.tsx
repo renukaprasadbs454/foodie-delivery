@@ -13,11 +13,11 @@ const Stack = createNativeStackNavigator<KycStackParamList>();
 export function KycNavigator({ initialRouteName }: { initialRouteName?: keyof KycStackParamList }) {
   return (
     <Stack.Navigator
-      initialRouteName={initialRouteName || "Kyc"}
+      initialRouteName={initialRouteName || "KycForm"}
       screenOptions={{ headerShown: true }}
     >
       <Stack.Screen
-        name="Kyc"
+        name="KycForm"
         component={KycScreen}
         options={{ title: 'KYC', headerShown: false }}
       />

@@ -12,7 +12,7 @@ export type AuthStackParamList = {
 
 /** KYC stack — UI-API routes `Kyc` | `PendingVerification`. */
 export type KycStackParamList = {
-  Kyc: undefined;
+  KycForm: undefined;
   PendingVerification: undefined;
 };
 

@@ -35,14 +35,14 @@ export function useConnectivity(): ConnectivityState {
     const handleWebOnline = () => apply({ isConnected: true, isInternetReachable: true, type: NetInfoStateType.wifi, details: null } as unknown as NetInfoState);
     const handleWebOffline = () => apply({ isConnected: false, isInternetReachable: false, type: NetInfoStateType.none, details: null } as unknown as NetInfoState);
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
       window.addEventListener('online', handleWebOnline);
       window.addEventListener('offline', handleWebOffline);
     }
 
     return () => {
       unsubscribe();
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
         window.removeEventListener('online', handleWebOnline);
         window.removeEventListener('offline', handleWebOffline);
       }

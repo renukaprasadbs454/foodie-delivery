@@ -263,7 +263,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
       }
 
       if (!captureUri && cameraRef.current) {
-        const photo = await cameraRef.current.takePictureAsync({ quality: 0.95 });
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
         if (photo?.uri) {
           captureUri = photo.uri;
           captureBlob = (photo as any).file;
@@ -309,6 +309,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
       setToast({ message: 'Face verified! You are now online.', variant: 'success' });
     } catch (error: any) {
       setIsCameraVisible(false);
+
       const errMsg =
         error?.data?.error?.message ||
         error?.data?.message ||
@@ -806,8 +807,8 @@ export function DeliveryHomeScreen({ navigation }: Props) {
                       <Ionicons
                         name={
                           comp.icon === 'zap' || comp.icon === 'flash' ? 'flash' :
-                          comp.icon === 'smile' || comp.icon === 'happy' ? 'happy' :
-                          comp.icon === 'package' || comp.icon === 'cube' ? 'cube' : 'checkmark-circle'
+                            comp.icon === 'smile' || comp.icon === 'happy' ? 'happy' :
+                              comp.icon === 'package' || comp.icon === 'cube' ? 'cube' : 'checkmark-circle'
                         }
                         size={16}
                         color="#D97706"
@@ -1430,6 +1431,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   incentiveMiniLeft: {
+    flex: 1,
+    marginRight: 12,
   },
   incentiveMiniTitle: {
     fontSize: 16,

@@ -98,7 +98,7 @@ export async function createUploadFormData(
     if (v !== undefined) formData.append(k, v);
   });
 
-  if (Platform.OS === 'web' || typeof window !== 'undefined') {
+  if (Platform.OS === 'web') {
     if (fileField.webFile instanceof Blob || (typeof File !== 'undefined' && fileField.webFile instanceof File)) {
       if (fileField.webFile.size > 0) {
         formData.append(fileField.name, fileField.webFile, fileField.fileName || 'file.jpg');
