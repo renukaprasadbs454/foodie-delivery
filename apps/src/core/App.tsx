@@ -6,6 +6,7 @@ import { RootNavigator } from '@/navigation/RootNavigator';
 import { BootstrapGate } from './bootstrap/BootstrapGate';
 import { ConnectivityBanner } from './components/ConnectivityBanner';
 import { PushRegistrationBridge } from './push/PushRegistrationBridge';
+import { LocationPermissionPrompt } from '@/features/location/components/LocationPermissionPrompt';
 import { NavigationProvider } from './providers/NavigationProvider';
 import { ReduxProvider } from './providers/ReduxProvider';
 import { ThemeProvider } from './providers/ThemeProvider';
@@ -54,6 +55,7 @@ export default function App() {
               <View style={styles.shell}>
                 <ConnectivityBanner />
                 <PushRegistrationBridge />
+                <LocationPermissionPrompt />
                 <View style={styles.content}>
                   <RootNavigator />
                 </View>

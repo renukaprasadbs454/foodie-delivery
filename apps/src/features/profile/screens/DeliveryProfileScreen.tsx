@@ -86,24 +86,25 @@ export function DeliveryProfileScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
-      {/* Curved Dark Green brand banner top arch with smooth gradient */}
-      <LinearGradient
-        colors={['#0F3E22', '#14532D', '#1B6A3A']}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 310,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-        }}
-      />
-
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 80, paddingTop: insets.top + 16 }}
         showsVerticalScrollIndicator={false}
       >
+        {/* Curved Dark Green brand banner top arch with smooth gradient placed inside ScrollView */}
+        <LinearGradient
+          colors={['#0F3E22', '#14532D', '#1B6A3A']}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 270,
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
+          }}
+        />
+
         <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
           <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
             <Feather name="arrow-left" size={22} color="#FFF" />
@@ -112,7 +113,7 @@ export function DeliveryProfileScreen({ navigation }: Props) {
         </View>
 
         {/* iOS Profile Avatar header inside the dark green arch */}
-        <View style={{ alignItems: 'center', marginBottom: 28 }}>
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
           <View
             style={{
               width: 104,
@@ -153,8 +154,8 @@ export function DeliveryProfileScreen({ navigation }: Props) {
         </View>
 
         <View style={{ paddingHorizontal: 20 }}>
-          <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '600', marginLeft: 16, marginBottom: 8, letterSpacing: 0.5 }}>
-            ACCOUNT DETAILS
+          <Text style={{ fontSize: 13, color: '#4B5563', fontWeight: '700', marginLeft: 4, marginBottom: 8, letterSpacing: 0.6, textTransform: 'uppercase' }}>
+            ACCOUNT & DETAILS
           </Text>
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
@@ -179,7 +180,7 @@ export function DeliveryProfileScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '600', marginLeft: 16, marginBottom: 8, letterSpacing: 0.5 }}>
+          <Text style={{ fontSize: 13, color: '#4B5563', fontWeight: '700', marginLeft: 4, marginBottom: 8, letterSpacing: 0.6, textTransform: 'uppercase' }}>
             PREFERENCES & SETTINGS
           </Text>
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>

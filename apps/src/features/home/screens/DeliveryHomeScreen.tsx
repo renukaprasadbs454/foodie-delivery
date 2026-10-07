@@ -437,13 +437,8 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* iOS-style dark green gradient arch */}
-      <LinearGradient
-        colors={['#0F3E22', '#14532D', '#1B6A3A']}
-        style={[styles.topArch, { height: 280 + insets.top }]}
-      />
-
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
         bounces={true}
         showsVerticalScrollIndicator={false}
@@ -460,6 +455,11 @@ export function DeliveryHomeScreen({ navigation }: Props) {
           />
         }
       >
+        {/* iOS-style dark green gradient arch - placed inside ScrollView for full page unified scroll */}
+        <LinearGradient
+          colors={['#0F3E22', '#14532D', '#1B6A3A']}
+          style={[styles.topArch, { height: 280 + insets.top }]}
+        />
 
         {/* Header Section */}
         <View style={styles.header}>
@@ -974,7 +974,8 @@ const styles = StyleSheet.create({
   topArch: {
     position: 'absolute',
     top: 0,
-    width: width,
+    left: -20,
+    right: -20,
     backgroundColor: THEME_DARK,
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,

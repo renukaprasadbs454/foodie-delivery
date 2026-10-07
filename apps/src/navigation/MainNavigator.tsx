@@ -126,7 +126,7 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
       />
       <Stack.Screen
         name="Kyc"
-        component={KycScreen}
+        component={KycScreen as any}
         options={{ presentation: 'fullScreenModal', headerShown: false }}
       />
       <Stack.Screen

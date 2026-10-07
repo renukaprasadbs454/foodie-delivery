@@ -228,22 +228,9 @@ export function PayoutRequestsScreen({ navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
-      {/* Decorative Dark Top Background Gradient */}
-      <LinearGradient
-        colors={['#0F3E22', '#14532D', '#1B6A3A']}
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 280,
-          borderBottomLeftRadius: 40,
-          borderBottomRightRadius: 40,
-        }}
-      />
-
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 80, paddingBottom: 90 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 90 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -259,6 +246,20 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           />
         }
       >
+        {/* Decorative Dark Top Background Gradient placed inside ScrollView for full page unified scroll */}
+        <LinearGradient
+          colors={['#0F3E22', '#14532D', '#1B6A3A']}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 280,
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
+          }}
+        />
+
         <View style={{ paddingTop: 16, marginBottom: 24, flexDirection: 'row', alignItems: 'center' }}>
           <Pressable
             onPress={() => navigation.goBack()}

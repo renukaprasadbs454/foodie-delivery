@@ -112,7 +112,7 @@ export function useLocationTracker() {
   useEffect(() => {
     // If offline, ensure tracking is completely stopped (Req 3 & 7)
     if (trackingTier === 'offline') {
-      stopBackgroundLocationTracking();
+      void stopBackgroundLocationTracking();
       return;
     }
 

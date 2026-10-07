@@ -186,7 +186,7 @@ export function PendingVerificationScreen({ navigation }: Props) {
             label="Re-Upload Documents"
             accessibilityLabel="Re-Upload Documents"
             variant="primary"
-            onPress={() => navigation.navigate('Kyc')}
+            onPress={() => navigation.navigate('KycForm')}
           />
         )}
 
@@ -195,7 +195,7 @@ export function PendingVerificationScreen({ navigation }: Props) {
             label="📄 Upload / Update KYC Documents"
             accessibilityLabel="Upload / Update KYC Documents"
             variant="secondary"
-            onPress={() => navigation.navigate('Kyc')}
+            onPress={() => navigation.navigate('KycForm')}
           />
         )}
 

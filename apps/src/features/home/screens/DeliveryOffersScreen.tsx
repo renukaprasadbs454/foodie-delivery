@@ -26,7 +26,6 @@ import { useTheme } from '@/hooks/useTheme';
 import { useAcceptAssignmentMutation, useRejectAssignmentMutation, useGetDeliveryOffersQuery, useGetDeliveryProfileQuery } from '@/api/endpoints/deliveryApi';
 import { toUnwrappedApiError } from '../../auth/apiError';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { selectUserId } from '../../auth/authSlice';
 import {
   selectIsOnline,
   setActiveAssignment,
@@ -49,7 +48,6 @@ export function DeliveryOffersScreen({ navigation }: Props) {
   const reduxIsOnline = useAppSelector(selectIsOnline);
   const profileQuery = useGetDeliveryProfileQuery(undefined, { refetchOnFocus: true });
   const isOnline = profileQuery.data !== undefined ? Boolean(profileQuery.data.isOnline) : reduxIsOnline;
-  const cachedUserId = useAppSelector(selectUserId);
   const rejectedOffers = useAppSelector(selectRejectedOffers);
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
 
@@ -293,42 +291,6 @@ export function DeliveryOffersScreen({ navigation }: Props) {
                   ? 'Stay online to receive new delivery push notifications as they become available.'
                   : 'Reconnect to refresh your feed.'}
               </Text>
-
-              {isConnected && isOnline && (
-                <Pressable
-                  onPress={async () => {
-                    try {
-                      setToast({ message: 'Generating test order...', variant: 'info' });
-                      const apiUrl = ENV.apiBaseUrl;
-                      if (cachedUserId) {
-                        const response = await fetch(`${apiUrl}/api/v1/debug/seed-offer/${cachedUserId}`, { method: 'POST' });
-                        if (response.ok) {
-                          setToast({ message: 'Test order seeded! Refreshing...', variant: 'success' });
-                          void offersQuery.refetch();
-                        } else {
-                          setToast({ message: 'Server error: ' + response.status, variant: 'error' });
-                        }
-                      } else {
-                        setToast({ message: 'User ID not found in cache.', variant: 'error' });
-                      }
-                    } catch (e) {
-                      setToast({ message: 'Failed to generate test order.', variant: 'error' });
-                    }
-                  }}
-                  style={({ pressed }) => ({
-                    marginTop: 20,
-                    backgroundColor: '#14532D',
-                    borderRadius: 16,
-                    paddingHorizontal: 24,
-                    paddingVertical: 12,
-                    opacity: pressed ? 0.8 : 1,
-                  })}
-                >
-                  <Text style={{ color: '#FCD34D', fontWeight: '800', fontSize: 14 }}>
-                    + Generate Test Order
-                  </Text>
-                </Pressable>
-              )}
             </View>
           )
         }
