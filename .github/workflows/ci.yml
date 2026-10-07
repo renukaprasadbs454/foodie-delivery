@@ -8,19 +8,35 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: npm
-      - name: Install
-        run: npm ci
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: 'apps/pnpm-lock.yaml'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Lint
-        run: npm run lint
+        run: pnpm run lint
+
       - name: Typecheck
-        run: npm run typecheck
+        run: pnpm run typecheck
+
       - name: Unit tests
-        run: npm test -- --ci
+        run: pnpm test -- --ci
+
       - name: Build (typecheck gate)
-        run: npm run build
+        run: pnpm run build
+
