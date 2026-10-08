@@ -10,6 +10,7 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
+import { useGetNavigationDetailsQuery } from '@/api/endpoints/deliveryApi';
 import { useAssignmentOrderSubscription } from '../../home/hooks/useAssignmentOrderSubscription';
 import { isUuid } from '../../home/types';
 import { MapSkeleton } from '@/features/navigation/components/MapSkeleton';
@@ -31,6 +32,11 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
         skip: !validOrder,
         pollingInterval: 30_000,
         refetchOnFocus: true,
+    });
+
+    const validAssignment = Boolean(assignmentId && typeof assignmentId === 'string' && assignmentId.length > 10);
+    const navQuery = useGetNavigationDetailsQuery(assignmentId as string, {
+        skip: !validAssignment,
     });
 
     useAssignmentOrderSubscription(
@@ -66,9 +72,9 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
         return () => backHandler.remove();
     }, [orderId, navigation]);
 
-    const customerName = order?.customerName ?? 'Anil Kumar';
-    const deliveryAddress = order?.deliveryAddress ?? 'B-104, Shantiniketan Apartments, Whitefield, Bengaluru - 560066';
-    const customerPhone = order?.customerPhone ?? '+919876543210';
+    const customerName = navQuery.data?.customerName ?? order?.customerName ?? 'Anil Kumar';
+    const deliveryAddress = navQuery.data?.deliveryAddress ?? order?.deliveryAddress ?? 'B-104, Shantiniketan Apartments, Whitefield, Bengaluru - 560066';
+    const customerPhone = navQuery.data?.customerPhone ?? order?.customerPhone ?? '+919876543210';
     const distance = order?.estimatedDistance ?? 2.4;
 
     const handleCall = (phone: string) => {
@@ -79,11 +85,15 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
 
     const onOpenOsMaps = async () => {
         trackAnalyticsEvent('open_os_maps_tapped', { leg: 'drop', orderId });
+
+        const cLat = navQuery.data?.deliveryLat ?? 12.9716;
+        const cLng = navQuery.data?.deliveryLng ?? 77.5946;
+
         const opened = await openOsMapsHandoff({
             originLat: lastPing?.latitude,
             originLng: lastPing?.longitude,
-            destLat: 12.9716,
-            destLng: 77.5946,
+            destLat: cLat,
+            destLng: cLng,
             query: orderQuery.data?.orderNumber ? `Order ${orderQuery.data.orderNumber}` : undefined,
         });
         if (!opened) {
@@ -138,8 +148,14 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
                                 lastPing={lastPing}
                                 orderStatus={status}
                                 leg="drop"
-                                restaurantLocation={{ latitude: 12.9780, longitude: 77.6000 }}
-                                customerLocation={{ latitude: 12.9716, longitude: 77.5946 }}
+                                restaurantLocation={{
+                                    latitude: navQuery.data?.restaurantLat ?? 12.9780,
+                                    longitude: navQuery.data?.restaurantLng ?? 77.6000
+                                }}
+                                customerLocation={{
+                                    latitude: navQuery.data?.deliveryLat ?? 12.9716,
+                                    longitude: navQuery.data?.deliveryLng ?? 77.5946
+                                }}
                             />
                         </View>
                     )}

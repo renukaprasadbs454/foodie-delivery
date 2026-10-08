@@ -6,6 +6,21 @@ import { normalizeOffers } from '@/features/home/types';
 import type { LocationPingPayload } from '@/features/navigation/types';
 import { setIsOnline } from '@/features/home/availabilitySlice';
 
+export type DeliveryNavigationDetails = {
+  assignmentId: string;
+  orderId: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryLat: number | null;
+  deliveryLng: number | null;
+  restaurantName: string;
+  restaurantPhone: string;
+  restaurantAddress: string;
+  restaurantLat: number | null;
+  restaurantLng: number | null;
+};
+
 export function dataUriToBlob(dataUri: string): Blob {
   const parts = dataUri.split(',');
   const mimeMatch = parts[0]?.match(/:(.*?);/);
@@ -451,6 +466,10 @@ export const deliveryApi = baseApi.injectEndpoints({
       query: () => '/api/v1/delivery/me/reviews',
       providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
     }),
+    getNavigationDetails: builder.query<DeliveryNavigationDetails, string>({
+      query: (assignmentId) => `/api/v1/delivery/assignments/${assignmentId}/navigation`,
+      providesTags: (_result, _error, assignmentId) => [{ type: 'Order', id: `NAV-${assignmentId}` }],
+    }),
   }),
 });
 
@@ -471,5 +490,6 @@ export const {
   useGetDeliveryBankDetailsQuery,
   useUpdateDeliveryBankDetailsMutation,
   useGetDeliveryReviewsQuery,
+  useGetNavigationDetailsQuery,
 } = deliveryApi;
 

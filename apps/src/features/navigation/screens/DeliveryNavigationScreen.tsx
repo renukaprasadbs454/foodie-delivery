@@ -9,6 +9,7 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
+import { useGetNavigationDetailsQuery } from '@/api/endpoints/deliveryApi';
 import { useAssignmentOrderSubscription } from '../../home/hooks/useAssignmentOrderSubscription';
 import { isUuid } from '../../home/types';
 import { MapSkeleton } from '@/features/navigation/components/MapSkeleton';
@@ -34,6 +35,11 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
     skip: !validOrder,
     pollingInterval: 5000,
     refetchOnFocus: true,
+  });
+
+  const validAssignment = Boolean(assignmentId && typeof assignmentId === 'string' && assignmentId.length > 10);
+  const navQuery = useGetNavigationDetailsQuery(assignmentId as string, {
+    skip: !validAssignment,
   });
 
   useAssignmentOrderSubscription(
@@ -95,11 +101,16 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
 
   const onOpenOsMaps = async () => {
     trackAnalyticsEvent('open_os_maps_tapped', { leg, orderId });
+    const rLat = navQuery.data?.restaurantLat ?? 12.9780;
+    const rLng = navQuery.data?.restaurantLng ?? 77.6000;
+    const cLat = navQuery.data?.deliveryLat ?? 12.9716;
+    const cLng = navQuery.data?.deliveryLng ?? 77.5946;
+
     const opened = await openOsMapsHandoff({
       originLat: lastPing?.latitude,
       originLng: lastPing?.longitude,
-      destLat: leg === 'pickup' ? 12.9780 : 12.9716,
-      destLng: leg === 'pickup' ? 77.6000 : 77.5946,
+      destLat: leg === 'pickup' ? rLat : cLat,
+      destLng: leg === 'pickup' ? rLng : cLng,
       query: orderQuery.data?.orderNumber
         ? `Order ${orderQuery.data.orderNumber}`
         : undefined,
@@ -185,8 +196,14 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
                 lastPing={lastPing}
                 orderStatus={status}
                 leg={leg}
-                restaurantLocation={{ latitude: 12.9780, longitude: 77.6000 }}
-                customerLocation={{ latitude: 12.9716, longitude: 77.5946 }}
+                restaurantLocation={{
+                  latitude: navQuery.data?.restaurantLat ?? 12.9780,
+                  longitude: navQuery.data?.restaurantLng ?? 77.6000
+                }}
+                customerLocation={{
+                  latitude: navQuery.data?.deliveryLat ?? 12.9716,
+                  longitude: navQuery.data?.deliveryLng ?? 77.5946
+                }}
               />
             </View>
           )}
