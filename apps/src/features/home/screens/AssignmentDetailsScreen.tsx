@@ -306,11 +306,18 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
                 onPress={() => {
                   trackAnalyticsEvent('start_navigation_tapped', { orderId });
                   if (!requireAssignmentId() || !assignmentId) return;
-                  navigation.navigate('DeliveryNavigation', {
-                    assignmentId,
-                    orderId,
-                    leg,
-                  });
+                  if (isDropOffPhase) {
+                    navigation.navigate('CustomerDelivery' as never, {
+                      assignmentId,
+                      orderId,
+                    });
+                  } else {
+                    navigation.navigate('DeliveryNavigation', {
+                      assignmentId,
+                      orderId,
+                      leg,
+                    });
+                  }
                 }}
               >
                 <Feather name="navigation" size={20} color="#FFFFFF" style={styles.actionIcon} />
