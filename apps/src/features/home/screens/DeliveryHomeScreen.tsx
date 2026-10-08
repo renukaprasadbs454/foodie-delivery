@@ -126,12 +126,21 @@ export function DeliveryHomeScreen({ navigation }: Props) {
 
   const ledgerEntries = ledgerQuery.data || [];
   const deliveriesToday = ledgerEntries.filter(e => e.referenceType === 'DELIVERY_ASSIGNMENT').length;
-  // Calculate earnings total (including everything positive) and specifically the bonus
-  const incentiveToday = ledgerEntries
+  // Calculate dynamic daily earnings for today from actual completed delivery orders and genuine earned incentives
+  const validTodayCredits = ledgerEntries.filter(e => {
+    if (e.entryType !== 'CREDIT') return false;
+    if (e.referenceType === 'DELIVERY_ASSIGNMENT') return true;
+    if (e.referenceType === 'INCENTIVE') {
+      // Exclude legacy mock seed entry of 2000
+      if (Number(e.amount) === 2000) return false;
+      return true;
+    }
+    return false;
+  });
+  const incentiveToday = validTodayCredits
     .filter(e => e.referenceType === 'INCENTIVE')
     .reduce((acc, curr) => acc + Number(curr.amount), 0);
-  const totalEarningsToday = ledgerEntries
-    .filter(e => e.entryType === 'CREDIT')
+  const totalEarningsToday = validTodayCredits
     .reduce((acc, curr) => acc + Number(curr.amount), 0);
 
   const incentivesProgressQuery = useGetIncentivesProgressQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
