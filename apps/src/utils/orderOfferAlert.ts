@@ -155,6 +155,17 @@ export async function startOrderOfferAlert(offerId: string, offerDetails?: { res
     playWebAlertTone();
   } else {
     void configureNativeAudioMode();
+    try {
+      if (!nativeSoundObject) {
+        const { sound } = await Audio.Sound.createAsync(require('../../../assets/alert.wav'));
+        nativeSoundObject = sound;
+        await nativeSoundObject.setIsLoopingAsync(false);
+      }
+      await nativeSoundObject.stopAsync();
+      await nativeSoundObject.playAsync();
+    } catch (e) {
+      console.warn('Native sound failed', e);
+    }
   }
 
   // 4. Clear any previous alert loop timer
@@ -181,6 +192,9 @@ export async function startOrderOfferAlert(offerId: string, offerDetails?: { res
         Vibration.vibrate([0, 800, 400, 800], false);
       } catch (e) {
         // ignore
+      }
+      if (nativeSoundObject) {
+        nativeSoundObject.stopAsync().then(() => nativeSoundObject?.playAsync()).catch(() => { });
       }
     }
   }, 1800);
