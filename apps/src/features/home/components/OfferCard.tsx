@@ -45,9 +45,7 @@ export function OfferCard({
             ) : null}
           </View>
           <Text style={styles.addressSubtitle} numberOfLines={2}>📍 Pickup: {offer.pickupAddress}</Text>
-          {offer.deliveryAddress ? (
-            <Text style={[styles.addressSubtitle, { color: '#475569' }]} numberOfLines={2}>🏠 Drop: {offer.deliveryAddress}</Text>
-          ) : null}
+
           {offer.expectedFoodReadyTime ? (
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#B45309', marginBottom: 6 }}>
               ⏱ Food Ready: {new Date(offer.expectedFoodReadyTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -60,7 +58,7 @@ export function OfferCard({
         </View>
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Earn</Text>
-          <Text style={styles.priceAmount}>₹120</Text>
+          <Text style={styles.priceAmount}>₹{offer.estimatedFee !== undefined && offer.estimatedFee !== null ? offer.estimatedFee : 120}</Text>
         </View>
       </View>
 

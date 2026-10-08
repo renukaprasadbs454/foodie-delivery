@@ -17,6 +17,7 @@ export type DeliveryOffer = {
   deliveryAddress?: string;
   expectedFoodReadyTime?: string;
   estimatedDistance: number;
+  estimatedFee?: number;
 };
 
 export type DeliveryAssignment = {
