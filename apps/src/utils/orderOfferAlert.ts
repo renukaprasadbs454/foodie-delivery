@@ -157,7 +157,7 @@ export async function startOrderOfferAlert(offerId: string, offerDetails?: { res
     void configureNativeAudioMode();
     try {
       if (!nativeSoundObject) {
-        const { sound } = await Audio.Sound.createAsync(require('../../../assets/alert.wav'));
+        const { sound } = await Audio.Sound.createAsync(require('../../assets/alert.wav'));
         nativeSoundObject = sound;
         await nativeSoundObject.setIsLoopingAsync(false);
       }
