@@ -13,6 +13,7 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
+import { useGetNavigationDetailsQuery } from '@/api/endpoints/deliveryApi';
 import { AssignmentDetailSkeleton } from '@/features/home/components/AssignmentDetailSkeleton';
 import { useAssignmentOrderSubscription } from '@/features/home/hooks/useAssignmentOrderSubscription';
 import { formatMoney, formatDistanceKm, isUuid } from '../types';
@@ -58,6 +59,11 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
     validOrderId ? orderId : undefined,
     orderQuery.data?.status,
   );
+
+  const validAssignmentId = Boolean(assignmentId && typeof assignmentId === 'string' && assignmentId.length > 10);
+  const navQuery = useGetNavigationDetailsQuery(assignmentId as string, {
+    skip: !validAssignmentId,
+  });
 
   useEffect(() => {
     trackAnalyticsEvent('delivery_assignment_details_viewed');
@@ -105,13 +111,13 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
   const isDropOffPhase = leg === 'drop';
 
   // Mocks provided if backend doesn't hydrate these fields yet
-  const restaurantName = order?.restaurantName ?? 'Featured Restaurant';
-  const restaurantAddress = order?.restaurantAddress ?? 'Pickup location pending...';
-  const restaurantPhone = order?.restaurantPhone ?? '+918000000000';
+  const restaurantName = navQuery.data?.restaurantName ?? order?.restaurantName ?? 'Featured Restaurant';
+  const restaurantAddress = navQuery.data?.restaurantAddress ?? order?.restaurantAddress ?? 'Pickup location pending...';
+  const restaurantPhone = navQuery.data?.restaurantPhone ?? order?.restaurantPhone ?? '+918000000000';
 
-  const customerName = order?.customerName ?? 'Customer';
-  const deliveryAddress = order?.deliveryAddress ?? 'Customer delivery address pending...';
-  const customerPhone = order?.customerPhone ?? '+919000000000';
+  const customerName = navQuery.data?.customerName ?? order?.customerName ?? 'Customer';
+  const deliveryAddress = navQuery.data?.deliveryAddress ?? order?.deliveryAddress ?? 'Customer delivery address pending...';
+  const customerPhone = navQuery.data?.customerPhone ?? order?.customerPhone ?? '+919000000000';
 
   const distance = order?.estimatedDistance ?? 2.4;
 
@@ -279,7 +285,7 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
               <View style={styles.orderHeader}>
                 <Text style={styles.itemsLabel}>Order Items</Text>
                 <View style={styles.totalBadge}>
-                  <Text style={styles.totalAmount}>{formatMoney(order.totalAmount)}</Text>
+                  <Text style={styles.totalAmount}>Delivery Package</Text>
                 </View>
               </View>
 
@@ -290,7 +296,6 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
                     <Text style={styles.itemQuantityText}>{item.quantity}x</Text>
                   </View>
                   <Text style={styles.itemName}>{item.name ?? 'Unknown Item'}</Text>
-                  <Text style={styles.itemPrice}>{formatMoney(item.lineTotal ?? item.unitPrice)}</Text>
                 </View>
               ))}
             </View>

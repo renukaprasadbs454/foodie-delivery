@@ -9,7 +9,7 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
-import { useGetNavigationDetailsQuery } from '@/api/endpoints/deliveryApi';
+import { useGetNavigationDetailsQuery, useArrivedAtRestaurantMutation } from '@/api/endpoints/deliveryApi';
 import { useAssignmentOrderSubscription } from '../../home/hooks/useAssignmentOrderSubscription';
 import { isUuid } from '../../home/types';
 import { MapSkeleton } from '@/features/navigation/components/MapSkeleton';
@@ -63,6 +63,7 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   } | null>(null);
 
   const [reachedRestaurant, setReachedRestaurant] = useState(false);
+  const [arrivedMutation, arrivedState] = useArrivedAtRestaurantMutation();
 
   const accessToken = useAppSelector(selectAccessToken);
   const phoneNumber = accessToken ? (jwtDecode(accessToken) as any).sub : null;
@@ -83,8 +84,17 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
     trackAnalyticsEvent('delivery_navigation_viewed', { leg });
   }, [leg]);
 
-  const handleReachedRestaurant = () => {
-    setReachedRestaurant(true);
+  const handleReachedRestaurant = async () => {
+    if (!validAssignment) return;
+    try {
+      await arrivedMutation(assignmentId as string).unwrap();
+      setReachedRestaurant(true);
+      setToast({ message: 'Restaurant and customer notified of your arrival.', variant: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to notify arrival.', variant: 'error' });
+      // fail gracefully and just proceed locally so they aren't blocked
+      setReachedRestaurant(true);
+    }
   };
 
   useEffect(() => {
@@ -217,13 +227,14 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
               <Text style={styles.actionButtonText}>Open OS Maps</Text>
             </Pressable>
 
-            {!reachedRestaurant ? (
+            {!reachedRestaurant && status !== 'PICKED_UP' ? (
               <Pressable
-                style={[styles.actionButton, styles.secondaryButton]}
+                style={[styles.actionButton, styles.secondaryButton, arrivedState.isLoading && { opacity: 0.6 }]}
                 onPress={handleReachedRestaurant}
+                disabled={arrivedState.isLoading}
               >
                 <Feather name="map-pin" size={20} color="#14532D" style={styles.actionIconLeft} />
-                <Text style={styles.secondaryButtonText}>Reached Restaurant</Text>
+                <Text style={styles.secondaryButtonText}>{arrivedState.isLoading ? 'Notifying...' : 'Reached Restaurant'}</Text>
               </Pressable>
             ) : (
               <Pressable

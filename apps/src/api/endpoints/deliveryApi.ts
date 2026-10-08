@@ -470,6 +470,13 @@ export const deliveryApi = baseApi.injectEndpoints({
       query: (assignmentId) => `/api/v1/delivery/assignments/${assignmentId}/navigation`,
       providesTags: (_result, _error, assignmentId) => [{ type: 'Order', id: `NAV-${assignmentId}` }],
     }),
+    arrivedAtRestaurant: builder.mutation<void, string>({
+      query: (assignmentId) => ({
+        url: `/api/v1/delivery/assignments/${assignmentId}/arrived-restaurant`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Assignment', 'Order', 'Offer'],
+    }),
   }),
 });
 
@@ -491,5 +498,6 @@ export const {
   useUpdateDeliveryBankDetailsMutation,
   useGetDeliveryReviewsQuery,
   useGetNavigationDetailsQuery,
+  useArrivedAtRestaurantMutation,
 } = deliveryApi;
 
