@@ -19,6 +19,7 @@ import { useLocationPingLoop } from '@/features/navigation/hooks/useLocationPing
 import { openOsMapsHandoff } from '../osMaps';
 import type { MainStackParamList } from '@/navigation/types';
 import { formatDistanceKm } from '../../home/types';
+import { calculateDistanceKm } from '@/features/navigation/types';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'CustomerDelivery'>;
 
@@ -56,7 +57,6 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
         message: string;
         variant: 'info' | 'success' | 'error' | 'warning';
     } | null>(null);
-
     const [reachedCustomer, setReachedCustomer] = useState(false);
 
     useEffect(() => {
@@ -75,7 +75,13 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
     const customerName = navQuery.data?.customerName ?? order?.customerName ?? 'Anil Kumar';
     const deliveryAddress = navQuery.data?.deliveryAddress ?? order?.deliveryAddress ?? 'B-104, Shantiniketan Apartments, Whitefield, Bengaluru - 560066';
     const customerPhone = navQuery.data?.customerPhone ?? order?.customerPhone ?? '+919876543210';
-    const distance = order?.estimatedDistance ?? 2.4;
+
+    const defaultDistance = order?.estimatedDistance ?? 2.4;
+    const cLat = navQuery.data?.deliveryLat ?? 12.9716;
+    const cLng = navQuery.data?.deliveryLng ?? 77.5946;
+    const distance = (lastPing)
+        ? calculateDistanceKm(lastPing.latitude, lastPing.longitude, cLat, cLng)
+        : defaultDistance;
 
     const handleCall = (phone: string) => {
         Linking.openURL(`tel:${phone}`).catch(() =>

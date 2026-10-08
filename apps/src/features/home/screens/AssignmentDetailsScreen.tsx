@@ -17,7 +17,8 @@ import { useGetNavigationDetailsQuery } from '@/api/endpoints/deliveryApi';
 import { AssignmentDetailSkeleton } from '@/features/home/components/AssignmentDetailSkeleton';
 import { useAssignmentOrderSubscription } from '@/features/home/hooks/useAssignmentOrderSubscription';
 import { formatMoney, formatDistanceKm, isUuid } from '../types';
-import { legForOrderStatus } from '@/features/navigation/types';
+import { legForOrderStatus, calculateDistanceKm } from '@/features/navigation/types';
+import { useLocationPingLoop } from '@/features/navigation/hooks/useLocationPingLoop';
 import { BottomNav } from '@/navigation/BottomNav';
 import type { MainStackParamList } from '@/navigation/types';
 import { useAppSelector } from '@/store/hooks';
@@ -63,6 +64,10 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
   const validAssignmentId = Boolean(assignmentId && typeof assignmentId === 'string' && assignmentId.length > 10);
   const navQuery = useGetNavigationDetailsQuery(assignmentId as string, {
     skip: !validAssignmentId,
+  });
+
+  const { lastPing } = useLocationPingLoop({
+    enabled: validOrderId,
   });
 
   useEffect(() => {
@@ -119,7 +124,12 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
   const deliveryAddress = navQuery.data?.deliveryAddress ?? order?.deliveryAddress ?? 'Customer delivery address pending...';
   const customerPhone = navQuery.data?.customerPhone ?? order?.customerPhone ?? '+919000000000';
 
-  const distance = order?.estimatedDistance ?? 2.4;
+  const defaultDistance = order?.estimatedDistance ?? 2.4;
+  const liveTargetLat = isDropOffPhase ? navQuery.data?.deliveryLat : navQuery.data?.restaurantLat;
+  const liveTargetLng = isDropOffPhase ? navQuery.data?.deliveryLng : navQuery.data?.restaurantLng;
+  const distance = (lastPing && liveTargetLat && liveTargetLng)
+    ? calculateDistanceKm(lastPing.latitude, lastPing.longitude, liveTargetLat, liveTargetLng)
+    : defaultDistance;
 
   const isCod = (order as any)?.paymentMethod === 'COD' || (order as any)?.paymentMethod === 'CASH';
 
@@ -307,10 +317,10 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
                   trackAnalyticsEvent('start_navigation_tapped', { orderId });
                   if (!requireAssignmentId() || !assignmentId) return;
                   if (isDropOffPhase) {
-                    navigation.navigate('CustomerDelivery' as never, {
+                    navigation.navigate('CustomerDelivery' as any, {
                       assignmentId,
                       orderId,
-                    });
+                    } as any);
                   } else {
                     navigation.navigate('DeliveryNavigation', {
                       assignmentId,
