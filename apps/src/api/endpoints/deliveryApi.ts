@@ -477,6 +477,28 @@ export const deliveryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Assignment', 'Order', 'Offer'],
     }),
+    submitCashDeposit: builder.mutation<
+      { paymentSessionId?: string, referenceNumber: string },
+      { amount: number; referenceNumber?: string }
+    >({
+      query: (body) => ({
+        url: '/api/v1/delivery/cash-deposits',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+      invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
+    verifyCashDeposit: builder.mutation<
+      void,
+      string
+    >({
+      query: (depositId) => ({
+        url: `/api/v1/delivery/cash-deposits/${depositId}/verify`,
+        method: 'POST',
+      }),
+      invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
+    }),
   }),
 });
 
@@ -499,5 +521,7 @@ export const {
   useGetDeliveryReviewsQuery,
   useGetNavigationDetailsQuery,
   useArrivedAtRestaurantMutation,
+  useSubmitCashDepositMutation,
+  useVerifyCashDepositMutation,
 } = deliveryApi;
 

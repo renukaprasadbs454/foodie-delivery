@@ -14,9 +14,7 @@ import { Feather } from '@expo/vector-icons';
 import { WebView } from 'react-native-webview';
 import { Text } from '@/components/Text';
 import { Toast } from '@/components/Toast';
-import { useConnectivity } from '@/hooks/useConnectivity';
-import { useAppSelector } from '@/store/hooks';
-import { selectUserId } from '../../auth/authSlice';
+import { useGetDeliveryProfileQuery, useSubmitCashDepositMutation, useVerifyCashDepositMutation } from '@/api/endpoints/deliveryApi';
 import { ENV } from '@/constants/env';
 import { BottomNav } from '@/navigation/BottomNav';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -27,59 +25,36 @@ type Props = NativeStackScreenProps<MainStackParamList, 'CashDeposit'>;
 const COD_STORAGE_KEY_PREFIX = 'cod_collected_';
 const DEPOSIT_HISTORY_KEY_PREFIX = 'cod_deposits_';
 
-// Replace with your Razorpay Test Key — same as used in customer app
-const RAZORPAY_KEY = 'rzp_test_YourKeyHere'; // ← replace with actual key
-
-function buildRazorpayHtml(amountPaise: number, description: string, name: string): string {
-    const config: Record<string, unknown> = {
-        key: RAZORPAY_KEY,
-        amount: amountPaise,
-        currency: 'INR',
-        name: 'Foodie — COD Deposit',
-        description,
-        prefill: {
-            contact: '9876543210',
-            email: 'partner@foodie.com',
-        },
-        theme: { color: '#14532D' },
-        method: { upi: true, card: true, netbanking: true, wallet: true },
-    };
-
-    const configStr = JSON.stringify(config);
-
+function buildCashfreeHtml(paymentSessionId: string): string {
     return `<!DOCTYPE html><html lang="en"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-  <title>Razorpay Payment</title>
-  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <title>Cashfree Payment</title>
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
   <style>
-    body,html{margin:0;padding:0;height:100vh;width:100vw;background:#fff;display:flex;justify-content:center;align-items:center;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
-    .spinner{width:44px;height:44px;border:4px solid #e2e8f0;border-top:4px solid #14532D;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px;}
-    @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+    body,html{margin:0;padding:0;height:100vh;width:100vw;background:#fff;display:flex;justify-content:center;align-items:center;font-family:-apple-system,sans-serif;}
   </style>
   </head><body>
   <div id="loader" style="text-align:center;color:#1e293b">
-    <div class="spinner"></div>
-    <p style="font-weight:700;font-size:16px">Loading Secure Checkout...</p>
+    Loading Secure Checkout...
   </div>
   <script>
-    const config = ${configStr};
-    config.handler = function(response){
-      window.ReactNativeWebView.postMessage(JSON.stringify({type:'success',data:{
-        razorpay_payment_id:response.razorpay_payment_id||'',
-        razorpay_order_id:response.razorpay_order_id||null,
-        razorpay_signature:response.razorpay_signature||null
-      }}));
-    };
-    config.modal={ondismiss:function(){window.ReactNativeWebView.postMessage(JSON.stringify({type:'cancel'}));}};
     window.onload=function(){
       try{
-        const rzp=new Razorpay(config);
-        rzp.on('payment.failed',function(r){
-          window.ReactNativeWebView.postMessage(JSON.stringify({type:'error',data:r.error?r.error.description:'Payment Failed'}));
+        const cashfree = Cashfree({ mode: "sandbox" });
+        cashfree.checkout({
+            paymentSessionId: "${paymentSessionId}"
+        }).then(function(result){
+            if(result.error){
+                window.ReactNativeWebView.postMessage(JSON.stringify({type:'error',data:result.error.message}));
+            }
+            if(result.redirect){
+                console.log("Redirecting");
+            }
+            if(result.paymentDetails){
+                window.ReactNativeWebView.postMessage(JSON.stringify({type:'success',data:result.paymentDetails.paymentMessage}));
+            }
         });
-        rzp.open();
-        setTimeout(function(){var l=document.getElementById('loader');if(l)l.style.display='none';},800);
       }catch(err){
         window.ReactNativeWebView.postMessage(JSON.stringify({type:'error',data:err.message||'Could not launch checkout'}));
       }
@@ -90,57 +65,32 @@ function buildRazorpayHtml(amountPaise: number, description: string, name: strin
 
 export function CashDepositScreen({ navigation }: Props) {
     const insets = useSafeAreaInsets();
-    const { isConnected } = useConnectivity();
-    const userId = useAppSelector(selectUserId);
+    const { data: profile, refetch: refetchProfile } = useGetDeliveryProfileQuery();
+    const [submitDeposit] = useSubmitCashDepositMutation();
+    const [verifyDeposit] = useVerifyCashDepositMutation();
 
-    const [collectedAmount, setCollectedAmount] = useState(0);
-    const [depositHistory, setDepositHistory] = useState<Array<{ amount: number; date: string; paymentId: string }>>([]);
+    const collectedAmount = profile?.cashInHand || 0;
     const [showRazorpay, setShowRazorpay] = useState(false);
+    const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
+    const [depositId, setDepositId] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [toast, setToast] = useState<{
         message: string;
         variant: 'info' | 'success' | 'error' | 'warning';
     } | null>(null);
 
-    const storageKey = userId ? `${COD_STORAGE_KEY_PREFIX}${userId}` : null;
-    const historyKey = userId ? `${DEPOSIT_HISTORY_KEY_PREFIX}${userId}` : null;
-
-    // Load collected COD amount & deposit history from AsyncStorage
-    useEffect(() => {
-        async function load() {
-            if (!storageKey || !historyKey) return;
-            try {
-                const [raw, histRaw] = await Promise.all([
-                    AsyncStorage.getItem(storageKey),
-                    AsyncStorage.getItem(historyKey),
-                ]);
-                if (raw) setCollectedAmount(parseFloat(raw) || 0);
-                if (histRaw) setDepositHistory(JSON.parse(histRaw) || []);
-            } catch { }
-        }
-        void load();
-    }, [storageKey, historyKey]);
-
     const handleDepositSuccess = async (paymentId: string) => {
         setShowRazorpay(false);
+        if (depositId) {
+            try {
+                await verifyDeposit(depositId).unwrap();
+                await refetchProfile();
+                setToast({ message: '✅ COD deposit successful! ₹' + collectedAmount.toFixed(2) + ' sent to Foodie.', variant: 'success' });
+            } catch (e) {
+                setToast({ message: 'Submission successful, but verification failed.', variant: 'warning' });
+            }
+        }
         setIsProcessing(false);
-        if (!storageKey || !historyKey) return;
-        // Record deposit
-        const entry = {
-            amount: collectedAmount,
-            date: new Date().toISOString(),
-            paymentId,
-        };
-        const updated = [entry, ...depositHistory];
-        setDepositHistory(updated);
-        setCollectedAmount(0);
-        try {
-            await Promise.all([
-                AsyncStorage.setItem(storageKey, '0'),
-                AsyncStorage.setItem(historyKey, JSON.stringify(updated)),
-            ]);
-        } catch { }
-        setToast({ message: '✅ COD deposit successful! ₹' + entry.amount.toFixed(2) + ' sent to Foodie.', variant: 'success' });
     };
 
     const handlePaymentMessage = async (rawData: string) => {
@@ -163,8 +113,7 @@ export function CashDepositScreen({ navigation }: Props) {
         }
     };
 
-    const amountPaise = Math.round(collectedAmount * 100);
-    const htmlContent = buildRazorpayHtml(amountPaise, 'COD Cash Deposit to Foodie', 'Foodie');
+    const htmlContent = paymentSessionId ? buildCashfreeHtml(paymentSessionId) : '';
 
     return (
         <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
@@ -246,13 +195,26 @@ export function CashDepositScreen({ navigation }: Props) {
                 {collectedAmount > 0 ? (
                     <Pressable
                         disabled={!isConnected || isProcessing}
-                        onPress={() => {
+                        onPress={async () => {
                             if (!isConnected) {
                                 setToast({ message: 'No internet connection. Payment requires internet.', variant: 'warning' });
                                 return;
                             }
                             setIsProcessing(true);
-                            setShowRazorpay(true);
+                            try {
+                                const res = await submitDeposit({ amount: collectedAmount }).unwrap();
+                                if (res.paymentSessionId) {
+                                    setPaymentSessionId(res.paymentSessionId);
+                                    setDepositId((res as any).id || res.referenceNumber);
+                                    setShowRazorpay(true);
+                                } else {
+                                    setToast({ message: 'Failed to initiate cashfree deposit.', variant: 'error' });
+                                    setIsProcessing(false);
+                                }
+                            } catch (e: any) {
+                                setToast({ message: e?.data?.error?.message || 'Error occurred.', variant: 'error' });
+                                setIsProcessing(false);
+                            }
                         }}
                         style={({ pressed }) => ({ opacity: pressed || (!isConnected) ? 0.7 : 1, marginBottom: 24 })}
                     >
@@ -288,61 +250,20 @@ export function CashDepositScreen({ navigation }: Props) {
                     </View>
                 )}
 
-                {/* Deposit History */}
-                <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A202C', marginBottom: 16 }}>Deposit History</Text>
-                {depositHistory.length === 0 ? (
-                    <View style={{
-                        backgroundColor: '#FFFFFF',
-                        borderRadius: 20,
-                        padding: 32,
-                        alignItems: 'center',
-                        borderWidth: 1,
-                        borderColor: '#E2E8F0',
-                    }}>
-                        <Feather name="clock" size={32} color="#A0AEC0" />
-                        <Text style={{ color: '#A0AEC0', fontWeight: '600', fontSize: 15, marginTop: 12 }}>No deposits yet</Text>
-                    </View>
-                ) : (
-                    depositHistory.map((d, i) => (
-                        <View key={i} style={{
-                            backgroundColor: '#FFFFFF',
-                            borderRadius: 16,
-                            padding: 16,
-                            marginBottom: 12,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            borderWidth: 1,
-                            borderColor: '#E2E8F0',
-                        }}>
-                            <View style={{
-                                width: 44,
-                                height: 44,
-                                borderRadius: 22,
-                                backgroundColor: '#F0FDF4',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                marginRight: 12,
-                            }}>
-                                <Feather name="check-circle" size={22} color="#10B981" />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={{ fontSize: 16, fontWeight: '800', color: '#1A202C' }}>₹{d.amount.toFixed(2)} deposited</Text>
-                                <Text style={{ fontSize: 12, color: '#718096', marginTop: 2 }}>
-                                    {new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                                <Text style={{ fontSize: 11, color: '#A0AEC0', marginTop: 1 }} numberOfLines={1}>ID: {d.paymentId}</Text>
-                            </View>
-                            <View style={{
-                                backgroundColor: '#DCFCE7',
-                                borderRadius: 12,
-                                paddingHorizontal: 10,
-                                paddingVertical: 4,
-                            }}>
-                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#14532D' }}>PAID</Text>
-                            </View>
-                        </View>
-                    ))
-                )}
+                {/* Deposit History Placeholder */}
+                <Text style={{ fontSize: 18, fontWeight: '800', color: '#1A202C', marginBottom: 16 }}>Pending Deposits</Text>
+                <View style={{
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: 20,
+                    padding: 32,
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: '#E2E8F0',
+                }}>
+                    <Feather name="clock" size={32} color="#A0AEC0" />
+                    <Text style={{ color: '#A0AEC0', fontWeight: '600', fontSize: 15, marginTop: 12 }}>Will apply when verified</Text>
+                </View>
+
             </ScrollView>
 
             <Toast
@@ -357,7 +278,7 @@ export function CashDepositScreen({ navigation }: Props) {
             <Modal visible={showRazorpay} animationType="slide" transparent={false} onRequestClose={() => { setShowRazorpay(false); setIsProcessing(false); }}>
                 <View style={{ flex: 1, backgroundColor: '#fff' }}>
                     <WebView
-                        source={{ html: htmlContent, baseUrl: 'https://checkout.razorpay.com' }}
+                        source={{ html: htmlContent, baseUrl: 'https://sandbox.cashfree.com' }}
                         style={{ flex: 1 }}
                         javaScriptEnabled
                         domStorageEnabled

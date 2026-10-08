@@ -52,4 +52,5 @@ export type DeliveryProfile = {
   isOnline: boolean;
   profileImageUrl?: string;
   documents?: DeliveryDocumentUploadResult[];
+  cashInHand?: number;
 };

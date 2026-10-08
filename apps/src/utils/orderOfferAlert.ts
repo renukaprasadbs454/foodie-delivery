@@ -157,9 +157,9 @@ export async function startOrderOfferAlert(offerId: string, offerDetails?: { res
     void configureNativeAudioMode();
     try {
       if (!nativeSoundObject) {
-        const { sound } = await Audio.Sound.createAsync(require('../../assets/alert.wav'));
+        const { sound } = await Audio.Sound.createAsync(require('../../assets/cycle_bell.wav'));
         nativeSoundObject = sound;
-        await nativeSoundObject.setIsLoopingAsync(false);
+        await nativeSoundObject.setIsLoopingAsync(true);
       }
       await nativeSoundObject.stopAsync();
       await nativeSoundObject.playAsync();
@@ -194,7 +194,7 @@ export async function startOrderOfferAlert(offerId: string, offerDetails?: { res
         // ignore
       }
       if (nativeSoundObject) {
-        nativeSoundObject.stopAsync().then(() => nativeSoundObject?.playAsync()).catch(() => { });
+        // Now using loop natively, no need to re-trigger here.
       }
     }
   }, 1800);
