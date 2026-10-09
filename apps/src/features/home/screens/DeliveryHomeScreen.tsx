@@ -95,6 +95,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
       setToast({ message: 'Please complete your assigned order first before accepting a new one.', variant: 'error' });
       return;
     }
+    stopOrderOfferAlert();
     setAcceptingId(assignmentId);
     try {
       const result = await acceptAssignment(assignmentId).unwrap();
@@ -612,7 +613,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
             <View style={styles.activeBottomRow}>
               <View>
                 <Text style={styles.earnHintLabel}>Estimated Payout</Text>
-                <Text style={styles.earnAmount}>{formatMoney(orderQuery.data?.totalAmount ?? 0)}</Text>
+                <Text style={styles.earnAmount}>{formatMoney(orderQuery.data?.deliveryFee ?? 0)}</Text>
               </View>
               <View style={styles.navAction}>
                 <Text style={styles.navText}>Tap for Details</Text>
