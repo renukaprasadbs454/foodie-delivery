@@ -17,6 +17,7 @@ import { Toast } from '@/components/Toast';
 import { useGetDeliveryProfileQuery, useSubmitCashDepositMutation, useVerifyCashDepositMutation } from '@/api/endpoints/deliveryApi';
 import { ENV } from '@/constants/env';
 import { BottomNav } from '@/navigation/BottomNav';
+import { useConnectivity } from '@/hooks/useConnectivity';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '@/navigation/types';
 
@@ -65,6 +66,7 @@ function buildCashfreeHtml(paymentSessionId: string): string {
 
 export function CashDepositScreen({ navigation }: Props) {
     const insets = useSafeAreaInsets();
+    const { isConnected } = useConnectivity();
     const { data: profile, refetch: refetchProfile } = useGetDeliveryProfileQuery();
     const [submitDeposit] = useSubmitCashDepositMutation();
     const [verifyDeposit] = useVerifyCashDepositMutation();
