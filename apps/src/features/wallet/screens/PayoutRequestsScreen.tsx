@@ -168,6 +168,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
   }, []);
 
   const balance = parseMoneyAmount(balanceQuery.data?.balance);
+  const processingBalance = parseMoneyAmount(balanceQuery.data?.processingWithdrawals);
 
   const onSubmit = async () => {
     if (!isConnected) {
@@ -307,11 +308,30 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           <Text style={{ fontSize: 13, color: '#A7F3D0', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
             Available Balance
           </Text>
-          <Text style={{ fontSize: 44, lineHeight: 52, paddingTop: 8, fontWeight: '900', color: '#FCD34D', marginBottom: 12, includeFontPadding: true }}>
+          <Text style={{ fontSize: 44, lineHeight: 52, paddingTop: 8, fontWeight: '900', color: '#FCD34D', marginBottom: processingBalance && processingBalance > 0 ? 8 : 12, includeFontPadding: true }}>
             {balance === null ? '—' : formatMoneyInr(balance)}
           </Text>
+          {processingBalance && processingBalance > 0 ? (
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: 'rgba(252, 211, 77, 0.15)',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 10,
+              alignSelf: 'flex-start',
+              marginBottom: 10,
+              borderWidth: 1,
+              borderColor: 'rgba(252, 211, 77, 0.3)',
+            }}>
+              <Feather name="clock" size={13} color="#FCD34D" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#FCD34D', fontSize: 13, fontWeight: '700' }}>
+                Processing Withdrawal: {formatMoneyInr(processingBalance)}
+              </Text>
+            </View>
+          ) : null}
           <Text style={{ fontSize: 12, color: '#A7F3D0', opacity: 0.8, fontWeight: '500' }}>
-            Note: Requested amount does not debit until processed.
+            Note: Requested amount is deducted immediately and processed upon admin approval.
           </Text>
         </LinearGradient>
 

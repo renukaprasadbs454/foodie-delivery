@@ -5,6 +5,7 @@
 export type WalletBalance = {
   walletAccountId: string;
   balance: number | string;
+  processingWithdrawals?: number | string;
 };
 
 export type LedgerEntryType = 'CREDIT' | 'DEBIT' | string;
