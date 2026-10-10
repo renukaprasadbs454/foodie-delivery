@@ -1,8 +1,7 @@
 {
   "expo": {
-    "name": "Foodie Delivery",
+    "name": "Delimo-delivery partner",
     "slug": "foodie-delivery",
-    "jsEngine": "jsc",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -10,7 +9,10 @@
     "scheme": "foodie-delivery",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.foodie.delivery"
+      "bundleIdentifier": "com.foodie.delivery",
+      "config": {
+        "googleMapsApiKey": "AIzaSyBef3prJr9YvHFDYczEJ-mzZfSlLd2vHbE"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,6 +22,11 @@
         "monochromeImage": "./src/assets/android-icon-monochrome.png"
       },
       "package": "com.foodie.delivery",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBef3prJr9YvHFDYczEJ-mzZfSlLd2vHbE"
+        }
+      },
       "intentFilters": [
         {
           "action": "VIEW",
@@ -27,7 +34,7 @@
           "data": [
             {
               "scheme": "https",
-              "host": "app.foodie.example",
+              "host": "app.delimo.com",
               "pathPrefix": "/"
             }
           ],
@@ -50,28 +57,38 @@
       "favicon": "./src/assets/favicon.png"
     },
     "plugins": [
+      "expo-font",
       "expo-secure-store",
       "expo-notifications",
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Foodie Delivery to upload your profile photo for KYC."
+          "photosPermission": "Allow Delimo Delivery to upload your profile photo for KYC."
         }
       ],
       "expo-document-picker",
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Foodie Delivery to use your location while online for delivery offers and assignment tracking.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Delimo Delivery to use your location while online for delivery offers and assignment tracking.",
           "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],
     "extra": {
       "apiBaseUrl": "https://api.foodie.kwiko.org",
       "wsUrl": "wss://api.foodie.kwiko.org/ws",
-      "appEnv": "development",
+      "appEnv": "production",
       "eas": {
         "projectId": "21f79f45-004b-4424-a929-7b2d907a6394"
       }

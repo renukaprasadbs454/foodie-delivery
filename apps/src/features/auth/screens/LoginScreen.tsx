@@ -172,9 +172,9 @@ export function LoginScreen() {
             style={styles.brandLogo}
             resizeMode="cover"
           />
-          <Text style={styles.brandNameText}>Foodie</Text>
+          <Text style={styles.brandNameText}>Delimo</Text>
           <View style={styles.badgeContainer}>
-            <Text style={styles.badgeText}>DELIVERY FLEET</Text>
+            <Text style={styles.badgeText}>DELIVERY PARTNER</Text>
           </View>
         </View>
 
