@@ -197,7 +197,7 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                     </View>
                 )}
 
-                {data.status === 'REQUESTED' && (
+                {(data.status === 'REQUESTED' || data.status === 'PROCESSING') && (
                     <View style={{
                         backgroundColor: '#EFF6FF',
                         borderWidth: 1,
@@ -207,7 +207,7 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                         marginBottom: 20,
                     }}>
                         <Text style={{ color: '#1E40AF', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
-                            ⏳ This payout request is waiting for Admin approval. Your wallet balance will remain intact until you complete the withdrawal after approval.
+                            ⏳ This payout request is waiting for Admin approval. The amount has been deducted from your available balance and is processing.
                         </Text>
                     </View>
                 )}
@@ -223,6 +223,9 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                     }}>
                         <Text style={{ color: '#991B1B', fontSize: 13, fontWeight: '700' }}>
                             Withdrawal request was rejected by admin.
+                        </Text>
+                        <Text style={{ color: '#047857', fontSize: 12, fontWeight: '700', marginTop: 4 }}>
+                            ✅ The amount has been refunded back to your wallet balance.
                         </Text>
                         {data.failureReason ? (
                             <Text style={{ color: '#B91C1C', fontSize: 12, marginTop: 4 }}>

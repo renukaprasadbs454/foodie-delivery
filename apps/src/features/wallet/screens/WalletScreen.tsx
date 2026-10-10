@@ -43,6 +43,7 @@ export function WalletScreen({ navigation }: Props) {
   }, []);
 
   const amount = parseMoneyAmount(balanceQuery.data?.balance);
+  const processingAmount = parseMoneyAmount(balanceQuery.data?.processingWithdrawals);
   const loading = balanceQuery.isLoading && !balanceQuery.data;
 
   return (
@@ -138,11 +139,31 @@ export function WalletScreen({ navigation }: Props) {
             </View>
 
             <Text
-              style={{ fontSize: 44, lineHeight: 52, paddingTop: 8, fontWeight: '900', color: '#FCD34D', marginBottom: 12, includeFontPadding: true }}
+              style={{ fontSize: 44, lineHeight: 52, paddingTop: 8, fontWeight: '900', color: '#FCD34D', marginBottom: processingAmount && processingAmount > 0 ? 8 : 12, includeFontPadding: true }}
               accessibilityLabel={amount === null ? 'Balance unavailable' : formatMoneyInr(amount)}
             >
               {amount === null ? '—' : formatMoneyInr(amount)}
             </Text>
+
+            {processingAmount && processingAmount > 0 ? (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: 'rgba(252, 211, 77, 0.15)',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 10,
+                alignSelf: 'flex-start',
+                marginBottom: 8,
+                borderWidth: 1,
+                borderColor: 'rgba(252, 211, 77, 0.3)',
+              }}>
+                <Feather name="clock" size={13} color="#FCD34D" style={{ marginRight: 6 }} />
+                <Text style={{ color: '#FCD34D', fontSize: 13, fontWeight: '700' }}>
+                  Processing Withdrawal: {formatMoneyInr(processingAmount)}
+                </Text>
+              </View>
+            ) : null}
 
             {balanceQuery.isError ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, backgroundColor: 'rgba(239, 68, 68, 0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, alignSelf: 'flex-start' }}>

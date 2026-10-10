@@ -110,6 +110,9 @@ export function IncentivesScreen({ navigation }: Props) {
         if (id.includes('referral') || id.includes('Referral')) {
             return <Feather name="users" size={16} color="#EC4899" />;
         }
+        if (id.includes('base') || id.includes('Base')) {
+            return <Feather name="dollar-sign" size={16} color="#10B981" />;
+        }
         return <Feather name="award" size={16} color="#14532D" />;
     };
 
