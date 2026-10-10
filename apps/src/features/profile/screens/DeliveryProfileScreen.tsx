@@ -88,138 +88,93 @@ export function DeliveryProfileScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 80, paddingTop: insets.top + 16 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Curved Dark Green brand banner top arch container with smooth gradient */}
+        {/* Curved Dark Green brand banner top arch with smooth gradient placed inside ScrollView */}
         <LinearGradient
           colors={['#0F3E22', '#14532D', '#1B6A3A']}
           style={{
-            paddingTop: insets.top > 0 ? insets.top + 12 : 24,
-            paddingBottom: 28,
-            paddingHorizontal: 20,
-            borderBottomLeftRadius: 36,
-            borderBottomRightRadius: 36,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 5,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 270,
+            borderBottomLeftRadius: 40,
+            borderBottomRightRadius: 40,
           }}
-        >
-          <View style={{ maxWidth: 600, width: '100%', alignSelf: 'center' }}>
-            {/* Header Navigation Row */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 18 }}>
-              <Pressable
-                onPress={() => navigation.goBack()}
-                accessibilityLabel="Go back"
-                style={({ pressed }) => ({
-                  width: 40,
-                  height: 40,
-                  borderRadius: 20,
-                  backgroundColor: 'rgba(255,255,255,0.18)',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginRight: 14,
-                  opacity: pressed ? 0.8 : 1,
-                })}
-              >
-                <Feather name="arrow-left" size={22} color="#FFF" />
-              </Pressable>
-              <Text style={{ fontSize: 32, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5 }}>
-                Profile
-              </Text>
-            </View>
+        />
 
-            {/* Profile Avatar, Name, and Role Badge */}
-            <View style={{ alignItems: 'center' }}>
-              <View
-                style={{
-                  width: 104,
-                  height: 104,
-                  borderRadius: 52,
-                  backgroundColor: '#FFFFFF',
-                  borderWidth: 3,
-                  borderColor: '#FCD34D', // Premium gold accent border
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginBottom: 14,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.25,
-                  shadowRadius: 8,
-                  elevation: 6,
-                }}
-              >
-                {finalImgUri ? (
-                  <Image
-                    source={{ uri: finalImgUri }}
-                    style={{ width: 94, height: 94, borderRadius: 47 }}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={{ width: 94, height: 94, borderRadius: 47, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }}>
-                    <Text style={{ fontSize: 32, fontWeight: '800', color: '#64748B' }}>{initials}</Text>
-                  </View>
-                )}
+        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
+          <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
+            <Feather name="arrow-left" size={22} color="#FFF" />
+          </Pressable>
+          <Text style={{ fontSize: 34, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5 }}>Profile</Text>
+        </View>
+
+        {/* iOS Profile Avatar header inside the dark green arch */}
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
+          <View
+            style={{
+              width: 104,
+              height: 104,
+              borderRadius: 52,
+              backgroundColor: '#FFFFFF',
+              borderWidth: 3,
+              borderColor: '#FCD34D', // Premium gold accent border
+              justifyContent: 'center',
+              alignItems: 'center',
+              marginBottom: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 5,
+            }}
+          >
+            {finalImgUri ? (
+              <Image
+                source={{ uri: finalImgUri }}
+                style={{ width: 94, height: 94, borderRadius: 47 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={{ width: 94, height: 94, borderRadius: 47, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 32, fontWeight: '800', color: '#64748B' }}>{initials}</Text>
               </View>
-
-              <Text
-                style={{
-                  fontSize: 24,
-                  fontWeight: '800',
-                  color: '#FFFFFF',
-                  textAlign: 'center',
-                  marginBottom: 8,
-                  paddingHorizontal: 16,
-                  letterSpacing: 0.3,
-                }}
-                numberOfLines={2}
-              >
-                {nameVal}
-              </Text>
-
-              {/* High-contrast Role Badge comfortably positioned inside the green banner */}
-              <View
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.16)',
-                  paddingHorizontal: 14,
-                  paddingVertical: 5,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: 'rgba(252, 211, 77, 0.35)',
-                }}
-              >
-                <Text style={{ fontSize: 12, color: '#FCD34D', fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' }}>
-                  {roleVal.replace('_', ' ')}
-                </Text>
-              </View>
-            </View>
+            )}
           </View>
-        </LinearGradient>
 
-        <View style={{ paddingHorizontal: 20, paddingTop: 24, maxWidth: 600, width: '100%', alignSelf: 'center' }}>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 }}>
+            {nameVal}
+          </Text>
+          <Text style={{ fontSize: 15, color: '#A7F3D0', fontWeight: '600' }}>
+            {roleVal.replace('_', ' ')}
+          </Text>
+        </View>
+
+        <View style={{ paddingHorizontal: 20 }}>
           <Text style={{ fontSize: 13, color: '#4B5563', fontWeight: '700', marginLeft: 4, marginBottom: 8, letterSpacing: 0.6, textTransform: 'uppercase' }}>
             ACCOUNT & DETAILS
           </Text>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 18, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#E5E7EB' }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 12 }}>
-              <Text style={{ fontSize: 15, color: '#111827', fontWeight: '500', flexShrink: 0 }}>Full Name</Text>
-              <Text style={{ fontSize: 15, color: '#6B7280', fontWeight: '600', flex: 1, textAlign: 'right' }} numberOfLines={1}>{nameVal}</Text>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>Full Name</Text>
+              <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>{nameVal}</Text>
             </View>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 12 }}>
-              <Text style={{ fontSize: 15, color: '#111827', fontWeight: '500', flexShrink: 0 }}>User ID</Text>
-              <Text style={{ fontSize: 15, color: '#6B7280', fontWeight: '600', flex: 1, textAlign: 'right' }} numberOfLines={1}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>User ID</Text>
+              <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>
                 #{userId ? userId.substring(0, 8).toUpperCase() : '...'}
               </Text>
             </View>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 12 }}>
-              <Text style={{ fontSize: 15, color: '#111827', fontWeight: '500', flexShrink: 0 }}>Verification</Text>
-              <Text style={{ fontSize: 15, color: kycStatus === 'VERIFIED' ? '#10B981' : kycStatus === 'REJECTED' ? '#EF4444' : '#F59E0B', fontWeight: '700', flexShrink: 0 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
+              <Text style={{ fontSize: 16, color: '#111827' }}>Verification</Text>
+              <Text style={{ fontSize: 16, color: kycStatus === 'VERIFIED' ? '#10B981' : kycStatus === 'REJECTED' ? '#EF4444' : '#F59E0B', fontWeight: '700' }}>
                 {kycStatus === 'VERIFIED' ? 'Verified' : kycStatus === 'REJECTED' ? 'Rejected' : 'Pending'}
               </Text>
             </View>
@@ -228,21 +183,21 @@ export function DeliveryProfileScreen({ navigation }: Props) {
           <Text style={{ fontSize: 13, color: '#4B5563', fontWeight: '700', marginLeft: 4, marginBottom: 8, letterSpacing: 0.6, textTransform: 'uppercase' }}>
             PREFERENCES & SETTINGS
           </Text>
-          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 18, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, borderWidth: 1, borderColor: '#E5E7EB' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
             <Pressable
               onPress={() => navigation.navigate('DeliverySettings')}
               style={({ pressed }) => ({
                 flexDirection: 'row',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                paddingVertical: 15,
+                paddingVertical: 16,
                 paddingHorizontal: 16,
                 backgroundColor: pressed ? '#F9FAFB' : '#FFFFFF',
               })}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Feather name="settings" size={20} color="#14532D" style={{ marginRight: 12 }} />
-                <Text style={{ fontSize: 15, color: '#111827', fontWeight: '500', flexShrink: 1 }}>App Settings</Text>
+                <Text style={{ fontSize: 16, color: '#111827' }}>App Settings</Text>
               </View>
               <Feather name="chevron-right" size={20} color="#D1D5DB" />
             </Pressable>

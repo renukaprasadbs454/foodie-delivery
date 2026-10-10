@@ -230,7 +230,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 90, maxWidth: 640, width: '100%', alignSelf: 'center' }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 90 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -307,11 +307,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           <Text style={{ fontSize: 13, color: '#A7F3D0', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
             Available Balance
           </Text>
-          <Text
-            style={{ fontSize: 38, lineHeight: 46, paddingTop: 6, fontWeight: '900', color: '#FCD34D', marginBottom: 12 }}
-            adjustsFontSizeToFit
-            numberOfLines={1}
-          >
+          <Text style={{ fontSize: 44, lineHeight: 52, paddingTop: 8, fontWeight: '900', color: '#FCD34D', marginBottom: 12, includeFontPadding: true }}>
             {balance === null ? '—' : formatMoneyInr(balance)}
           </Text>
           <Text style={{ fontSize: 12, color: '#A7F3D0', opacity: 0.8, fontWeight: '500' }}>
@@ -333,10 +329,9 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 12,
-              flexWrap: 'wrap',
             }}
           >
-            <View style={{ flex: 1, minWidth: 200, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Feather name="alert-circle" size={20} color="#DC2626" />
               <Text style={{ color: '#B91C1C', fontSize: 13, fontWeight: '700', flex: 1 }}>
                 Please enter your bank details before requesting a withdrawal.
@@ -347,7 +342,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
               accessibilityLabel="Add Bank Details"
               style={({ pressed }) => ({
                 backgroundColor: '#DC2626',
-                paddingHorizontal: 14,
+                paddingHorizontal: 12,
                 paddingVertical: 8,
                 borderRadius: 10,
                 opacity: pressed ? 0.8 : 1,
@@ -374,8 +369,8 @@ export function PayoutRequestsScreen({ navigation }: Props) {
           borderWidth: 1,
           borderColor: bankError && !isBankConfigured ? '#F87171' : '#E2E8F0',
         }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 180 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
               <View style={{
                 width: 44,
                 height: 44,
@@ -383,7 +378,6 @@ export function PayoutRequestsScreen({ navigation }: Props) {
                 backgroundColor: isBankConfigured ? 'rgba(20, 83, 45, 0.08)' : 'rgba(220, 38, 38, 0.08)',
                 justifyContent: 'center',
                 alignItems: 'center',
-                flexShrink: 0,
               }}>
                 <Feather name="credit-card" size={22} color={isBankConfigured ? '#14532D' : '#DC2626'} />
               </View>
@@ -395,7 +389,7 @@ export function PayoutRequestsScreen({ navigation }: Props) {
                   {isBankConfigured ? savedBankDetails?.bankName : 'No Bank Configured'}
                 </Text>
                 {isBankConfigured ? (
-                  <Text style={{ fontSize: 13, color: '#4A5568', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontSize: 13, color: '#4A5568', fontWeight: '600', marginTop: 2 }}>
                     A/C: •••• {savedBankDetails?.accountNumber?.slice(-4)} {savedBankDetails?.ifscCode ? `(${savedBankDetails.ifscCode})` : ''}
                   </Text>
                 ) : (
@@ -417,7 +411,6 @@ export function PayoutRequestsScreen({ navigation }: Props) {
                 paddingVertical: 10,
                 borderRadius: 14,
                 opacity: pressed ? 0.8 : 1,
-                alignSelf: 'flex-start',
               })}
             >
               <Text style={{ color: isBankConfigured ? '#047857' : '#DC2626', fontSize: 13, fontWeight: '800' }}>
