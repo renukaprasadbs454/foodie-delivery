@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Foodie Delivery",
-    "slug": "foodie",
+    "slug": "foodie-delivery",
     "jsEngine": "jsc",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -71,10 +71,10 @@
     "extra": {
       "apiBaseUrl": "https://api.foodie.kwiko.org",
       "wsUrl": "wss://api.foodie.kwiko.org/ws",
+      "appEnv": "development",
       "eas": {
-        "projectId": "e9d2ed93-c928-4a8c-9b50-d1a842d3ede9"
+        "projectId": "21f79f45-004b-4424-a929-7b2d907a6394"
       }
-    },
-    "owner": "rpbs454s-team"
+    }
   }
 }

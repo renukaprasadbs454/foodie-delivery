@@ -74,7 +74,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint \"src/**/*.{ts,tsx}\" \"index.ts\"",
     "test": "jest",
-    "build": "tsc -p tsconfig.json --noEmit"
+    "build": "tsc -p tsconfig.json --noEmit",
+    "build:apk": "eas build -p android --profile preview"
   },
   "private": true
 }
