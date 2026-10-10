@@ -475,7 +475,7 @@ export const deliveryApi = baseApi.injectEndpoints({
         url: `/api/v1/delivery/assignments/${assignmentId}/arrived-restaurant`,
         method: 'POST',
       }),
-      invalidatesTags: ['Assignment', 'Order', 'Offer'],
+      invalidatesTags: ['Delivery', 'Order'],
     }),
     submitCashDeposit: builder.mutation<
       { paymentSessionId?: string, referenceNumber: string },

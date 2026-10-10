@@ -70,7 +70,7 @@ export function useLocationPingLoop({ enabled }: Options) {
     let position: Location.LocationObject;
     try {
       position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
     } catch {
       // Default fallback mock position in India Bangalore for robust testing routing
@@ -103,18 +103,72 @@ export function useLocationPingLoop({ enabled }: Options) {
     await publish(validated.value);
   }, [enabled, isConnected, publish]);
 
+  const lastPublishTimeRef = useRef(0);
+  const handleLiveLocation = useCallback(
+    async (loc: Location.LocationObject) => {
+      if (!focusedRef.current || !enabled) return;
+      const now = Date.now();
+      // Throttle pings to at most 1 ping per 1.5 seconds to protect rate-limit while delivering 1m responsiveness
+      if (now - lastPublishTimeRef.current < 1500) {
+        setLastPing({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        });
+        return;
+      }
+      lastPublishTimeRef.current = now;
+
+      const validated = validatePingCoords(loc.coords.latitude, loc.coords.longitude);
+      if (!validated.ok) return;
+
+      if (!isConnected) {
+        bufferRef.current.push(validated.value);
+        setLastPing(validated.value);
+        return;
+      }
+
+      await publish(validated.value);
+    },
+    [enabled, isConnected, publish],
+  );
+
   useFocusEffect(
     useCallback(() => {
       focusedRef.current = true;
+      let watchSub: Location.LocationSubscription | null = null;
+
       void tick();
+
+      (async () => {
+        try {
+          const perm = await Location.getForegroundPermissionsAsync();
+          if (perm.granted && enabled) {
+            watchSub = await Location.watchPositionAsync(
+              {
+                accuracy: Location.Accuracy.High,
+                distanceInterval: 1, // trigger update whenever moving 1 meter!
+                timeInterval: 1500,
+              },
+              (locationObj) => {
+                void handleLiveLocation(locationObj);
+              },
+            );
+          }
+        } catch { }
+      })();
+
       const id = setInterval(() => {
         void tick();
       }, LOCATION_PING_INTERVAL_MS);
+
       return () => {
         focusedRef.current = false;
         clearInterval(id);
+        if (watchSub) {
+          watchSub.remove();
+        }
       };
-    }, [tick]),
+    }, [tick, handleLiveLocation, enabled]),
   );
 
   useEffect(() => {

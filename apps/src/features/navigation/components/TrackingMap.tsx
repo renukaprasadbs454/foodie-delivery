@@ -48,18 +48,76 @@ export function TrackingMap({ lastPing, orderStatus, leg, restaurantLocation, cu
   const [loadingRoute, setLoadingRoute] = useState(false);
   const mapRef = useRef<MapView>(null);
 
+  const GOOGLE_MAPS_API_KEY = 'AIzaSyBef3prJr9YvHFDYczEJ-mzZfSlLd2vHbE';
+
+  function decodeGooglePolyline(encoded: string): { latitude: number; longitude: number }[] {
+    const points: { latitude: number; longitude: number }[] = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
+
+    while (index < len) {
+      let b, shift = 0, result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const dlat = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      const dlng = (result & 1) !== 0 ? ~(result >> 1) : result >> 1;
+      lng += dlng;
+
+      points.push({
+        latitude: lat / 1e5,
+        longitude: lng / 1e5,
+      });
+    }
+    return points;
+  }
+
   useEffect(() => {
     if (originLocation && targetLocation) {
       setLoadingRoute(true);
       const fetchRoute = async () => {
         try {
-          const res = await fetch(`https://router.project-osrm.org/route/v1/bike/${originLocation.longitude},${originLocation.latitude};${targetLocation.longitude},${targetLocation.latitude}?overview=full&geometries=geojson`);
-          const data = await res.json();
-          if (data && data.routes && data.routes.length > 0) {
-            const coords = data.routes[0].geometry.coordinates.map((coord: number[]) => ({
-              latitude: coord[1],
-              longitude: coord[0],
-            }));
+          let coords: { latitude: number; longitude: number }[] | null = null;
+
+          // 1. Google Directions API
+          try {
+            const googleUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${originLocation.latitude},${originLocation.longitude}&destination=${targetLocation.latitude},${targetLocation.longitude}&mode=driving&key=${GOOGLE_MAPS_API_KEY}`;
+            const gRes = await fetch(googleUrl);
+            const gData = await gRes.json();
+            if (gData.status === 'OK' && gData.routes && gData.routes.length > 0) {
+              const overview = gData.routes[0].overview_polyline?.points;
+              if (overview) {
+                coords = decodeGooglePolyline(overview);
+              }
+            }
+          } catch { }
+
+          // 2. OSRM fallback
+          if (!coords || coords.length === 0) {
+            try {
+              const res = await fetch(`https://router.project-osrm.org/route/v1/bike/${originLocation.longitude},${originLocation.latitude};${targetLocation.longitude},${targetLocation.latitude}?overview=full&geometries=geojson`);
+              const data = await res.json();
+              if (data && data.routes && data.routes.length > 0) {
+                coords = data.routes[0].geometry.coordinates.map((coord: number[]) => ({
+                  latitude: coord[1],
+                  longitude: coord[0],
+                }));
+              }
+            } catch { }
+          }
+
+          if (coords && coords.length > 0) {
             setRouteCoords(coords);
             if (mapRef.current) {
               mapRef.current.fitToCoordinates([

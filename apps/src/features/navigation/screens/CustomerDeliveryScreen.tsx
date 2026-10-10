@@ -3,6 +3,7 @@ import { ScrollView, View, StyleSheet, Pressable, BackHandler } from 'react-nati
 import { Feather, Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Linking from 'expo-linking';
+import * as Location from 'expo-location';
 import { BottomNav } from '@/navigation/BottomNav';
 import { Text } from '@/components/Text';
 import { Toast } from '@/components/Toast';
@@ -76,11 +77,41 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
     const deliveryAddress = navQuery.data?.deliveryAddress ?? order?.deliveryAddress ?? 'B-104, Shantiniketan Apartments, Whitefield, Bengaluru - 560066';
     const customerPhone = navQuery.data?.customerPhone ?? order?.customerPhone ?? '+919876543210';
 
+    const [customerCoords, setCustomerCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+    useEffect(() => {
+        let active = true;
+        const resolveCustomerCoordinates = async () => {
+            const rawLat = navQuery.data?.deliveryLat ?? (order as any)?.deliveryLat;
+            const rawLng = navQuery.data?.deliveryLng ?? (order as any)?.deliveryLng;
+            const addrText = navQuery.data?.deliveryAddress || order?.deliveryAddress;
+
+            if (addrText && addrText.length > 5 && !addrText.toLowerCase().includes('shantiniketan')) {
+                try {
+                    const results = await Location.geocodeAsync(addrText);
+                    if (results && results.length > 0 && active) {
+                        setCustomerCoords({ latitude: results[0].latitude, longitude: results[0].longitude });
+                        return;
+                    }
+                } catch { }
+            }
+
+            if (rawLat && rawLng && !isNaN(Number(rawLat)) && !isNaN(Number(rawLng)) && Number(rawLat) !== 0) {
+                if (active) {
+                    setCustomerCoords({ latitude: Number(rawLat), longitude: Number(rawLng) });
+                    return;
+                }
+            }
+        };
+        void resolveCustomerCoordinates();
+        return () => { active = false; };
+    }, [navQuery.data?.deliveryLat, navQuery.data?.deliveryLng, navQuery.data?.deliveryAddress, order?.deliveryAddress]);
+
     const defaultDistance = order?.estimatedDistance ?? 2.4;
-    const cLat = navQuery.data?.deliveryLat ?? 12.9716;
-    const cLng = navQuery.data?.deliveryLng ?? 77.5946;
+    const targetCustLat = customerCoords?.latitude ?? navQuery.data?.deliveryLat ?? 12.9716;
+    const targetCustLng = customerCoords?.longitude ?? navQuery.data?.deliveryLng ?? 77.5946;
     const distance = (lastPing)
-        ? calculateDistanceKm(lastPing.latitude, lastPing.longitude, cLat, cLng)
+        ? calculateDistanceKm(lastPing.latitude, lastPing.longitude, targetCustLat, targetCustLng)
         : defaultDistance;
 
     const handleCall = (phone: string) => {
@@ -92,14 +123,11 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
     const onOpenOsMaps = async () => {
         trackAnalyticsEvent('open_os_maps_tapped', { leg: 'drop', orderId });
 
-        const cLat = navQuery.data?.deliveryLat ?? 12.9716;
-        const cLng = navQuery.data?.deliveryLng ?? 77.5946;
-
         const opened = await openOsMapsHandoff({
             originLat: lastPing?.latitude,
             originLng: lastPing?.longitude,
-            destLat: cLat,
-            destLng: cLng,
+            destLat: targetCustLat,
+            destLng: targetCustLng,
             query: orderQuery.data?.orderNumber ? `Order ${orderQuery.data.orderNumber}` : undefined,
         });
         if (!opened) {
@@ -159,8 +187,8 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
                                     longitude: navQuery.data?.restaurantLng ?? 77.6000
                                 }}
                                 customerLocation={{
-                                    latitude: navQuery.data?.deliveryLat ?? 12.9716,
-                                    longitude: navQuery.data?.deliveryLng ?? 77.5946
+                                    latitude: targetCustLat,
+                                    longitude: targetCustLng,
                                 }}
                             />
                         </View>
