@@ -59,12 +59,14 @@ function resolveApiBaseUrl(): string {
   // 1. Explicit environment variable (injected at build time or via .env)
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || process.env.FOODIE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
-    return normalizeUrl(envUrl.trim());
+    const normalized = normalizeUrl(envUrl.trim());
+    return normalized.replace(':8082', ':8080');
   }
 
   // 2. Extra config provided by app.config.ts / EAS Build
   if (extra.apiBaseUrl && extra.apiBaseUrl.trim()) {
-    return normalizeUrl(extra.apiBaseUrl.trim());
+    const normalized = normalizeUrl(extra.apiBaseUrl.trim());
+    return normalized.replace(':8082', ':8080');
   }
 
   // 3. Web runtime same-origin default
@@ -79,11 +81,11 @@ function resolveApiBaseUrl(): string {
 function resolveWsUrl(apiBase: string): string {
   const envWs = process.env.EXPO_PUBLIC_WS_URL;
   if (envWs && envWs.trim()) {
-    return normalizeUrl(envWs.trim());
+    return normalizeUrl(envWs.trim()).replace(':8082', ':8080');
   }
 
   if (extra.wsUrl && extra.wsUrl.trim()) {
-    return normalizeUrl(extra.wsUrl.trim());
+    return normalizeUrl(extra.wsUrl.trim()).replace(':8082', ':8080');
   }
 
   if (apiBase.startsWith('https://')) {

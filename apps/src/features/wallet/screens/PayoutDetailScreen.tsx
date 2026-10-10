@@ -124,7 +124,7 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
 
                 <View style={styles.amountCard}>
                     <View style={[styles.iconCircleLg, { backgroundColor: statusInfo.bg }]}>
-                        <Feather name={statusInfo.icon as keyof typeof Feather.glyphMap} size={32} color={statusInfo.text} />
+                        <Feather name={statusInfo.icon as keyof typeof Feather.glyphMap} size={28} color={statusInfo.text} />
                     </View>
                     <Text style={styles.amountLabel}>Withdrawal Amount</Text>
                     <Text style={styles.amountValue}>{formatMoneyInr(Number(data.amount) || 0)}</Text>
@@ -142,7 +142,7 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                         backgroundColor: actionMessage.error ? '#FEF2F2' : '#F0FDF4',
                         borderWidth: 1,
                         borderColor: actionMessage.error ? '#FCA5A5' : '#86EFAC',
-                        borderRadius: 14,
+                        borderRadius: 16,
                         padding: 14,
                         marginBottom: 20,
                     }}>
@@ -150,6 +150,7 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                             color: actionMessage.error ? '#991B1B' : '#166534',
                             fontSize: 13,
                             fontWeight: '700',
+                            lineHeight: 18,
                         }}>
                             {actionMessage.text}
                         </Text>
@@ -161,8 +162,8 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                         backgroundColor: '#F0FDF4',
                         borderWidth: 1,
                         borderColor: '#86EFAC',
-                        borderRadius: 16,
-                        padding: 18,
+                        borderRadius: 18,
+                        padding: 16,
                         marginBottom: 20,
                     }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
@@ -202,11 +203,11 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                         backgroundColor: '#EFF6FF',
                         borderWidth: 1,
                         borderColor: '#BFDBFE',
-                        borderRadius: 14,
+                        borderRadius: 16,
                         padding: 14,
                         marginBottom: 20,
                     }}>
-                        <Text style={{ color: '#1E40AF', fontSize: 13, fontWeight: '600', lineHeight: 18 }}>
+                        <Text style={{ color: '#1E40AF', fontSize: 13, fontWeight: '600', lineHeight: 19 }}>
                             ⏳ This payout request is waiting for Admin approval. Your wallet balance will remain intact until you complete the withdrawal after approval.
                         </Text>
                     </View>
@@ -217,7 +218,7 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                         backgroundColor: '#FEF2F2',
                         borderWidth: 1,
                         borderColor: '#FCA5A5',
-                        borderRadius: 14,
+                        borderRadius: 16,
                         padding: 14,
                         marginBottom: 20,
                     }}>
@@ -237,7 +238,9 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
 
                     <View style={styles.detailRow}>
                         <Text style={styles.detailLabel}>Payout ID</Text>
-                        <Text style={styles.detailValue}>{data.payoutId}</Text>
+                        <Text style={styles.detailIdValue} selectable>
+                            {data.payoutId}
+                        </Text>
                     </View>
 
                     <View style={styles.divider} />
@@ -272,7 +275,9 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                     {data.transactionId && (
                         <View style={styles.detailRow}>
                             <Text style={styles.detailLabel}>Transaction ID</Text>
-                            <Text style={styles.detailValue}>{data.transactionId}</Text>
+                            <Text style={styles.detailIdValue} selectable>
+                                {data.transactionId}
+                            </Text>
                         </View>
                     )}
 
@@ -281,7 +286,9 @@ export function PayoutDetailScreen({ route, navigation }: Props) {
                             {data.transactionId && <View style={styles.divider} />}
                             <View style={styles.detailRow}>
                                 <Text style={styles.detailLabel}>Reference ID</Text>
-                                <Text style={styles.detailValue}>{data.providerReference}</Text>
+                                <Text style={styles.detailIdValue} selectable>
+                                    {data.providerReference}
+                                </Text>
                             </View>
                         </>
                     )}
@@ -359,15 +366,19 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     scrollContent: {
-        padding: 20,
+        padding: 16,
         paddingBottom: 40,
+        maxWidth: 580,
+        width: '100%',
+        alignSelf: 'center',
     },
     amountCard: {
         backgroundColor: '#FFF',
-        borderRadius: 24,
-        padding: 32,
+        borderRadius: 22,
+        paddingVertical: 24,
+        paddingHorizontal: 16,
         alignItems: 'center',
-        marginBottom: 24,
+        marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
@@ -377,43 +388,44 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     iconCircleLg: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 16,
+        marginBottom: 12,
     },
     amountLabel: {
-        fontSize: 14,
-        color: '#718096',
-        fontWeight: '600',
-        marginBottom: 8,
+        fontSize: 13,
+        color: '#64748B',
+        fontWeight: '700',
+        marginBottom: 6,
         textTransform: 'uppercase',
-        letterSpacing: 1,
+        letterSpacing: 0.8,
     },
     amountValue: {
-        fontSize: 40,
+        fontSize: 34,
         fontWeight: '900',
-        color: '#1A202C',
-        marginBottom: 16,
+        color: '#0F172A',
+        marginBottom: 12,
+        textAlign: 'center',
     },
     statusBadge: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        borderRadius: 10,
     },
     statusText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '800',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     detailsCard: {
         backgroundColor: '#FFF',
-        borderRadius: 24,
-        padding: 24,
-        marginBottom: 24,
+        borderRadius: 20,
+        padding: 18,
+        marginBottom: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.05,
@@ -423,26 +435,41 @@ const styles = StyleSheet.create({
         borderColor: '#E2E8F0',
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 17,
         fontWeight: '800',
-        color: '#1A202C',
-        marginBottom: 16,
+        color: '#0F172A',
+        marginBottom: 14,
     },
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 8,
+        alignItems: 'flex-start',
+        paddingVertical: 9,
+        gap: 12,
     },
     detailLabel: {
         fontSize: 14,
-        color: '#718096',
-        fontWeight: '500',
+        color: '#64748B',
+        fontWeight: '600',
+        flexShrink: 0,
+        maxWidth: '42%',
     },
     detailValue: {
         fontSize: 14,
-        color: '#1A202C',
+        color: '#0F172A',
         fontWeight: '700',
+        flex: 1,
+        textAlign: 'right',
+        flexWrap: 'wrap',
+    },
+    detailIdValue: {
+        fontSize: 13,
+        color: '#1E293B',
+        fontWeight: '700',
+        flex: 1,
+        textAlign: 'right',
+        flexWrap: 'wrap',
+        letterSpacing: 0.2,
     },
     divider: {
         height: 1,
