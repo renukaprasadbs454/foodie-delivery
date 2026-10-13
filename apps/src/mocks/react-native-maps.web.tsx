@@ -8,8 +8,6 @@ import React, {
   useContext,
 } from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
-// @ts-ignore
-import ReactDOM from 'react-dom';
 
 export interface Region {
   latitude: number;
@@ -519,5 +517,7 @@ const MapView = forwardRef<MapViewRef, MapViewProps>((props, ref) => {
     </View>
   );
 });
+
+MapView.displayName = 'MapView';
 
 export default MapView;
