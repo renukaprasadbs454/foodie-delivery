@@ -10,8 +10,9 @@ export type AuthStackParamList = {
   TermsAndConditions: undefined;
 };
 
-/** KYC stack — UI-API routes `Kyc` | `PendingVerification`. */
+/** KYC stack — UI-API routes `DeliveryZone` | `KycForm` | `PendingVerification`. */
 export type KycStackParamList = {
+  DeliveryZone: undefined;
   KycForm: undefined;
   PendingVerification: undefined;
 };
@@ -50,6 +51,7 @@ export type MainStackParamList = {
   DeliverySettings: undefined;
   DeliveryBankDetails: undefined;
   DeliveryAddress: undefined;
+  DeliveryZone: undefined;
   Kyc: undefined;
   PendingVerification: undefined;
   Incentives: undefined;

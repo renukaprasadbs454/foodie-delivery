@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
-import { ScrollView, View, StyleSheet, Pressable, TextInput, Image as RNImage } from 'react-native';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import {
+  ScrollView,
+  View,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Image as RNImage,
+  ActivityIndicator,
+} from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
-import * as ImagePicker from 'expo-image-picker';
 import { Feather, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { ENV } from '@/constants/env';
@@ -13,32 +20,55 @@ import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { Toast } from '@/components/Toast';
 import { clearRefreshToken } from '@/auth/secureStorage';
-import { useUploadDeliveryDocumentMutation, useGetDeliveryProfileQuery, useUpsertDeliveryProfileMutation, useUploadDeliveryProfileImageMutation } from '@/api/endpoints/deliveryApi';
+import {
+  useUploadDeliveryDocumentMutation,
+  useGetDeliveryProfileQuery,
+  useUpsertDeliveryProfileMutation,
+  useUploadDeliveryProfileImageMutation,
+} from '@/api/endpoints/deliveryApi';
 import { baseApi } from '@/api/baseApi';
 import { useSelector } from 'react-redux';
 import { useAppDispatch } from '@/store/hooks';
-import { documentUploaded, selectKycDocuments } from "../kycFormSlice";
-import { isDeliveryDocType, type DeliveryDocType } from "../types";
-import type { MainStackParamList, RootStackParamList } from '@/navigation/types';
+import { documentUploaded, selectKycDocuments } from '../kycFormSlice';
+import { isDeliveryDocType, type DeliveryDocType } from '../types';
+import type { KycStackParamList } from '@/navigation/types';
 
-type Props = NativeStackScreenProps<any, 'KycForm'>;
+type Props = NativeStackScreenProps<KycStackParamList, 'KycForm'>;
 
 const THEME_EMERALD = '#14532D';
 
 const REQUIRED_DOCS = [
-  { type: 'IDENTITY' as DeliveryDocType, label: 'Identity Proof', desc: 'Aadhaar, PAN, or Passport', icon: 'person-outline' },
-  { type: 'LICENSE' as DeliveryDocType, label: 'Driving License', desc: 'Valid Driving License front & back', icon: 'card-outline' },
-  { type: 'VEHICLE_RC' as DeliveryDocType, label: 'Vehicle RC', desc: 'Registration Certificate', icon: 'document-text-outline' },
+  {
+    type: 'IDENTITY' as DeliveryDocType,
+    label: 'Identity Proof',
+    desc: 'Aadhaar, PAN, or Passport',
+    icon: 'person-outline',
+  },
+  {
+    type: 'LICENSE' as DeliveryDocType,
+    label: 'Driving License',
+    desc: 'Valid Driving License front & back',
+    icon: 'card-outline',
+  },
+  {
+    type: 'VEHICLE_RC' as DeliveryDocType,
+    label: 'Vehicle RC',
+    desc: 'Registration Certificate',
+    icon: 'document-text-outline',
+  },
 ];
 
 export function KycScreen({ navigation }: Props) {
   const { tokens } = useTheme();
   const dispatch = useAppDispatch();
   const { isConnected } = useConnectivity();
-  const [toast, setToast] = useState<{ message: string; variant: 'info' | 'success' | 'error' | 'warning' } | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    variant: 'info' | 'success' | 'error' | 'warning';
+  } | null>(null);
 
   const [isCameraVisible, setIsCameraVisible] = useState(false);
-  const cameraRef = React.useRef<any>(null);
+  const cameraRef = useRef<any>(null);
   const [permission, requestPermission] = useCameraPermissions();
 
   const [uploadDocument] = useUploadDeliveryDocumentMutation();
@@ -47,7 +77,7 @@ export function KycScreen({ navigation }: Props) {
   const [uploadingType, setUploadingType] = useState<DeliveryDocType | null>(null);
   const [devMockSelfieUploaded, setDevMockSelfieUploaded] = useState(false);
 
-  const uploadingDocType = React.useMemo(() => uploadingType, [uploadingType]);
+  const uploadingDocType = useMemo(() => uploadingType, [uploadingType]);
 
   const reduxDocuments = useSelector(selectKycDocuments);
   const apiDocuments = profileQuery.data?.documents ?? [];
@@ -55,13 +85,39 @@ export function KycScreen({ navigation }: Props) {
   const [upsertProfile] = useUpsertDeliveryProfileMutation();
   const [partnerName, setPartnerName] = useState('');
 
-  React.useEffect(() => {
-    if (profileQuery.data?.fullName && profileQuery.data.fullName !== 'Delivery Partner' && !partnerName) {
-      setPartnerName(profileQuery.data.fullName);
+  const isZoneVerified = Boolean(profileQuery.data?.zoneVerified);
+
+  // If a user opens the KYC route directly without a valid zone verification, redirect them to the location page.
+  useEffect(() => {
+    if (profileQuery.isSuccess && profileQuery.data) {
+      if (!profileQuery.data.zoneVerified) {
+        navigation.replace('DeliveryZone');
+      }
     }
-  }, [profileQuery.data?.fullName]);
+  }, [profileQuery.isSuccess, profileQuery.data, navigation]);
+
+  useEffect(() => {
+    if (profileQuery.data) {
+      if (
+        profileQuery.data.fullName &&
+        profileQuery.data.fullName !== 'Delivery Partner' &&
+        !partnerName
+      ) {
+        setPartnerName(profileQuery.data.fullName);
+      }
+    }
+  }, [profileQuery.data, partnerName]);
 
   const handleDocumentPickAndUpload = async (docType: DeliveryDocType) => {
+    if (!profileQuery.data?.zoneVerified) {
+      setToast({
+        message: 'You are outside the delivery zone. Please move to an active delivery zone and try again.',
+        variant: 'error',
+      });
+      navigation.replace('DeliveryZone');
+      return;
+    }
+
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to upload documents.', variant: 'warning' });
       return;
@@ -120,9 +176,19 @@ export function KycScreen({ navigation }: Props) {
     return { isUploaded: false, status: 'MISSING' };
   };
 
-  const [uploadProfileImageMutation, { isLoading: isUploadingProfile }] = useUploadDeliveryProfileImageMutation();
+  const [uploadProfileImageMutation, { isLoading: isUploadingProfile }] =
+    useUploadDeliveryProfileImageMutation();
 
   const handleSelfieCapture = async () => {
+    if (!profileQuery.data?.zoneVerified) {
+      setToast({
+        message: 'You are outside the delivery zone. Please move to an active delivery zone and try again.',
+        variant: 'error',
+      });
+      navigation.replace('DeliveryZone');
+      return;
+    }
+
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to upload selfie.', variant: 'warning' });
       return;
@@ -167,12 +233,14 @@ export function KycScreen({ navigation }: Props) {
     }
   };
 
-  const isAllUploaded = REQUIRED_DOCS.every((d) => getDocStatus(d.type).isUploaded) &&
+  const isAllUploaded =
+    REQUIRED_DOCS.every((d) => getDocStatus(d.type).isUploaded) &&
     (Boolean(profileQuery.data?.profileImageUrl) || devMockSelfieUploaded);
 
   let finalImgUri = profileQuery.data?.profileImageUrl ?? null;
   if (!finalImgUri && devMockSelfieUploaded) {
-    finalImgUri = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAAAAAQABAAD/2wBDAP...mock...'; // Fallback so UI goes green
+    finalImgUri =
+      'data:image/jpeg;base64,/9j/4AAQSkZJRgABAAAAAQABAAD/2wBDAP...mock...';
   }
   if (finalImgUri) {
     const apiBaseUrl = ENV.apiBaseUrl;
@@ -186,23 +254,48 @@ export function KycScreen({ navigation }: Props) {
     }
   }
 
+  if (profileQuery.isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
+        <ActivityIndicator size="large" color={THEME_EMERALD} />
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
       <View style={styles.topGradientBar}>
         <View style={styles.topNavRow}>
-          <Pressable style={styles.backButton} onPress={() => navigation.canGoBack() ? navigation.goBack() : null}>
+          <Pressable
+            style={styles.backButton}
+            onPress={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('DeliveryZone');
+              }
+            }}
+            accessibilityLabel="Go back"
+          >
             <Feather name="arrow-left" size={24} color="white" />
           </Pressable>
-          <Text variant="heading2" style={{ color: 'white', flex: 1, marginLeft: 16 }}>Onboarding</Text>
-          <Pressable style={styles.helpPill} onPress={async () => {
-            await clearRefreshToken();
-            dispatch({ type: 'auth/clearCredentials' });
-            setTimeout(() => {
-              dispatch(baseApi.util.resetApiState());
-            }, 500);
-          }}>
+          <Text variant="heading2" style={{ color: 'white', flex: 1, marginLeft: 16 }}>
+            Onboarding
+          </Text>
+          <Pressable
+            style={styles.helpPill}
+            onPress={async () => {
+              await clearRefreshToken();
+              dispatch({ type: 'auth/clearCredentials' });
+              setTimeout(() => {
+                dispatch(baseApi.util.resetApiState());
+              }, 500);
+            }}
+          >
             <Feather name="log-out" size={16} color="black" />
-            <Text variant="caption" style={{ marginLeft: 4, fontWeight: 'bold' }}>LOGOUT</Text>
+            <Text variant="caption" style={{ marginLeft: 4, fontWeight: 'bold' }}>
+              LOGOUT
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -210,96 +303,172 @@ export function KycScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
           <MaterialIcons name="security" size={48} color={THEME_EMERALD} />
-          <Text variant="heading1" style={{ marginTop: 12 }}>KYC & Profile</Text>
-          <Text variant="body" color={tokens.color.textSecondary}>We require these details to securely approve your partner account.</Text>
+          <Text variant="heading1" style={{ marginTop: 12 }}>
+            KYC & Profile
+          </Text>
+          <Text variant="body" color={tokens.color.textSecondary}>
+            We require these details to securely approve your partner account.
+          </Text>
         </View>
 
-        <View style={styles.docList}>
-          <Pressable
-            style={[styles.docCard, Boolean(profileQuery.data?.profileImageUrl) && styles.docCardUploaded]}
-            onPress={handleSelfieCapture}
-            disabled={isUploadingProfile}
-          >
-            <View style={[styles.iconCircle, { backgroundColor: finalImgUri ? '#dcfce7' : '#f1f5f9', overflow: 'hidden' }]}>
-              {finalImgUri ? (
-                <RNImage
-                  source={{ uri: finalImgUri }}
-                  style={{ width: 48, height: 48, borderRadius: 24 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Feather name="camera" size={24} color="#64748b" />
-              )}
-            </View>
-
-            <View style={styles.docInfo}>
-              <Text variant="heading3" style={{ color: profileQuery.data?.profileImageUrl ? THEME_EMERALD : '#334155', marginBottom: 4 }}>
-                Selfie
-              </Text>
-              <Text variant="caption" color={tokens.color.textSecondary}>
-                {isUploadingProfile ? 'Uploading...' : (profileQuery.data?.profileImageUrl || devMockSelfieUploaded) ? 'Uploaded' : 'Capture clear selfie'}
-              </Text>
-            </View>
-
-            {(profileQuery.data?.profileImageUrl || devMockSelfieUploaded) ? (
-              <Feather name="check-circle" size={24} color={THEME_EMERALD} />
-            ) : (
-              <Feather name="upload-cloud" size={24} color="#64748b" />
-            )}
-          </Pressable>
-
-          <View style={styles.docCard}>
-            <View style={[styles.iconCircle, { backgroundColor: '#f1f5f9' }]}>
-              <Feather name="user" size={24} color="#64748b" />
-            </View>
-            <View style={styles.docInfo}>
-              <Text variant="heading3" style={{ color: '#334155', marginBottom: 4 }}>Full Name</Text>
-              <TextInput
-                style={styles.nameInput}
-                placeholder="Enter your full name"
-                value={partnerName}
-                onChangeText={setPartnerName}
-                placeholderTextColor="#A0AEC0"
-              />
-            </View>
+        {/* Documents & Profile Section */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <MaterialIcons name="assignment" size={24} color={THEME_EMERALD} />
+            <Text variant="heading2" style={{ marginLeft: 8 }}>
+              Documents & Profile
+            </Text>
           </View>
-          {REQUIRED_DOCS.map(doc => {
-            const status = getDocStatus(doc.type);
-            const isUploading = uploadingDocType === doc.type;
+          <Text
+            variant="caption"
+            color={tokens.color.textSecondary}
+            style={{ marginBottom: 16 }}
+          >
+            Upload your KYC documents to complete onboarding.
+          </Text>
 
-            return (
-              <Pressable
-                key={doc.type}
-                style={[styles.docCard, status.isUploaded && styles.docCardUploaded]}
-                onPress={() => handleDocumentPickAndUpload(doc.type)}
-                disabled={isUploading}
+          <View style={styles.docList}>
+            {/* Selfie Upload Card */}
+            <Pressable
+              style={[
+                styles.docCard,
+                Boolean(profileQuery.data?.profileImageUrl) && styles.docCardUploaded,
+              ]}
+              onPress={handleSelfieCapture}
+              disabled={isUploadingProfile}
+            >
+              <View
+                style={[
+                  styles.iconCircle,
+                  {
+                    backgroundColor: finalImgUri ? '#dcfce7' : '#f1f5f9',
+                    overflow: 'hidden',
+                  },
+                ]}
               >
-                <View style={[styles.iconCircle, { backgroundColor: status.isUploaded ? '#dcfce7' : '#f1f5f9' }]}>
-                  <Ionicons name={doc.icon as any} size={24} color={status.isUploaded ? THEME_EMERALD : '#64748b'} />
-                </View>
-
-                <View style={styles.docInfo}>
-                  <Text variant="heading3" style={{ color: status.isUploaded ? THEME_EMERALD : '#334155', marginBottom: 4 }}>
-                    {doc.label}
-                  </Text>
-                  <Text variant="caption" color={tokens.color.textSecondary}>
-                    {isUploading ? 'Uploading...' : status.isUploaded ? 'Uploaded' : doc.desc}
-                  </Text>
-                </View>
-
-                {status.isUploaded ? (
-                  <Feather name="check-circle" size={24} color={THEME_EMERALD} />
+                {finalImgUri ? (
+                  <RNImage
+                    source={{ uri: finalImgUri }}
+                    style={{ width: 48, height: 48, borderRadius: 24 }}
+                    resizeMode="cover"
+                  />
                 ) : (
-                  <Feather name="upload-cloud" size={24} color="#64748b" />
+                  <Feather name="camera" size={24} color="#64748b" />
                 )}
-              </Pressable>
-            );
-          })}
+              </View>
+
+              <View style={styles.docInfo}>
+                <Text
+                  variant="heading3"
+                  style={{
+                    color: profileQuery.data?.profileImageUrl ? THEME_EMERALD : '#334155',
+                    marginBottom: 4,
+                  }}
+                >
+                  Selfie
+                </Text>
+                <Text variant="caption" color={tokens.color.textSecondary}>
+                  {isUploadingProfile
+                    ? 'Uploading...'
+                    : profileQuery.data?.profileImageUrl || devMockSelfieUploaded
+                    ? 'Uploaded'
+                    : 'Capture clear selfie'}
+                </Text>
+              </View>
+
+              {profileQuery.data?.profileImageUrl || devMockSelfieUploaded ? (
+                <Feather name="check-circle" size={24} color={THEME_EMERALD} />
+              ) : (
+                <Feather name="upload-cloud" size={24} color="#64748b" />
+              )}
+            </Pressable>
+
+            {/* Full Name Card */}
+            <View style={styles.docCard}>
+              <View style={[styles.iconCircle, { backgroundColor: '#f1f5f9' }]}>
+                <Feather name="user" size={24} color="#64748b" />
+              </View>
+              <View style={styles.docInfo}>
+                <Text variant="heading3" style={{ color: '#334155', marginBottom: 4 }}>
+                  Full Name
+                </Text>
+                <TextInput
+                  style={styles.nameInput}
+                  placeholder="Enter your full name"
+                  value={partnerName}
+                  onChangeText={setPartnerName}
+                  placeholderTextColor="#A0AEC0"
+                />
+              </View>
+            </View>
+
+            {/* Required Documents */}
+            {REQUIRED_DOCS.map((doc) => {
+              const status = getDocStatus(doc.type);
+              const isUploading = uploadingDocType === doc.type;
+
+              return (
+                <Pressable
+                  key={doc.type}
+                  style={[
+                    styles.docCard,
+                    status.isUploaded && styles.docCardUploaded,
+                  ]}
+                  onPress={() => handleDocumentPickAndUpload(doc.type)}
+                  disabled={isUploading}
+                >
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      { backgroundColor: status.isUploaded ? '#dcfce7' : '#f1f5f9' },
+                    ]}
+                  >
+                    <Ionicons
+                      name={doc.icon as any}
+                      size={24}
+                      color={status.isUploaded ? THEME_EMERALD : '#64748b'}
+                    />
+                  </View>
+
+                  <View style={styles.docInfo}>
+                    <Text
+                      variant="heading3"
+                      style={{
+                        color: status.isUploaded ? THEME_EMERALD : '#334155',
+                        marginBottom: 4,
+                      }}
+                    >
+                      {doc.label}
+                    </Text>
+                    <Text variant="caption" color={tokens.color.textSecondary}>
+                      {isUploading ? 'Uploading...' : status.isUploaded ? 'Uploaded' : doc.desc}
+                    </Text>
+                  </View>
+
+                  {status.isUploaded ? (
+                    <Feather name="check-circle" size={24} color={THEME_EMERALD} />
+                  ) : (
+                    <Feather name="upload-cloud" size={24} color="#64748b" />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
+        {/* Bottom Submission Card */}
         <View style={styles.bottomCard}>
-          <Text variant="heading3" style={{ color: isAllUploaded ? THEME_EMERALD : '#64748b', marginBottom: 12 }}>
-            {isAllUploaded ? 'All details are ready!' : 'Enter name and upload all documents'}
+          <Text
+            variant="heading3"
+            style={{
+              color: isAllUploaded && isZoneVerified ? THEME_EMERALD : '#64748b',
+              marginBottom: 12,
+              textAlign: 'center',
+            }}
+          >
+            {isAllUploaded
+              ? 'All details are ready!'
+              : 'Enter name and upload all documents'}
           </Text>
           <Button
             label="Continue to Verification"
@@ -308,7 +477,11 @@ export function KycScreen({ navigation }: Props) {
             onPress={async () => {
               if (isConnected) {
                 try {
-                  await upsertProfile({ fullName: partnerName.trim(), vehicleType: 'BIKE', vehicleNumber: '' }).unwrap();
+                  await upsertProfile({
+                    fullName: partnerName.trim(),
+                    vehicleType: 'BIKE',
+                    vehicleNumber: '',
+                  }).unwrap();
                 } catch (e) {
                   setToast({ message: 'Failed to update name', variant: 'error' });
                   return;
@@ -331,14 +504,14 @@ export function KycScreen({ navigation }: Props) {
 
       {isCameraVisible && (
         <View style={styles.cameraModal}>
-          <Text variant="heading1" style={styles.cameraTitle}>Identity Verification</Text>
-          <Text variant="caption" style={styles.cameraSubtitle}>Position your face in the circle for your profile photo</Text>
+          <Text variant="heading1" style={styles.cameraTitle}>
+            Identity Verification
+          </Text>
+          <Text variant="caption" style={styles.cameraSubtitle}>
+            Position your face in the circle for your profile photo
+          </Text>
           <View style={styles.cameraMask}>
-            <CameraView
-              style={styles.cameraPreview}
-              facing="front"
-              ref={cameraRef}
-            />
+            <CameraView style={styles.cameraPreview} facing="front" ref={cameraRef} />
           </View>
           <View style={styles.cameraActions}>
             <Pressable style={styles.cameraCancelBtn} onPress={() => setIsCameraVisible(false)}>
@@ -387,12 +560,29 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   headerContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
     alignItems: 'flex-start',
+  },
+  sectionCard: {
+    backgroundColor: 'white',
+    padding: 18,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   docList: {
     gap: 16,
-    marginBottom: 32,
   },
   docCard: {
     flexDirection: 'row',
@@ -502,5 +692,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
 });

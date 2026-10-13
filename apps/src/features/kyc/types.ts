@@ -36,6 +36,32 @@ export function isDeliveryDocType(value: string): value is DeliveryDocType {
   return (DOC_TYPES as readonly string[]).indexOf(value) !== -1;
 }
 
+export type LocationZone = {
+  id: string;
+  zoneName: string;
+  cityName: string;
+  latitude: number;
+  longitude: number;
+  radiusKm: number;
+  polygonCoordinates?: string;
+  activeDrivers?: number;
+  surgeMultiplier?: number;
+  status?: string;
+  restaurantEnabled?: boolean;
+  deliveryPartnerEnabled?: boolean;
+  customerOrderingEnabled?: boolean;
+};
+
+export type DeliveryZoneVerificationResult = {
+  verified: boolean;
+  zoneId?: string | null;
+  zoneName?: string | null;
+  cityName?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  message: string;
+};
+
 export type DeliveryProfile = {
   deliveryPartnerId: string;
   phone: string;
@@ -53,4 +79,9 @@ export type DeliveryProfile = {
   profileImageUrl?: string;
   documents?: DeliveryDocumentUploadResult[];
   cashInHand?: number;
+  latitude?: number;
+  longitude?: number;
+  zoneId?: string;
+  zoneName?: string;
+  zoneVerified?: boolean;
 };

@@ -36,8 +36,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         filePath: path.resolve(reactNativeWebPath, 'dist/index.js'),
       };
     }
-    if (moduleName === 'react-native-maps') {
-      return context.resolveRequest(context, '@teovilla/react-native-web-maps', platform);
+    if (moduleName === 'react-native-maps' || moduleName.startsWith('react-native-maps/')) {
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(projectRoot, 'src/mocks/react-native-maps.web.tsx'),
+      };
     }
   }
 
@@ -51,7 +54,7 @@ config.server = {
       if (req.url && req.url.startsWith('/api/')) {
         let targetHost = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.foodie.kwiko.org').replace(/\/+$/, '');
         if (targetHost.includes('127.0.0.1:8082') || targetHost.includes('localhost:8082')) {
-          targetHost = 'https://api.foodie.kwiko.org';
+          targetHost = targetHost.replace(':8082', ':8080');
         }
         const targetUrl = targetHost + req.url;
         const isHttps = targetHost.startsWith('https');
@@ -94,4 +97,3 @@ config.server = {
 };
 
 module.exports = config;
-
