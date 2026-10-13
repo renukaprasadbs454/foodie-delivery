@@ -52,10 +52,7 @@ config.server = {
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
       if (req.url && req.url.startsWith('/api/')) {
-        let targetHost = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.foodie.kwiko.org').replace(/\/+$/, '');
-        if (targetHost.includes('127.0.0.1:8082') || targetHost.includes('localhost:8082')) {
-          targetHost = targetHost.replace(':8082', ':8080');
-        }
+        const targetHost = (process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.foodie.kwiko.org').replace(/\/+$/, '');
         const targetUrl = targetHost + req.url;
         const isHttps = targetHost.startsWith('https');
         const httpLib = isHttps ? require('https') : require('http');

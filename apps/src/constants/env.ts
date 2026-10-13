@@ -56,36 +56,39 @@ function normalizeUrl(url: string): string {
 }
 
 function resolveApiBaseUrl(): string {
-  // 1. Explicit environment variable (injected at build time or via .env)
+  // 1. Web runtime in development: use same-origin relative URLs so Metro proxies /api requests and handles CORS
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && __DEV__) {
+    return '';
+  }
+
+  // 2. Explicit environment variable (injected at build time or via .env)
   const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || process.env.FOODIE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
-    const normalized = normalizeUrl(envUrl.trim());
-    return normalized.replace(':8082', ':8080');
+    return normalizeUrl(envUrl.trim());
   }
 
-  // 2. Extra config provided by app.config.ts / EAS Build
+  // 3. Extra config provided by app.config.ts / EAS Build
   if (extra.apiBaseUrl && extra.apiBaseUrl.trim()) {
-    const normalized = normalizeUrl(extra.apiBaseUrl.trim());
-    return normalized.replace(':8082', ':8080');
+    return normalizeUrl(extra.apiBaseUrl.trim());
   }
 
-  // 3. Web runtime same-origin default
+  // 4. Web runtime same-origin default
   if (Platform.OS === 'web') {
     return '';
   }
 
-  // 4. Deployed production backend default
+  // 5. Deployed production backend default
   return 'https://api.foodie.kwiko.org';
 }
 
 function resolveWsUrl(apiBase: string): string {
   const envWs = process.env.EXPO_PUBLIC_WS_URL;
   if (envWs && envWs.trim()) {
-    return normalizeUrl(envWs.trim()).replace(':8082', ':8080');
+    return normalizeUrl(envWs.trim());
   }
 
   if (extra.wsUrl && extra.wsUrl.trim()) {
-    return normalizeUrl(extra.wsUrl.trim()).replace(':8082', ':8080');
+    return normalizeUrl(extra.wsUrl.trim());
   }
 
   if (apiBase.startsWith('https://')) {
@@ -93,6 +96,11 @@ function resolveWsUrl(apiBase: string): string {
   }
   if (apiBase.startsWith('http://')) {
     return `${apiBase.replace(/^http:\/\//, 'ws://')}/ws`;
+  }
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = window.location.hostname || 'localhost';
+    return `${proto}//${host}:8082/ws`;
   }
   return 'wss://api.foodie.kwiko.org/ws';
 }
