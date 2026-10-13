@@ -8,6 +8,8 @@ import React, {
   useContext,
 } from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
+// @ts-expect-error - react-dom types not installed in React Native project
+import ReactDOM from 'react-dom';
 
 export interface Region {
   latitude: number;
