@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { baseApi } from '../baseApi';
-import type { DeliveryDocType, DeliveryDocumentUploadResult, DeliveryProfile } from '@/features/kyc/types';
+import type { DeliveryDocType, DeliveryDocumentUploadResult, DeliveryProfile, LocationZone, DeliveryZoneVerificationResult } from '@/features/kyc/types';
 import type { AvailabilityState, DeliveryAssignment, DeliveryOffer } from '@/features/home/types';
 import { normalizeOffers } from '@/features/home/types';
 import type { LocationPingPayload } from '@/features/navigation/types';
@@ -180,6 +180,22 @@ export const deliveryApi = baseApi.injectEndpoints({
           // Ignored if query fails
         }
       },
+    }),
+    getDeliveryZones: builder.query<LocationZone[], void>({
+      query: () => '/api/v1/delivery/zones',
+      keepUnusedDataFor: 300,
+    }),
+    verifyDeliveryZone: builder.mutation<
+      DeliveryZoneVerificationResult,
+      { latitude: number; longitude: number; zoneId?: string; address?: string }
+    >({
+      query: (body) => ({
+        url: '/api/v1/delivery/me/verify-zone',
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+      }),
+      invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
     }),
     upsertDeliveryProfile: builder.mutation<
       DeliveryProfile,
@@ -523,5 +539,7 @@ export const {
   useArrivedAtRestaurantMutation,
   useSubmitCashDepositMutation,
   useVerifyCashDepositMutation,
+  useGetDeliveryZonesQuery,
+  useVerifyDeliveryZoneMutation,
 } = deliveryApi;
 

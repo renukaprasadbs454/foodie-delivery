@@ -67,8 +67,10 @@ export function RootNavigator() {
       flow = 'kyc';
       if (hasUploadedDocs && hasProfileImage && hasName) {
         initialRouteName = 'PendingVerification';
-      } else {
+      } else if (profileQuery.data.zoneVerified) {
         initialRouteName = 'KycForm';
+      } else {
+        initialRouteName = 'DeliveryZone';
       }
     } else {
       flow = 'main';
@@ -77,7 +79,7 @@ export function RootNavigator() {
   } else if (authStatus === 'authenticated' && accessToken && !profileQuery.isError) {
     flow = isNewUser ? 'kyc' : 'main';
     if (flow === 'kyc') {
-      initialRouteName = 'KycForm';
+      initialRouteName = 'DeliveryZone';
     }
   }
 

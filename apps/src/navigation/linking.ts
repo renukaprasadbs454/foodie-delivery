@@ -15,7 +15,14 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Login: 'auth',
         },
       },
-      Kyc: 'kyc',
+      Kyc: {
+        path: 'kyc',
+        screens: {
+          DeliveryZone: 'location',
+          KycForm: 'KycForm',
+          PendingVerification: 'pending',
+        },
+      },
       Main: {
         screens: {
           DeliveryHome: '',
@@ -26,6 +33,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
           DeliveryNotifications: 'notifications',
           PrivacyPolicy: 'privacy-policy',
           TermsAndConditions: 'terms-and-conditions',
+          Kyc: 'kyc',
         },
       },
     },

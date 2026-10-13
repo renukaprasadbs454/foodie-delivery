@@ -36,8 +36,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         filePath: path.resolve(reactNativeWebPath, 'dist/index.js'),
       };
     }
-    if (moduleName === 'react-native-maps') {
-      return context.resolveRequest(context, '@teovilla/react-native-web-maps', platform);
+    if (moduleName === 'react-native-maps' || moduleName.startsWith('react-native-maps/')) {
+      return {
+        type: 'sourceFile',
+        filePath: path.resolve(projectRoot, 'src/mocks/react-native-maps.web.tsx'),
+      };
     }
   }
 
