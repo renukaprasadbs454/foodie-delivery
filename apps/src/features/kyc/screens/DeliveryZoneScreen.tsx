@@ -353,6 +353,90 @@ export function DeliveryZoneScreen({ navigation }: Props) {
             Your device GPS coordinates are automatically detected and verified against your selected delivery zone.
           </Text>
 
+          {/* Admin-Configured Delivery Zone Selection */}
+          <View style={styles.zoneSelectionSection}>
+            <View style={styles.zoneHeadingRow}>
+              <Feather name="layers" size={20} color={THEME_EMERALD} />
+              <Text variant="heading2" style={{ marginLeft: 8, fontSize: 16 }}>
+                Select Your Zone
+              </Text>
+            </View>
+            <Text variant="caption" color={tokens.color.textSecondary} style={{ marginBottom: 12 }}>
+              Choose the delivery zone you will be operating in. Your location will be verified against this zone.
+            </Text>
+
+            {isLoadingZones ? (
+              <View style={styles.zoneLoadingBox}>
+                <ActivityIndicator size="small" color={THEME_EMERALD} />
+                <Text variant="caption" style={{ marginLeft: 8, color: '#64748B' }}>
+                  Loading admin-configured delivery zones...
+                </Text>
+              </View>
+            ) : activeZones.length === 0 ? (
+              <View style={styles.noZonesBox}>
+                <Feather name="info" size={18} color="#64748B" />
+                <Text variant="caption" style={{ marginLeft: 6, color: '#64748B' }}>
+                  No active delivery zones configured. Please contact support.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.zonesList}>
+                {activeZones.map((zone) => {
+                  const isSelected = selectedZoneId === zone.id;
+                  const isThisZoneVerified = isZoneVerified && verifiedZoneName === zone.zoneName;
+
+                  return (
+                    <Pressable
+                      key={zone.id}
+                      onPress={() => handleZoneSelect(zone.id)}
+                      disabled={isVerifyingZone || isGpsLoading}
+                      style={[
+                        styles.zoneCard,
+                        isSelected && styles.zoneCardSelected,
+                        (isVerifyingZone || isGpsLoading) && { opacity: 0.8 },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select zone ${zone.zoneName}`}
+                    >
+                      <View style={styles.zoneCardContent}>
+                        <View style={styles.zoneRadioCircle}>
+                          {isSelected && <View style={styles.zoneRadioInner} />}
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <Text
+                              variant="body"
+                              style={{
+                                fontWeight: isSelected ? '700' : '600',
+                                color: isSelected ? '#0F172A' : '#334155',
+                                fontSize: 15,
+                              }}
+                            >
+                              {zone.zoneName}
+                            </Text>
+                            {isThisZoneVerified ? (
+                              <View style={styles.verifiedMiniPill}>
+                                <Text style={styles.verifiedMiniPillText}>✓ Verified</Text>
+                              </View>
+                            ) : null}
+                          </View>
+                          <Text variant="caption" style={{ color: '#64748B', marginTop: 2 }}>
+                            {zone.radiusKm
+                              ? `Coverage: ${zone.radiusKm} km radius`
+                              : zone.polygonCoordinates
+                              ? 'Coverage: Polygon boundary'
+                              : 'Active administrative delivery zone'}
+                          </Text>
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+
+          {/* Delivery Location Map */}
           <DeliveryLocationMap
             latitude={currentLat}
             longitude={currentLng}
@@ -439,7 +523,7 @@ export function DeliveryZoneScreen({ navigation }: Props) {
                     GPS Coordinates Detected
                   </Text>
                   <Text variant="caption" style={{ color: '#64748B', marginTop: 2 }}>
-                    Please select your delivery zone below to verify your location.
+                    Please select your delivery zone to verify your location.
                   </Text>
                 </View>
               </View>
@@ -487,94 +571,6 @@ export function DeliveryZoneScreen({ navigation }: Props) {
               </View>
             </View>
           ) : null}
-
-          {/* Admin-Configured Delivery Zone Selection */}
-          <View style={styles.zoneSelectionSection}>
-            <View style={styles.zoneHeadingRow}>
-              <Feather name="layers" size={20} color={THEME_EMERALD} />
-              <Text variant="heading2" style={{ marginLeft: 8, fontSize: 16 }}>
-                Select Your Zone
-              </Text>
-            </View>
-            <Text variant="caption" color={tokens.color.textSecondary} style={{ marginBottom: 12 }}>
-              Choose the delivery zone you will be operating in. Your location will be verified against this zone.
-            </Text>
-
-            {isLoadingZones ? (
-              <View style={styles.zoneLoadingBox}>
-                <ActivityIndicator size="small" color={THEME_EMERALD} />
-                <Text variant="caption" style={{ marginLeft: 8, color: '#64748B' }}>
-                  Loading admin-configured delivery zones...
-                </Text>
-              </View>
-            ) : activeZones.length === 0 ? (
-              <View style={styles.noZonesBox}>
-                <Feather name="info" size={18} color="#64748B" />
-                <Text variant="caption" style={{ marginLeft: 6, color: '#64748B' }}>
-                  No active delivery zones configured. Please contact support.
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.zonesList}>
-                {activeZones.map((zone) => {
-                  const isSelected = selectedZoneId === zone.id;
-                  const isThisZoneVerified = isZoneVerified && verifiedZoneName === zone.zoneName;
-
-                  return (
-                    <Pressable
-                      key={zone.id}
-                      onPress={() => handleZoneSelect(zone.id)}
-                      disabled={isVerifyingZone || isGpsLoading}
-                      style={[
-                        styles.zoneCard,
-                        isSelected && styles.zoneCardSelected,
-                        (isVerifyingZone || isGpsLoading) && { opacity: 0.8 },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Select zone ${zone.zoneName}`}
-                    >
-                      <View style={styles.zoneCardContent}>
-                        <View style={styles.zoneRadioCircle}>
-                          {isSelected && <View style={styles.zoneRadioInner} />}
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                            <Text
-                              variant="body"
-                              style={{
-                                fontWeight: isSelected ? '700' : '600',
-                                color: isSelected ? '#0F172A' : '#334155',
-                                fontSize: 15,
-                              }}
-                            >
-                              {zone.zoneName}
-                            </Text>
-                            {zone.cityName ? (
-                              <View style={styles.cityPill}>
-                                <Text style={styles.cityPillText}>📍 {zone.cityName}</Text>
-                              </View>
-                            ) : null}
-                            {isThisZoneVerified ? (
-                              <View style={styles.verifiedMiniPill}>
-                                <Text style={styles.verifiedMiniPillText}>✓ Verified</Text>
-                              </View>
-                            ) : null}
-                          </View>
-                          <Text variant="caption" style={{ color: '#64748B', marginTop: 2 }}>
-                            {zone.radiusKm
-                              ? `Coverage: ${zone.radiusKm} km radius`
-                              : zone.polygonCoordinates
-                              ? 'Coverage: Polygon boundary'
-                              : 'Active administrative delivery zone'}
-                          </Text>
-                        </View>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
-          </View>
 
           {/* Continue to Documents Action Button */}
           <View style={{ marginTop: 20 }}>
@@ -701,10 +697,10 @@ const styles = StyleSheet.create({
     borderColor: '#F59E0B',
   },
   zoneSelectionSection: {
-    marginTop: 20,
-    paddingTop: 18,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    marginBottom: 20,
+    paddingBottom: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   zoneHeadingRow: {
     flexDirection: 'row',
