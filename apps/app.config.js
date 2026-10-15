@@ -102,4 +102,3 @@ module.exports = ({ config }) => {
     extra: extraConfig,
   };
 };
-
