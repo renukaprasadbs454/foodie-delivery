@@ -23,7 +23,17 @@ export function OfferCard({
   onAccept,
   onReject
 }: Props) {
-  const { tokens } = useTheme();
+  const formattedFee = React.useMemo(() => {
+    if (offer.estimatedFee !== undefined && offer.estimatedFee !== null) {
+      const num = Number(offer.estimatedFee);
+      if (!isNaN(num)) {
+        return num % 1 === 0 ? num.toFixed(0) : num.toFixed(2);
+      }
+      return String(offer.estimatedFee);
+    }
+    return '0';
+  }, [offer.estimatedFee]);
+
   return (
     <View
       style={styles.cardContainer}
@@ -36,8 +46,8 @@ export function OfferCard({
           </View>
         </View>
         <View style={styles.titleContainer}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <Text style={styles.restaurantTitle} numberOfLines={1}>{offer.restaurantName}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+            <Text style={styles.restaurantTitle}>{offer.restaurantName}</Text>
             {offer.orderNumber ? (
               <Text style={{ fontSize: 12, fontWeight: '800', color: '#14532D', backgroundColor: '#F0FDF4', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                 #{offer.orderNumber}
@@ -58,7 +68,7 @@ export function OfferCard({
         </View>
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Earn</Text>
-          <Text style={styles.priceAmount}>₹{offer.estimatedFee !== undefined && offer.estimatedFee !== null ? offer.estimatedFee : 120}</Text>
+          <Text style={styles.priceAmount}>₹{formattedFee}</Text>
         </View>
       </View>
 
@@ -131,13 +141,15 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
-    marginRight: 12,
+    minWidth: 0,
+    marginRight: 8,
   },
   restaurantTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#1A202C',
-    marginBottom: 4,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   addressSubtitle: {
     fontSize: 13,
@@ -163,11 +175,12 @@ const styles = StyleSheet.create({
   priceContainer: {
     alignItems: 'center',
     backgroundColor: '#F0FDF4',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#DCFCE7',
+    minWidth: 76,
   },
   priceLabel: {
     fontSize: 11,

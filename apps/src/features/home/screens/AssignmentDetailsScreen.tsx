@@ -257,7 +257,7 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
                   </View>
                   <View style={styles.infoTextContainer}>
                     <Text style={styles.infoLabel}>Pickup From</Text>
-                    <Text style={styles.infoTitle} numberOfLines={1}>{restaurantName}</Text>
+                    <Text style={styles.infoTitle}>{restaurantName}</Text>
                     <Text style={styles.infoAddress} numberOfLines={2}>{restaurantAddress}</Text>
                     <View style={styles.distanceBadge}>
                       <Ionicons name="navigate-outline" size={12} color="#14532D" />
