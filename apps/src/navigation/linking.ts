@@ -34,8 +34,11 @@ export const linking: LinkingOptions<RootStackParamList> = {
           PrivacyPolicy: 'privacy-policy',
           TermsAndConditions: 'terms-and-conditions',
           Kyc: 'kyc',
+          Incentives: 'extra-earning-offers',
         },
       },
     },
   },
 };
+
+
