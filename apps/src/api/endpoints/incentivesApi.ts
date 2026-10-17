@@ -1,5 +1,13 @@
 import { baseApi } from '../baseApi';
 
+export interface IncentiveMilestone {
+  trips: number;
+  rewardAmount: number;
+  status: 'Completed' | 'In Progress' | 'Upcoming' | 'Locked';
+  remaining: number;
+  isEarned: boolean;
+}
+
 export interface IncentiveOfferProgress {
   id: string;
   title: string;
@@ -14,6 +22,7 @@ export interface IncentiveOfferProgress {
   validityPeriod: string;
   isEarned: boolean;
   active: boolean;
+  milestones?: IncentiveMilestone[];
 }
 
 export interface IncentivesProgressResponse {
@@ -33,6 +42,16 @@ export interface IncentiveEarningHistory {
   orderId?: string;
   periodDate: string;
   earnedAt: string;
+}
+
+export interface DeliveryIncentivesEarningsSummary {
+  regularDeliveryEarnings: number;
+  incentiveEarnings: number;
+  earnedIncentives: number;
+  pendingIncentives: number;
+  paidOutIncentives: number;
+  availableBalance: number;
+  recentIncentiveTransactions: IncentiveEarningHistory[];
 }
 
 export const incentivesApi = baseApi.injectEndpoints({
@@ -55,6 +74,11 @@ export const incentivesApi = baseApi.injectEndpoints({
       providesTags: ['Wallet', 'Delivery'],
       keepUnusedDataFor: 60,
     }),
+    getEarningsSummary: builder.query<DeliveryIncentivesEarningsSummary, void>({
+      query: () => '/api/v1/delivery/incentives/earnings-summary',
+      providesTags: ['Wallet', 'Delivery'],
+      keepUnusedDataFor: 30,
+    }),
   }),
 });
 
@@ -62,4 +86,5 @@ export const {
   useGetIncentivesProgressQuery,
   useGetActiveIncentivesQuery,
   useGetIncentiveEarningsQuery,
+  useGetEarningsSummaryQuery,
 } = incentivesApi;

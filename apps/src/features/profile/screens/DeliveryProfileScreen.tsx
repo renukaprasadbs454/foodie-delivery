@@ -17,7 +17,6 @@ import { useGetDeliveryProfileQuery, useUploadDeliveryProfileImageMutation } fro
 import { toUnwrappedApiError } from '../../auth/apiError';
 import {
   selectUserId,
-  selectUserType,
   clearCredentials,
 } from '../../auth/authSlice';
 import { clearRefreshToken } from '@/auth/secureStorage';
@@ -33,7 +32,6 @@ export function DeliveryProfileScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { isConnected } = useConnectivity();
   const userId = useAppSelector(selectUserId);
-  const userType = useAppSelector(selectUserType);
   const profileQuery = useGetDeliveryProfileQuery(undefined, { pollingInterval: 3000, refetchOnFocus: true });
   const dispatch = useAppDispatch();
   const [toast, setToast] = useState<{
@@ -69,8 +67,13 @@ export function DeliveryProfileScreen({ navigation }: Props) {
     }
   }
 
-  const nameVal = profileQuery.data?.fullName && profileQuery.data.fullName !== 'Delivery Partner' ? profileQuery.data.fullName : 'Delivery Partner';
-  const roleVal = userType ?? 'DELIVERY_PARTNER';
+  const rawFullName = profileQuery.data?.fullName?.trim();
+  const hasCustomName = Boolean(
+    rawFullName &&
+    rawFullName.toLowerCase() !== 'delivery partner' &&
+    rawFullName.toLowerCase() !== 'delivery_partner'
+  );
+  const actualName = hasCustomName ? rawFullName : 'Delivery Partner';
   const kycStatus = profileQuery.data?.kycStatus ?? 'PENDING';
 
   const handleLogout = () => {
@@ -88,79 +91,125 @@ export function DeliveryProfileScreen({ navigation }: Props) {
     <View style={{ flex: 1, backgroundColor: '#F2F2F7' }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 80, paddingTop: insets.top + 16 }}
+        contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Curved Dark Green brand banner top arch with smooth gradient placed inside ScrollView */}
+        {/* Curved Dark Green brand banner top arch with smooth gradient */}
         <LinearGradient
           colors={['#0F3E22', '#14532D', '#1B6A3A']}
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 270,
-            borderBottomLeftRadius: 40,
-            borderBottomRightRadius: 40,
+            paddingTop: Math.max(insets.top, 16) + 12,
+            paddingBottom: 28,
+            borderBottomLeftRadius: 36,
+            borderBottomRightRadius: 36,
+            overflow: 'hidden',
           }}
-        />
-
-        <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 20, flexDirection: 'row', alignItems: 'center' }}>
-          <Pressable onPress={() => navigation.goBack()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 16 }}>
-            <Feather name="arrow-left" size={22} color="#FFF" />
-          </Pressable>
-          <Text style={{ fontSize: 34, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5 }}>Profile</Text>
-        </View>
-
-        {/* iOS Profile Avatar header inside the dark green arch */}
-        <View style={{ alignItems: 'center', marginBottom: 24 }}>
-          <View
-            style={{
-              width: 104,
-              height: 104,
-              borderRadius: 52,
-              backgroundColor: '#FFFFFF',
-              borderWidth: 3,
-              borderColor: '#FCD34D', // Premium gold accent border
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginBottom: 16,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 5,
-            }}
-          >
-            {finalImgUri ? (
-              <Image
-                source={{ uri: finalImgUri }}
-                style={{ width: 94, height: 94, borderRadius: 47 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={{ width: 94, height: 94, borderRadius: 47, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 32, fontWeight: '800', color: '#64748B' }}>{initials}</Text>
-              </View>
-            )}
+        >
+          <View style={{ paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+              style={({ pressed }) => ({
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: pressed ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.15)',
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 16,
+              })}
+            >
+              <Feather name="arrow-left" size={22} color="#FFF" />
+            </Pressable>
+            <Text style={{ fontSize: 32, fontWeight: '900', color: '#FCD34D', letterSpacing: 0.5 }}>Profile</Text>
           </View>
 
-          <Text style={{ fontSize: 24, fontWeight: '800', color: '#FFFFFF', marginBottom: 4 }}>
-            {nameVal}
-          </Text>
-          <Text style={{ fontSize: 15, color: '#A7F3D0', fontWeight: '600' }}>
-            {roleVal.replace('_', ' ')}
-          </Text>
-        </View>
+          {/* iOS Profile Avatar header inside the dark green arch */}
+          <View style={{ alignItems: 'center', paddingHorizontal: 20 }}>
+            <View
+              style={{
+                width: 104,
+                height: 104,
+                borderRadius: 52,
+                backgroundColor: '#FFFFFF',
+                borderWidth: 3,
+                borderColor: '#FCD34D', // Premium gold accent border
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 12,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 8,
+                elevation: 5,
+              }}
+            >
+              {finalImgUri ? (
+                <Image
+                  source={{ uri: finalImgUri }}
+                  style={{ width: 94, height: 94, borderRadius: 47 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={{ width: 94, height: 94, borderRadius: 47, backgroundColor: '#E2E8F0', justifyContent: 'center', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 32, fontWeight: '800', color: '#64748B' }}>{initials}</Text>
+                </View>
+              )}
+            </View>
 
-        <View style={{ paddingHorizontal: 20 }}>
+            {hasCustomName ? (
+              <>
+                <Text
+                  style={{
+                    fontSize: 24,
+                    fontWeight: '800',
+                    color: '#FFFFFF',
+                    letterSpacing: 0.3,
+                    textAlign: 'center',
+                    marginBottom: 6,
+                  }}
+                  numberOfLines={1}
+                >
+                  {actualName}
+                </Text>
+                <Text
+                  style={{
+                    fontSize: 18,
+                    fontWeight: '700',
+                    color: '#A7F3D0',
+                    letterSpacing: 0.5,
+                    textAlign: 'center',
+                  }}
+                >
+                  Delivery Partner
+                </Text>
+              </>
+            ) : (
+              <Text
+                style={{
+                  fontSize: 24,
+                  fontWeight: '800',
+                  color: '#FFFFFF',
+                  letterSpacing: 0.3,
+                  textAlign: 'center',
+                }}
+                numberOfLines={1}
+              >
+                Delivery Partner
+              </Text>
+            )}
+          </View>
+        </LinearGradient>
+
+        <View style={{ paddingHorizontal: 20, paddingTop: 20 }}>
           <Text style={{ fontSize: 13, color: '#4B5563', fontWeight: '700', marginLeft: 4, marginBottom: 8, letterSpacing: 0.6, textTransform: 'uppercase' }}>
             ACCOUNT & DETAILS
           </Text>
           <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 28, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 }}>
               <Text style={{ fontSize: 16, color: '#111827' }}>Full Name</Text>
-              <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>{nameVal}</Text>
+              <Text style={{ fontSize: 16, color: '#6B7280', fontWeight: '500' }}>{actualName}</Text>
             </View>
             <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 }} />
 
