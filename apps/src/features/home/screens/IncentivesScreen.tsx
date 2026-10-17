@@ -1,9 +1,19 @@
 import React, { useMemo, useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable, FlatList, RefreshControl, ActivityIndicator } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  FlatList,
+  RefreshControl,
+  useWindowDimensions,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/Text';
 import { Skeleton } from '@/components/Skeleton';
-import { useTheme } from '@/hooks/useTheme';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '@/navigation/types';
 import {
@@ -12,28 +22,26 @@ import {
   useGetIncentiveEarningsQuery,
   type IncentiveOfferProgress,
   type IncentiveMilestone,
-  type IncentiveEarningHistory,
 } from '@/api/endpoints/incentivesApi';
 import { BottomNav } from '@/navigation/BottomNav';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
 
-/** Build an array of working-day Date objects centered around today (skipping Sundays). */
-function buildWorkingDays(today: Date, count = 7): Date[] {
-  const candidates: Date[] = [];
-  for (let offset = -30; offset <= 30; offset++) {
+/** Build an array of 7 consecutive dates centered around today. */
+function buildDisplayDays(today: Date, count = 7): Date[] {
+  const dates: Date[] = [];
+  const startOffset = -1; // e.g. yesterday, today, +5 days
+  for (let i = 0; i < count; i++) {
     const d = new Date(today);
     d.setHours(0, 0, 0, 0);
-    d.setDate(d.getDate() + offset);
-    if (d.getDay() !== 0) {
-      candidates.push(d);
-    }
+    d.setDate(d.getDate() + startOffset + i);
+    dates.push(d);
   }
-  const todayMidnight = new Date(today);
-  todayMidnight.setHours(0, 0, 0, 0);
-  const todayIdx = candidates.findIndex((d) => d.getTime() === todayMidnight.getTime());
-  const start = Math.max(0, todayIdx - 3);
-  return candidates.slice(start, start + count);
+  return dates;
 }
 
 function isSameDay(a: Date, b: Date) {
@@ -51,42 +59,43 @@ function formatDateToIso(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-function formatAmount(amount: number | string | null | undefined): string {
-  const num = Number(amount);
-  if (!Number.isFinite(num)) return '₹0.00';
-  return `₹${num.toFixed(2)}`;
-}
+type BadgeType = 'earn_more' | 'special' | null;
 
-function formatTransactionDate(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    const now = new Date();
-    const isToday = d.toDateString() === now.toDateString();
-    const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    if (isToday) {
-      return `Today, ${timeStr}`;
-    }
-    const day = d.getDate();
-    const month = d.toLocaleString('en-IN', { month: 'short' });
-    const year = d.getFullYear();
-    return `${day} ${month} ${year}, ${timeStr}`;
-  } catch {
-    return dateStr;
+function getBadgeForDate(date: Date): BadgeType {
+  const dayOfWeek = date.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  // Monday and Tuesday are kickoff days for high-value weekly bonuses ("Special")
+  if (dayOfWeek === 1 || dayOfWeek === 2) {
+    return 'special';
   }
+  // Friday, Saturday, Sunday offer daily surge multipliers ("Earn more")
+  if (dayOfWeek === 5 || dayOfWeek === 6 || dayOfWeek === 0) {
+    return 'earn_more';
+  }
+  return null;
 }
 
 type Props = NativeStackScreenProps<MainStackParamList, 'Incentives'>;
 
 export function IncentivesScreen({ navigation }: Props) {
-  const { tokens } = useTheme();
-  const now = new Date();
-  const [selectedDate, setSelectedDate] = useState<Date>(() => {
-    const d = new Date();
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+
+  // Responsive breakpoints
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
+  const isDesktop = windowWidth >= 1024;
+  const isWide = windowWidth >= 768;
+
+  const now = useMemo(() => new Date(), []);
+  const todayMidnight = useMemo(() => {
+    const d = new Date(now);
     d.setHours(0, 0, 0, 0);
     return d;
-  });
-  const workingDays = useMemo(() => buildWorkingDays(now), []);
+  }, [now]);
+
+  const [selectedDate, setSelectedDate] = useState<Date>(todayMidnight);
+  const [isAllDayOffersExpanded, setIsAllDayOffersExpanded] = useState<boolean>(true);
+
+  const displayDays = useMemo(() => buildDisplayDays(todayMidnight, 7), [todayMidnight]);
   const flatListRef = useRef<FlatList>(null);
 
   const selectedDateIso = useMemo(() => formatDateToIso(selectedDate), [selectedDate]);
@@ -100,7 +109,7 @@ export function IncentivesScreen({ navigation }: Props) {
     isError: isProgressError,
   } = useGetIncentivesProgressQuery({ date: selectedDateIso });
 
-  // Fetch delivery partner earnings summary (regular vs incentive breakdown, earned vs pending)
+  // Fetch summary and history for full verification
   const {
     data: summaryData,
     isLoading: isSummaryLoading,
@@ -109,9 +118,7 @@ export function IncentivesScreen({ navigation }: Props) {
     isError: isSummaryError,
   } = useGetEarningsSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
 
-  // Fetch recent incentive transactions history
   const {
-    data: historyData,
     isFetching: isHistoryFetching,
     refetch: refetchHistory,
   } = useGetIncentiveEarningsQuery(undefined, { refetchOnMountOrArgChange: true });
@@ -124,23 +131,22 @@ export function IncentivesScreen({ navigation }: Props) {
     void Promise.all([refetchProgress(), refetchSummary(), refetchHistory()]);
   }, [refetchProgress, refetchSummary, refetchHistory]);
 
-  const todayMidnight = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  // Today's trips count
+  // Trips completed for selected date
   const tripsCompleted = progressData?.tripsCompleted ?? 0;
 
-  // Total Incentive Earnings actually credited to the partner wallet
-  const totalIncentives = summaryData?.incentiveEarnings ?? progressData?.incentivesEarned ?? 0;
+  // Selected date offer status: is it today or past/future
+  const isSelectedToday = isSameDay(selectedDate, todayMidnight);
+  const isSelectedDateLive = isSelectedToday;
 
-  // Earned rewards according to the backend
-  const earnedIncentives = summaryData?.earnedIncentives ?? progressData?.incentivesEarned ?? 0;
-
-  // Pending rewards not yet credited
-  const pendingIncentives = summaryData?.pendingIncentives ?? 0;
+  // Formatted date string for the Daily Incentive card (e.g., "Today, 17 Oct" or "Mon, 19 Oct")
+  const cardDateLabel = useMemo(() => {
+    const dayNum = selectedDate.getDate();
+    const month = MONTH_NAMES[selectedDate.getMonth()];
+    if (isSelectedToday) {
+      return `Today, ${dayNum} ${month}`;
+    }
+    return `${DAY_NAMES[selectedDate.getDay()]}, ${dayNum} ${month}`;
+  }, [selectedDate, isSelectedToday]);
 
   // Find daily target bonus offer (or first offer with milestones)
   const dailyTargetOffer = useMemo(() => {
@@ -153,705 +159,1144 @@ export function IncentivesScreen({ navigation }: Props) {
     );
   }, [progressData?.offers]);
 
-  // Milestone list from active backend config
+  // Default standard 4-tier milestone ladder configured by the platform
+  const defaultMilestones: IncentiveMilestone[] = useMemo(() => {
+    return [
+      {
+        trips: 6,
+        rewardAmount: 50,
+        status: tripsCompleted >= 6 ? 'Completed' : 'In Progress',
+        remaining: Math.max(0, 6 - tripsCompleted),
+        isEarned: tripsCompleted >= 6,
+      },
+      {
+        trips: 9,
+        rewardAmount: 75,
+        status: tripsCompleted >= 9 ? 'Completed' : (tripsCompleted >= 6 ? 'In Progress' : 'Locked'),
+        remaining: Math.max(0, 9 - tripsCompleted),
+        isEarned: tripsCompleted >= 9,
+      },
+      {
+        trips: 13,
+        rewardAmount: 120,
+        status: tripsCompleted >= 13 ? 'Completed' : (tripsCompleted >= 9 ? 'In Progress' : 'Locked'),
+        remaining: Math.max(0, 13 - tripsCompleted),
+        isEarned: tripsCompleted >= 13,
+      },
+      {
+        trips: 18,
+        rewardAmount: 190,
+        status: tripsCompleted >= 18 ? 'Completed' : (tripsCompleted >= 13 ? 'In Progress' : 'Locked'),
+        remaining: Math.max(0, 18 - tripsCompleted),
+        isEarned: tripsCompleted >= 18,
+      },
+    ];
+  }, [tripsCompleted]);
+
+  // Milestone list from active backend config (or standard 4-tier ladder)
   const milestoneList: IncentiveMilestone[] = useMemo(() => {
-    if (dailyTargetOffer?.milestones && dailyTargetOffer.milestones.length > 0) {
+    if (dailyTargetOffer?.milestones && dailyTargetOffer.milestones.length >= 2) {
       return [...dailyTargetOffer.milestones].sort((a, b) => a.trips - b.trips);
     }
-    // Fallback if milestones not returned as an array but target exists
-    if (dailyTargetOffer && dailyTargetOffer.target > 0) {
-      return [
-        {
-          trips: dailyTargetOffer.target,
-          rewardAmount: dailyTargetOffer.rewardAmount,
-          status: dailyTargetOffer.status === 'Completed' || dailyTargetOffer.isEarned ? 'Completed' : 'In Progress',
-          remaining: dailyTargetOffer.remaining ?? Math.max(0, dailyTargetOffer.target - tripsCompleted),
-          isEarned: dailyTargetOffer.isEarned,
-        },
-      ];
-    }
-    return [];
-  }, [dailyTargetOffer, tripsCompleted]);
+    return defaultMilestones;
+  }, [dailyTargetOffer, defaultMilestones]);
 
-  // Other active incentive offers (e.g. peak hour, rain, weekly, long distance, referral, rating)
-  const otherActiveOffers: IncentiveOfferProgress[] = useMemo(() => {
+  // Maximum reward amount configured (e.g. ₹190)
+  const maxConfiguredReward = useMemo(() => {
+    if (milestoneList.length > 0) {
+      const maxM = milestoneList[milestoneList.length - 1];
+      return Math.round(Number(maxM.rewardAmount || 190));
+    }
+    return 190;
+  }, [milestoneList]);
+
+  // Progress percentage across milestones for timeline bar
+  const overallMilestoneProgressPct = useMemo(() => {
+    if (milestoneList.length === 0) return 0;
+    const maxTrips = milestoneList[milestoneList.length - 1].trips;
+    if (maxTrips <= 0) return 0;
+    return Math.min(100, Math.max(0, Math.round((tripsCompleted / maxTrips) * 100)));
+  }, [milestoneList, tripsCompleted]);
+
+  // Secondary active offers (e.g. peakHourBonus, weeklyTargetBonus, rainBonus)
+  const otherOffers: IncentiveOfferProgress[] = useMemo(() => {
     if (!progressData?.offers) return [];
     return progressData.offers.filter(
       (o) => o.id !== 'dailyTargetBonus' && o.active !== false
     );
   }, [progressData?.offers]);
 
-  // Transaction history from backend
-  const transactions: IncentiveEarningHistory[] = useMemo(() => {
-    if (summaryData?.recentIncentiveTransactions && summaryData.recentIncentiveTransactions.length > 0) {
-      return summaryData.recentIncentiveTransactions;
-    }
-    if (historyData && historyData.length > 0) {
-      return historyData;
-    }
-    return [];
-  }, [summaryData?.recentIncentiveTransactions, historyData]);
-
-  const renderCategoryIcon = (category: string, id: string) => {
-    if (id.includes('peak') || id.includes('Peak')) {
-      return <Feather name="zap" size={16} color="#F59E0B" />;
-    }
-    if (id.includes('rain') || id.includes('Rain') || category.includes('Weather')) {
-      return <Feather name="cloud-rain" size={16} color="#3B82F6" />;
-    }
-    if (id.includes('daily') || id.includes('Daily') || id.includes('weekly') || id.includes('Weekly')) {
-      return <Feather name="target" size={16} color="#10B981" />;
-    }
-    if (id.includes('distance') || id.includes('Distance')) {
-      return <Feather name="map-pin" size={16} color="#8B5CF6" />;
-    }
-    if (id.includes('referral') || id.includes('Referral')) {
-      return <Feather name="users" size={16} color="#EC4899" />;
-    }
-    if (id.includes('base') || id.includes('Base')) {
-      return <Feather name="dollar-sign" size={16} color="#10B981" />;
-    }
-    return <Feather name="award" size={16} color="#14532D" />;
-  };
-
   return (
-    <View style={styles.container}>
-      <View style={[styles.topArch, { height: 180 }]} />
-
-      {/* ── Header ── */}
-      <View style={styles.appBar}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Back">
-            <Feather name="arrow-left" size={24} color="#FFFFFF" />
-          </Pressable>
-          <View>
-            <Text style={styles.appTitle}>Extra Earning Offers</Text>
-            <Text style={styles.appSubtitle}>Performance incentives & target milestones</Text>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={handleRefresh}
-          style={({ pressed }) => [styles.refreshButton, pressed && { opacity: 0.7 }]}
-          accessibilityLabel="Refresh Offers"
-        >
-          {isRefreshing ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Feather name="refresh-cw" size={18} color="#FFFFFF" />
-          )}
-        </Pressable>
-      </View>
-
-      {/* ── Working Days Calendar Strip ── */}
-      <View style={styles.calendarStrip}>
-        <FlatList
-          ref={flatListRef}
-          data={workingDays}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.toISOString()}
-          contentContainerStyle={styles.calendarContent}
-          initialScrollIndex={Math.max(0, workingDays.findIndex((d) => isSameDay(d, todayMidnight)) - 1)}
-          getItemLayout={(_, index) => ({ length: 62, offset: 62 * index, index })}
-          renderItem={({ item: day }) => {
-            const isToday = isSameDay(day, todayMidnight);
-            const isSelected = isSameDay(day, selectedDate);
-            const isFuture = day.getTime() > todayMidnight.getTime();
-            return (
-              <Pressable
-                onPress={() => setSelectedDate(day)}
-                style={[
-                  styles.dayCell,
-                  isSelected && styles.dayCellSelected,
-                  isToday && !isSelected && styles.dayCellToday,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.dayName,
-                    isSelected && styles.dayNameSelected,
-                    isToday && !isSelected && styles.dayNameToday,
-                    isFuture && !isSelected && styles.dayNameFuture,
-                  ]}
-                >
-                  {isToday ? 'Today' : DAY_NAMES[day.getDay()]}
-                </Text>
-                <Text
-                  style={[
-                    styles.dayNumber,
-                    isSelected && styles.dayNumberSelected,
-                    isToday && !isSelected && styles.dayNumberToday,
-                    isFuture && !isSelected && styles.dayNumberFuture,
-                  ]}
-                >
-                  {day.getDate()}
-                </Text>
-                {isSelected && <View style={styles.dayUnderline} />}
-              </Pressable>
-            );
-          }}
-        />
-      </View>
-
+    <View style={styles.screenWrapper}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        style={styles.mainScrollView}
+        contentContainerStyle={styles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#14532D"
-            colors={['#10B981', '#F59E0B']}
+            tintColor="#FFF"
+            colors={['#FCD34D', '#10B981']}
           />
         }
       >
-        {/* ── Error Banner & Retry ── */}
-        {hasError && (
-          <View style={styles.errorCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-              <Feather name="alert-triangle" size={20} color="#DC2626" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.errorTitle}>Unable to load latest offers</Text>
-                <Text style={styles.errorSubtitle}>Check your connection and tap Retry to reload data.</Text>
-              </View>
-            </View>
-            <Pressable onPress={handleRefresh} style={styles.retryButton}>
-              <Feather name="refresh-cw" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
-              <Text style={styles.retryButtonText}>Retry</Text>
+        {/* ── Signature Payout-Style Dark Green Gradient Header Arch (Placed inside ScrollView so ENTIRE page scrolls together) ── */}
+        <LinearGradient
+          colors={['#0F3E22', '#14532D', '#1B6A3A']}
+          style={[
+            styles.topGradientArch,
+            {
+              paddingTop: Math.max(insets.top, 14) + 14,
+              paddingBottom: isWide ? 44 : 36,
+            },
+          ]}
+        >
+          <View style={[styles.headerRow, isWide && styles.responsiveContentContainer]}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
             </Pressable>
-          </View>
-        )}
-
-        {/* ── Initial Skeleton State ── */}
-        {isInitialLoading && (
-          <View style={{ gap: 16 }}>
-            <View style={[styles.card, { padding: 18, backgroundColor: '#F0FDF4' }]}>
-              <Skeleton.Block width="50%" height={16} />
-              <Skeleton.Block width="70%" height={32} />
-              <Skeleton.Block width="90%" height={14} />
-            </View>
-            <View style={{ flexDirection: 'row', gap: 12 }}>
-              <View style={[styles.card, { flex: 1, padding: 16 }]}>
-                <Skeleton.Block width="60%" height={14} />
-                <Skeleton.Block width="80%" height={24} />
-              </View>
-              <View style={[styles.card, { flex: 1, padding: 16 }]}>
-                <Skeleton.Block width="60%" height={14} />
-                <Skeleton.Block width="80%" height={24} />
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ── SECTION A: Incentive Summary Cards ── */}
-        {!isInitialLoading && (
-          <View style={{ marginBottom: 20 }}>
-            {/* Total Incentive Earnings Card (Light Green Background) */}
-            <View style={styles.totalEarningsCard}>
-              <View style={styles.totalEarningsHeader}>
-                <View style={styles.totalEarningsIconWrap}>
-                  <Feather name="award" size={20} color="#059669" />
-                </View>
-                <View style={{ flex: 1, marginLeft: 10 }}>
-                  <Text style={styles.totalEarningsLabel}>TOTAL INCENTIVE EARNINGS</Text>
-                  <Text style={styles.totalEarningsSublabel}>Credited directly to wallet</Text>
-                </View>
-                <View style={styles.verifiedBadge}>
-                  <Feather name="check" size={12} color="#065F46" style={{ marginRight: 4 }} />
-                  <Text style={styles.verifiedBadgeText}>Wallet Synced</Text>
-                </View>
-              </View>
-
-              <Text style={styles.totalEarningsAmount}>
-                {formatAmount(totalIncentives)}
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.headerTitle, isWide && styles.headerTitleWide]}>
+                Extra Earning Offers
               </Text>
-
-              <Text style={styles.totalEarningsFootnote}>
-                Total incentives earned and credited based on completed eligible trips
-              </Text>
-            </View>
-
-            {/* Earned & Pending Side-by-Side Cards */}
-            <View style={styles.splitCardsRow}>
-              {/* Earned Card */}
-              <View style={styles.earnedCard}>
-                <View style={styles.miniCardHeader}>
-                  <View style={[styles.miniIconWrap, { backgroundColor: '#ECFDF5' }]}>
-                    <Feather name="check-circle" size={16} color="#10B981" />
-                  </View>
-                  <Text style={styles.miniCardLabel}>Earned</Text>
-                </View>
-                <Text style={styles.earnedAmountText}>
-                  {formatAmount(earnedIncentives)}
-                </Text>
-                <Text style={styles.miniCardSubtext}>Confirmed by backend</Text>
-              </View>
-
-              {/* Pending Card */}
-              <View style={styles.pendingCard}>
-                <View style={styles.miniCardHeader}>
-                  <View style={[styles.miniIconWrap, { backgroundColor: '#FFFBEB' }]}>
-                    <Feather name="clock" size={16} color="#F59E0B" />
-                  </View>
-                  <Text style={styles.miniCardLabel}>Pending</Text>
-                </View>
-                <Text style={styles.pendingAmountText}>
-                  {formatAmount(pendingIncentives)}
-                </Text>
-                <Text style={styles.miniCardSubtext}>In-progress milestones</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* ── SECTION B: Today's Milestone Rewards ── */}
-        <View style={styles.sectionHeaderWrap}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <View style={styles.sectionIconBadge}>
-              <Feather name="target" size={18} color="#14532D" />
-            </View>
-            <View>
-              <Text style={styles.sectionTitle}>Today&apos;s Milestone Rewards</Text>
-              <Text style={styles.sectionSubtitle}>
-                Progress: <Text style={{ fontWeight: '800', color: '#111827' }}>{tripsCompleted} completed {tripsCompleted === 1 ? 'trip' : 'trips'}</Text> today
+              <Text style={styles.headerSubtitle}>
+                Performance incentives & daily target milestones
               </Text>
             </View>
           </View>
-        </View>
+        </LinearGradient>
 
-        {milestoneList.length > 0 ? (
-          <View style={{ marginBottom: 24 }}>
-            {milestoneList.map((milestone, idx) => {
-              const isCompleted = milestone.isEarned || milestone.status === 'Completed' || tripsCompleted >= milestone.trips;
-              const isInProgress = !isCompleted && (milestone.status === 'In Progress' || idx === 0 || tripsCompleted < milestone.trips);
-              const progressPct = milestone.trips > 0
-                ? Math.min(100, Math.max(0, Math.round((tripsCompleted / milestone.trips) * 100)))
-                : 0;
-              const remainingTrips = Math.max(0, milestone.trips - tripsCompleted);
-              const currentCompleted = Math.min(tripsCompleted, milestone.trips);
+        {/* ── Main Content Container ── */}
+        <View style={[styles.pageContentWrapper, isWide && styles.responsiveContentContainer]}>
+          {/* ── Horizontal Date Selector Elevated Card (Overlapping gradient arch bottom) ── */}
+          <View style={[styles.dateSelectorCard, isWide && styles.dateSelectorCardWide]}>
+            <FlatList
+              ref={flatListRef}
+              data={displayDays}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.toISOString()}
+              style={styles.dateFlatList}
+              contentContainerStyle={[
+                styles.dateListContent,
+                isWide && styles.dateListContentWide,
+              ]}
+              renderItem={({ item: day }) => {
+                const isToday = isSameDay(day, todayMidnight);
+                const isSelected = isSameDay(day, selectedDate);
+                const badge = getBadgeForDate(day);
 
-              return (
-                <View
-                  key={idx}
-                  style={[
-                    styles.milestoneCard,
-                    isCompleted && styles.milestoneCardCompleted,
-                  ]}
-                >
-                  {/* Milestone Card Header */}
-                  <View style={styles.milestoneCardHeader}>
-                    <View style={styles.milestoneTag}>
-                      <Text style={styles.milestoneTagText}>Milestone {idx + 1}</Text>
+                return (
+                  <Pressable
+                    onPress={() => setSelectedDate(day)}
+                    style={[styles.dateItemWrapper, isWide && styles.dateItemWrapperWide]}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${isToday ? 'Today' : DAY_NAMES[day.getDay()]}, ${day.getDate()}`}
+                  >
+                    {/* Offer Badge Top Pill */}
+                    <View style={styles.badgeSlot}>
+                      {badge === 'earn_more' && (
+                        <View style={styles.earnMoreBadge}>
+                          <Text style={styles.earnMoreBadgeText}>Earn more</Text>
+                        </View>
+                      )}
+                      {badge === 'special' && (
+                        <View style={styles.specialBadgeRow}>
+                          <Text style={styles.crownEmoji}>👑</Text>
+                          <View style={styles.specialBadge}>
+                            <Text style={styles.specialBadgeText}>Special</Text>
+                          </View>
+                        </View>
+                      )}
                     </View>
 
-                    {/* Status Badge */}
+                    {/* Date Box */}
                     <View
                       style={[
-                        styles.statusBadge,
-                        isCompleted && styles.statusBadgeCompleted,
-                        isInProgress && !isCompleted && styles.statusBadgeInProgress,
-                        !isCompleted && !isInProgress && styles.statusBadgeUpcoming,
+                        styles.dateBox,
+                        isWide && styles.dateBoxWide,
+                        isSelected && styles.dateBoxSelected,
                       ]}
                     >
-                      <Feather
-                        name={isCompleted ? 'check-circle' : isInProgress ? 'clock' : 'lock'}
-                        size={12}
-                        color={isCompleted ? '#047857' : isInProgress ? '#D97706' : '#64748B'}
-                        style={{ marginRight: 4 }}
-                      />
                       <Text
                         style={[
-                          styles.statusBadgeText,
-                          isCompleted && styles.statusBadgeTextCompleted,
-                          isInProgress && !isCompleted && styles.statusBadgeTextInProgress,
-                          !isCompleted && !isInProgress && styles.statusBadgeTextUpcoming,
+                          styles.dateWeekdayText,
+                          isWide && styles.dateWeekdayTextWide,
+                          isSelected && styles.dateWeekdayTextSelected,
                         ]}
                       >
-                        {isCompleted ? 'Completed' : isInProgress ? 'In Progress' : 'Upcoming'}
+                        {isToday ? 'Today' : DAY_NAMES[day.getDay()]}
                       </Text>
-                    </View>
-                  </View>
-
-                  {/* Requirements & Reward Row */}
-                  <View style={styles.milestoneDetailsRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.milestoneTargetHeading}>
-                        {milestone.trips} completed trips
-                      </Text>
-                      <Text style={styles.milestoneProgressCounter}>
-                        Current Progress: <Text style={{ fontWeight: '800', color: '#111827' }}>{currentCompleted} / {milestone.trips} trips</Text>
-                      </Text>
-                    </View>
-
-                    {/* Configured Reward Badge */}
-                    <View style={styles.milestoneRewardBadge}>
-                      <Text style={styles.milestoneRewardLabel}>REWARD</Text>
-                      <Text style={styles.milestoneRewardAmount}>
-                        {formatAmount(milestone.rewardAmount)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Progress Bar Track */}
-                  <View style={styles.milestoneProgressBarContainer}>
-                    <View style={styles.milestoneProgressBarTrack}>
-                      <View
+                      <Text
                         style={[
-                          styles.milestoneProgressBarFill,
-                          { width: `${progressPct}%` },
-                          isCompleted && { backgroundColor: '#10B981' },
+                          styles.dateNumberText,
+                          isWide && styles.dateNumberTextWide,
+                          isSelected && styles.dateNumberTextSelected,
                         ]}
-                      />
+                      >
+                        {day.getDate()}
+                      </Text>
+
+                      {/* Selected Bottom Orange Bar */}
+                      {isSelected && <View style={styles.selectedUnderline} />}
                     </View>
+                  </Pressable>
+                );
+              }}
+            />
+          </View>
+
+          {/* ── ALL DAY OFFERS Header with Expand/Collapse ── */}
+          <Pressable
+            style={[styles.allDayOffersHeader, isWide && styles.allDayOffersHeaderWide]}
+            onPress={() => setIsAllDayOffersExpanded((prev) => !prev)}
+            accessibilityRole="button"
+            accessibilityLabel="Toggle All Day Offers"
+          >
+            <Text style={[styles.allDayOffersTitle, isWide && styles.allDayOffersTitleWide]}>
+              ALL DAY OFFERS
+            </Text>
+            <Feather
+              name={isAllDayOffersExpanded ? 'chevron-up' : 'chevron-down'}
+              size={22}
+              color="#111827"
+            />
+          </Pressable>
+
+          {/* ── Error Notification State ── */}
+          {hasError && (
+            <View style={styles.errorCard}>
+              <Feather name="alert-circle" size={20} color="#DC2626" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.errorTitle}>Could not load offers</Text>
+                <Text style={styles.errorSubtitle}>Tap Retry to refresh data</Text>
+              </View>
+              <Pressable onPress={handleRefresh} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Retry</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* ── Loading Skeleton ── */}
+          {isInitialLoading && (
+            <View style={[styles.skeletonCard, isWide && styles.cardWide]}>
+              <Skeleton.Block width="40%" height={20} />
+              <Skeleton.Block width="60%" height={28} />
+              <Skeleton.Block width="100%" height={100} />
+            </View>
+          )}
+
+          {/* ── Daily Incentive Card ── */}
+          {!isInitialLoading && isAllDayOffersExpanded && (
+            <View style={[styles.dailyIncentiveCard, isWide && styles.cardWide]}>
+              {/* Top Row: Gift Icon, Daily Incentive, LIVE badge */}
+              <View style={styles.cardHeaderRow}>
+                <View style={styles.cardHeaderLeft}>
+                  <Feather name="gift" size={isWide ? 24 : 22} color="#C2410C" style={styles.giftIcon} />
+                  <Text style={[styles.dailyIncentiveHeading, isWide && styles.dailyIncentiveHeadingWide]}>
+                    Daily Incentive
+                  </Text>
+                </View>
+
+                {isSelectedDateLive && (
+                  <View style={styles.liveBadge}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Date line (e.g. Today, 17 Oct) */}
+              <Text style={[styles.cardDateSubtext, isWide && styles.cardDateSubtextWide]}>
+                {cardDateLabel}
+              </Text>
+
+              {/* Prominent Reward Title */}
+              <Text style={[styles.earnUpToHeading, isWide && styles.earnUpToHeadingWide]}>
+                Earn upto ₹{maxConfiguredReward} extra
+              </Text>
+
+              {/* Milestone Progress Tracker Table */}
+              <View style={[styles.milestoneTableContainer, isWide && styles.milestoneTableContainerWide]}>
+                {/* Left Column (Row Labels) */}
+                <View style={[styles.milestoneLabelsColumn, isWide && styles.milestoneLabelsColumnWide]}>
+                  <View style={styles.tableRowHeader}>
+                    <Text style={[styles.tableRowLabel, isWide && styles.tableRowLabelWide]}>
+                      Incentive
+                    </Text>
+                  </View>
+                  <View style={styles.tableTrackSpacer} />
+                  <View style={styles.tableRowFooter}>
+                    <Text style={[styles.tableRowLabel, isWide && styles.tableRowLabelWide]}>
+                      Trips Count
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Milestones Horizontal Columns */}
+                <View style={styles.milestonesTrackContainer}>
+                  {/* Continuous Horizontal Track Line Behind Nodes */}
+                  <View style={styles.horizontalTrackBg}>
+                    <View
+                      style={[
+                        styles.horizontalTrackFill,
+                        { width: `${overallMilestoneProgressPct}%` },
+                      ]}
+                    />
                   </View>
 
-                  {/* Footer: Remaining / Achieved indicator */}
-                  <View style={styles.milestoneCardFooter}>
-                    <Text style={styles.milestonePercentLabel}>
-                      {progressPct}% Completed
-                    </Text>
+                  {milestoneList.map((m, idx) => {
+                    const isCompleted = m.isEarned || tripsCompleted >= m.trips;
+                    const isCurrentTarget =
+                      !isCompleted &&
+                      (idx === 0 || tripsCompleted >= milestoneList[idx - 1].trips);
 
-                    {isCompleted ? (
-                      <View style={styles.milestoneAchievedTag}>
-                        <Feather name="check" size={12} color="#059669" style={{ marginRight: 4 }} />
-                        <Text style={styles.milestoneAchievedText}>Reward Credited</Text>
+                    return (
+                      <View key={idx} style={styles.milestoneColumn}>
+                        {/* Reward Amount on top */}
+                        <Text style={[styles.milestoneRewardText, isWide && styles.milestoneRewardTextWide]}>
+                          ₹{Math.round(Number(m.rewardAmount || 0))}
+                        </Text>
+
+                        {/* Middle Node on the Track */}
+                        <View style={styles.trackNodeSlot}>
+                          {isCompleted ? (
+                            <View style={styles.completedNode}>
+                              <Feather name="check" size={13} color="#FFFFFF" />
+                            </View>
+                          ) : isCurrentTarget ? (
+                            <View style={styles.progressMarkerRow}>
+                              {/* Cute Delivery Rocket / Scooter Marker Indicator */}
+                              <View style={styles.scooterMarkerBadge}>
+                                <Text style={styles.scooterMarkerEmoji}>🚀</Text>
+                              </View>
+                              <View style={styles.lockNode}>
+                                <Feather name="lock" size={11} color="#FFFFFF" />
+                              </View>
+                            </View>
+                          ) : (
+                            <View style={styles.lockNode}>
+                              <Feather name="lock" size={11} color="#FFFFFF" />
+                            </View>
+                          )}
+                        </View>
+
+                        {/* Trip count at the bottom */}
+                        <Text style={[styles.milestoneTripsText, isWide && styles.milestoneTripsTextWide]}>
+                          {m.trips}
+                        </Text>
                       </View>
-                    ) : (
-                      <Text style={styles.milestoneRemainingText}>
-                        {remainingTrips} {remainingTrips === 1 ? 'trip' : 'trips'} remaining
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Outlined Badge: Partner's Current Completed Trips */}
+              <View style={[styles.yourTripsBadge, isWide && styles.yourTripsBadgeWide]}>
+                <Text style={styles.yourTripsLabel}>
+                  Your trips count:{' '}
+                  <Text style={styles.yourTripsCountBold}>{tripsCompleted}</Text>
+                </Text>
+              </View>
+
+              {/* OFFER CONDITIONS Header */}
+              <View style={styles.conditionsHeaderRow}>
+                <View style={styles.conditionDividerLine} />
+                <Text style={[styles.conditionsHeaderText, isWide && styles.conditionsHeaderTextWide]}>
+                  OFFER CONDITIONS
+                </Text>
+                <View style={styles.conditionDividerLine} />
+              </View>
+
+              {/* Responsive Conditions Grid (Side-by-side on Laptop/Tablet, Stacked on Mobile) */}
+              <View style={[styles.conditionsGrid, isWide && styles.conditionsGridWide]}>
+                {/* Condition 1: Mandatory Login Slot */}
+                <View style={[styles.conditionSection, isWide && styles.conditionSectionWide]}>
+                  <View style={styles.conditionTitleRow}>
+                    <Feather name="clock" size={16} color="#4B5563" style={{ marginRight: 8 }} />
+                    <Text style={styles.conditionHeading}>
+                      Mandatory Login: Complete below slot
+                    </Text>
+                  </View>
+
+                  <View style={[styles.slotConditionCard, isWide && styles.slotConditionCardWide]}>
+                    <View style={styles.slotCardTopRow}>
+                      <Text style={styles.slotTimeText}>7pm - 12am</Text>
+                      <View style={styles.unselectedRadioCircle} />
+                    </View>
+                    <Text style={styles.slotDurationText}>4h 30m</Text>
+                    {/* Thin progress bar at bottom of slot card */}
+                    <View style={styles.slotProgressTrack}>
+                      <View style={styles.slotProgressFill} />
+                    </View>
+                  </View>
+                </View>
+
+                {/* Condition 2: Other condition (Order Acceptance) */}
+                <View style={[styles.conditionSection, isWide && styles.conditionSectionWide]}>
+                  <View style={styles.conditionTitleRow}>
+                    <Feather name="clock" size={16} color="#4B5563" style={{ marginRight: 8 }} />
+                    <Text style={styles.conditionHeading}>Other condition</Text>
+                  </View>
+
+                  <View style={[styles.slotConditionCard, isWide && styles.slotConditionCardWide]}>
+                    <View style={styles.slotCardTopRow}>
+                      <Text style={styles.otherConditionTitle}>Do not reject</Text>
+                      <View style={styles.unselectedRadioCircle} />
+                    </View>
+                    <Text style={styles.otherConditionSubtext}>more than 1 order</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* ── Additional Active Surge / Promotion Offers ── */}
+          {!isInitialLoading && isAllDayOffersExpanded && otherOffers.length > 0 && (
+            <View style={[styles.otherOffersContainer, isWide && styles.otherOffersContainerWide]}>
+              {otherOffers.map((offer) => {
+                const isOfferEarned = offer.isEarned || offer.status === 'Completed';
+
+                return (
+                  <View key={offer.id} style={[styles.secondaryOfferCard, isWide && styles.secondaryOfferCardWide]}>
+                    <View style={styles.secondaryOfferHeader}>
+                      <View style={styles.secondaryOfferTitleRow}>
+                        <View style={styles.secondaryOfferIconWrap}>
+                          <Feather
+                            name={
+                              offer.id.toLowerCase().includes('peak')
+                                ? 'zap'
+                                : offer.id.toLowerCase().includes('rain')
+                                ? 'cloud-rain'
+                                : 'award'
+                            }
+                            size={18}
+                            color="#EA580C"
+                          />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={styles.secondaryOfferTitle}>{offer.title}</Text>
+                          <Text style={styles.secondaryOfferValidity}>
+                            {offer.validityPeriod || offer.category}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={styles.secondaryOfferReward}>
+                        +₹{Number(offer.rewardAmount || 0).toFixed(0)}
                       </Text>
+                    </View>
+
+                    <Text style={styles.secondaryOfferDesc}>{offer.description}</Text>
+
+                    {isOfferEarned && (
+                      <View style={styles.offerEarnedTag}>
+                        <Feather name="check" size={13} color="#059669" style={{ marginRight: 4 }} />
+                        <Text style={styles.offerEarnedTagText}>Earned today</Text>
+                      </View>
                     )}
                   </View>
-                </View>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.emptyStateCard}>
-            <Ionicons name="flag-outline" size={32} color="#94A3B8" style={{ marginBottom: 6 }} />
-            <Text style={styles.emptyStateTitle}>No Target Milestones</Text>
-            <Text style={styles.emptyStateSubtitle}>
-              Milestone tiers configured by Admin will automatically appear here.
-            </Text>
-          </View>
-        )}
-
-        {/* ── SECTION C: Other Active Incentive Offers ── */}
-        {otherActiveOffers.length > 0 && (
-          <View style={{ marginBottom: 24 }}>
-            <View style={styles.sectionHeaderWrap}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <View style={[styles.sectionIconBadge, { backgroundColor: '#FEF3C7' }]}>
-                  <Feather name="zap" size={18} color="#D97706" />
-                </View>
-                <View>
-                  <Text style={styles.sectionTitle}>Active Incentive Offers</Text>
-                  <Text style={styles.sectionSubtitle}>Surge bonuses, weather surge & performance rewards</Text>
-                </View>
-              </View>
+                );
+              })}
             </View>
+          )}
 
-            {otherActiveOffers.map((offer) => {
-              const progressPct = offer.target > 0
-                ? Math.min(100, Math.max(0, Math.round((offer.currentProgress / offer.target) * 100)))
-                : 0;
-              const isCompleted = offer.status === 'Completed' || offer.status === 'Earned' || offer.isEarned;
-              const isInProgress = offer.status === 'In Progress';
-
-              return (
-                <View key={offer.id} style={styles.offerCard}>
-                  <View style={styles.offerHeader}>
-                    <View style={styles.offerTitleRow}>
-                      <View style={styles.offerIconWrap}>
-                        {renderCategoryIcon(offer.category, offer.id)}
-                      </View>
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={styles.offerTitle}>{offer.title}</Text>
-                        <Text style={styles.offerValidity}>{offer.validityPeriod || offer.category}</Text>
-                      </View>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        isCompleted && styles.statusBadgeCompleted,
-                        isInProgress && styles.statusBadgeInProgress,
-                        !isCompleted && !isInProgress && styles.statusBadgeUpcoming,
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.statusBadgeText,
-                          isCompleted && styles.statusBadgeTextCompleted,
-                          isInProgress && styles.statusBadgeTextInProgress,
-                          !isCompleted && !isInProgress && styles.statusBadgeTextUpcoming,
-                        ]}
-                      >
-                        {isCompleted ? 'Completed' : isInProgress ? 'In Progress' : 'Upcoming'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <Text style={styles.offerDescription}>{offer.description}</Text>
-
-                  {/* Progress Bar */}
-                  <View style={styles.progressBarSection}>
-                    <View style={styles.progressLabelRow}>
-                      <Text style={styles.progressCountText}>
-                        Progress: <Text style={{ fontWeight: '800', color: '#1A202C' }}>{offer.currentProgress} / {offer.target} {offer.target > 1 ? 'orders' : 'condition'}</Text>
-                      </Text>
-                      <Text style={styles.progressPercentText}>{progressPct}%</Text>
-                    </View>
-                    <View style={styles.progressBarTrack}>
-                      <View
-                        style={[
-                          styles.progressBarFill,
-                          { width: `${progressPct}%` },
-                          isCompleted && { backgroundColor: '#10B981' },
-                        ]}
-                      />
-                    </View>
-                  </View>
-
-                  {/* Footer */}
-                  <View style={styles.offerFooter}>
-                    <View style={styles.rewardTag}>
-                      <Feather name="gift" size={14} color="#14532D" style={{ marginRight: 4 }} />
-                      <Text style={styles.rewardTagText}>
-                        Reward: <Text style={styles.rewardTagAmount}>{formatAmount(offer.rewardAmount)}</Text> {offer.unit ? `(${offer.unit})` : ''}
-                      </Text>
-                    </View>
-
-                    {offer.remaining != null && offer.remaining > 0 ? (
-                      <Text style={styles.remainingText}>{offer.remaining} remaining</Text>
-                    ) : isCompleted ? (
-                      <View style={styles.earnedPill}>
-                        <Feather name="check-circle" size={12} color="#10B981" style={{ marginRight: 4 }} />
-                        <Text style={styles.earnedPillText}>Target Achieved</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
-        {/* ── SECTION D: Recent Incentive Activity ── */}
-        <View style={styles.sectionHeaderWrap}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={[styles.sectionIconBadge, { backgroundColor: '#E0E7FF' }]}>
-                <Feather name="clock" size={18} color="#4338CA" />
-              </View>
-              <View>
-                <Text style={styles.sectionTitle}>Recent Incentive Activity</Text>
-                <Text style={styles.sectionSubtitle}>Verified transaction history</Text>
-              </View>
-            </View>
-
-            <Pressable
-              onPress={handleRefresh}
-              style={({ pressed }) => [styles.miniRefreshBtn, pressed && { opacity: 0.6 }]}
-              accessibilityLabel="Refresh Transactions"
-            >
-              <Feather name="rotate-cw" size={15} color="#4338CA" />
-            </Pressable>
-          </View>
+          {/* Space above BottomNav */}
+          <View style={{ height: 40 }} />
         </View>
-
-        {transactions.length > 0 ? (
-          <View style={styles.transactionsContainer}>
-            {transactions.map((tx, idx) => (
-              <View key={tx.id || idx} style={styles.transactionCard}>
-                <View style={styles.transactionIconWrap}>
-                  <Feather name="arrow-down-left" size={18} color="#15803D" />
-                </View>
-
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.transactionTitle}>
-                    {tx.ruleTitle || 'Incentive Reward'}
-                  </Text>
-                  <Text style={styles.transactionDate}>
-                    {formatTransactionDate(tx.earnedAt)}
-                  </Text>
-                  {tx.referenceType ? (
-                    <Text style={styles.transactionReference}>
-                      Ref: {tx.referenceType}
-                    </Text>
-                  ) : null}
-                </View>
-
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.transactionAmount}>
-                    +{formatAmount(tx.amount)}
-                  </Text>
-                  <View style={styles.creditedPill}>
-                    <Text style={styles.creditedPillText}>Credited</Text>
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.emptyTransactionsCard}>
-            <View style={styles.emptyIconCircle}>
-              <Feather name="inbox" size={32} color="#94A3B8" />
-            </View>
-            <Text style={styles.emptyTransactionsMessage}>
-              “Your incentive transactions will appear here.”
-            </Text>
-            <Text style={styles.emptyTransactionsSubtext}>
-              Complete eligible delivery trips to earn milestone rewards and surge bonuses.
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
-      {/* ── Bottom Navigation ── */}
+      {/* Preserve Bottom Navigation */}
       <BottomNav />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screenWrapper: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    height: '100%',
+    backgroundColor: '#F2F2F7', // Apple/iOS soft grey background matching Payout page
   },
-  topArch: {
-    position: 'absolute',
-    top: 0,
+  mainScrollView: {
+    flex: 1,
     width: '100%',
-    backgroundColor: '#14532D',
   },
-  appBar: {
+  scrollContentContainer: {
+    flexGrow: 1,
+    paddingBottom: Platform.OS === 'web' ? 120 : 90,
+  },
+
+  /* ── Top Gradient Arch inside ScrollView ── */
+  topGradientArch: {
+    width: '100%',
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+  },
+
+  /* ── Header Row ── */
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+    width: '100%',
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 16,
   },
-  appTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#FCD34D', // Gold accent matching Payout screen
     letterSpacing: 0.3,
+    marginBottom: 2,
   },
-  appSubtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#A7F3D0',
-    marginTop: 2,
+  headerTitleWide: {
+    fontSize: 32,
+    letterSpacing: 0.5,
   },
-  refreshButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#A7F3D0', // Mint green subtitle
+    fontWeight: '600',
   },
-  // ── Calendar Strip ──
-  calendarStrip: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+
+  /* ── Page Content Wrapper ── */
+  pageContentWrapper: {
+    width: '100%',
+  },
+  responsiveContentContainer: {
+    width: '100%',
+    maxWidth: 1080,
+    alignSelf: 'center',
+    paddingHorizontal: 24,
+  },
+
+  /* ── Date Selector Elevated Card ── */
+  dateSelectorCard: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingTop: 8,
-    marginTop: -12,
+    marginHorizontal: 16,
+    marginTop: -20, // Clean overlap with gradient arch
+    borderRadius: 22,
+    paddingTop: 12,
+    paddingBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 16,
   },
-  calendarContent: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+  dateSelectorCardWide: {
+    marginHorizontal: 0,
+    marginTop: -28,
+    paddingVertical: 16,
+    borderRadius: 24,
+    marginBottom: 20,
   },
-  dayCell: {
-    width: 58,
+  dateFlatList: {
+    width: '100%',
+  },
+  dateListContent: {
+    paddingHorizontal: 14,
+  },
+  dateListContentWide: {
+    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  dateItemWrapper: {
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    marginHorizontal: 2,
+    width: 66,
+    marginRight: 6,
+  },
+  dateItemWrapperWide: {
+    flex: 1,
+    maxWidth: 136,
+    marginRight: 12,
+  },
+  badgeSlot: {
+    height: 24,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  earnMoreBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  earnMoreBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  specialBadgeRow: {
+    alignItems: 'center',
+  },
+  crownEmoji: {
+    fontSize: 12,
+    lineHeight: 12,
+    marginBottom: -2,
+  },
+  specialBadge: {
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 8,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  specialBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  dateBox: {
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: 8,
+    paddingBottom: 6,
     borderRadius: 10,
     position: 'relative',
   },
-  dayCellSelected: {
-    backgroundColor: '#F59E0B',
+  dateBoxWide: {
+    paddingVertical: 10,
+    borderRadius: 12,
   },
-  dayCellToday: {
-    backgroundColor: '#FFFBEB',
+  dateBoxSelected: {
+    backgroundColor: '#FFF7ED', // Soft light peach/orange
   },
-  dayName: {
-    fontSize: 12,
+  dateWeekdayText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#718096',
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  dateWeekdayTextWide: {
+    fontSize: 14,
     marginBottom: 4,
   },
-  dayNameSelected: {
-    color: '#FFFFFF',
-  },
-  dayNameToday: {
-    color: '#F59E0B',
+  dateWeekdayTextSelected: {
+    color: '#EA580C',
     fontWeight: '700',
   },
-  dayNameFuture: {
-    color: '#CBD5E0',
-  },
-  dayNumber: {
-    fontSize: 18,
+  dateNumberText: {
+    fontSize: 22,
     fontWeight: '800',
-    color: '#1A202C',
+    color: '#1F2937',
   },
-  dayNumberSelected: {
-    color: '#FFFFFF',
+  dateNumberTextWide: {
+    fontSize: 26,
+    fontWeight: '900',
   },
-  dayNumberToday: {
-    color: '#F59E0B',
+  dateNumberTextSelected: {
+    color: '#EA580C',
+    fontWeight: '900',
   },
-  dayNumberFuture: {
-    color: '#CBD5E0',
-  },
-  dayUnderline: {
+  selectedUnderline: {
     position: 'absolute',
-    bottom: 4,
-    width: 20,
-    height: 3,
-    borderRadius: 2,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3.5,
+    backgroundColor: '#EA580C',
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+
+  /* ── ALL DAY OFFERS Section Header ── */
+  allDayOffersHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 14,
+  },
+  allDayOffersHeaderWide: {
+    paddingHorizontal: 4,
+    paddingTop: 10,
+    paddingBottom: 16,
+  },
+  allDayOffersTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    color: '#111827',
+  },
+  allDayOffersTitleWide: {
+    fontSize: 15,
+    letterSpacing: 1,
+  },
+
+  /* ── Daily Incentive Card ── */
+  dailyIncentiveCard: {
     backgroundColor: '#FFFFFF',
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 70,
-  },
-  // ── Error Banner ──
-  errorCard: {
-    backgroundColor: '#FEF2F2',
+    marginHorizontal: 16,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 14,
-    padding: 14,
+    borderColor: '#E2E8F0',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
     marginBottom: 16,
+  },
+  cardWide: {
+    marginHorizontal: 0,
+    padding: 28,
+    borderRadius: 24,
+    marginBottom: 24,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  giftIcon: {
+    marginRight: 10,
+  },
+  dailyIncentiveHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#C2410C', // Rich warm orange
+  },
+  dailyIncentiveHeadingWide: {
+    fontSize: 22,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEE2E2', // Soft pink/red
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 14,
+  },
+  liveDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#EF4444',
+    marginRight: 6,
+  },
+  liveBadgeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#EF4444',
+    letterSpacing: 0.5,
+  },
+  cardDateSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 6,
+  },
+  cardDateSubtextWide: {
+    fontSize: 15,
+    marginTop: 8,
+  },
+  earnUpToHeading: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#111827',
+    marginTop: 14,
+    marginBottom: 18,
+    letterSpacing: -0.3,
+  },
+  earnUpToHeadingWide: {
+    fontSize: 28,
+    marginTop: 16,
+    marginBottom: 22,
+    letterSpacing: -0.5,
+  },
+
+  /* ── Milestone Table Tracker ── */
+  milestoneTableContainer: {
+    backgroundColor: '#F1F5F9', // Crisp cool light grey
+    borderRadius: 14,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  milestoneTableContainerWide: {
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+    marginBottom: 20,
+  },
+  milestoneLabelsColumn: {
+    width: 86,
+    paddingLeft: 12,
+    borderRightWidth: 1,
+    borderRightColor: '#E2E8F0',
     justifyContent: 'space-between',
   },
-  errorTitle: {
+  milestoneLabelsColumnWide: {
+    width: 110,
+    paddingLeft: 16,
+  },
+  tableRowHeader: {
+    height: 24,
+    justifyContent: 'center',
+  },
+  tableTrackSpacer: {
+    height: 36,
+  },
+  tableRowFooter: {
+    height: 24,
+    justifyContent: 'center',
+  },
+  tableRowLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  tableRowLabelWide: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  milestonesTrackContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    position: 'relative',
+    paddingHorizontal: 8,
+  },
+  horizontalTrackBg: {
+    position: 'absolute',
+    left: 24,
+    right: 24,
+    top: 40,
+    height: 3.5,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+  },
+  horizontalTrackFill: {
+    height: 3.5,
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+  },
+  milestoneColumn: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 2,
+    flex: 1,
+  },
+  milestoneRewardText: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#111827',
+    height: 24,
+    textAlign: 'center',
+  },
+  milestoneRewardTextWide: {
+    fontSize: 17,
+  },
+  trackNodeSlot: {
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completedNode: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockNode: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#64748B',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  progressMarkerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scooterMarkerBadge: {
+    marginRight: -4,
+    zIndex: 3,
+  },
+  scooterMarkerEmoji: {
     fontSize: 14,
+  },
+  milestoneTripsText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    height: 24,
+    textAlign: 'center',
+  },
+  milestoneTripsTextWide: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+
+  /* ── Current Trips Outlined Badge ── */
+  yourTripsBadge: {
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 20,
+  },
+  yourTripsBadgeWide: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 24,
+  },
+  yourTripsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  yourTripsCountBold: {
+    fontWeight: '900',
+    color: '#111827',
+  },
+
+  /* ── OFFER CONDITIONS ── */
+  conditionsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  conditionDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  conditionsHeaderText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    color: '#111827',
+    marginHorizontal: 12,
+  },
+  conditionsHeaderTextWide: {
+    fontSize: 13,
+    letterSpacing: 1.5,
+  },
+
+  /* ── Conditions Grid (Side-by-side on wide screens) ── */
+  conditionsGrid: {
+    flexDirection: 'column',
+    gap: 14,
+  },
+  conditionsGridWide: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  conditionSection: {
+    marginBottom: 6,
+  },
+  conditionSectionWide: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  conditionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  conditionHeading: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  slotConditionCard: {
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    borderRadius: 14,
+    padding: 14,
+    width: 150,
+    backgroundColor: '#FFFFFF',
+  },
+  slotConditionCardWide: {
+    width: '100%',
+    padding: 16,
+    borderRadius: 16,
+  },
+  slotCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  slotTimeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  unselectedRadioCircle: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+  },
+  slotDurationText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  slotProgressTrack: {
+    height: 3.5,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  slotProgressFill: {
+    height: 3.5,
+    width: '28%',
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+  },
+  otherConditionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4B5563',
+  },
+  otherConditionSubtext: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 8,
+  },
+
+  /* ── Secondary Offers ── */
+  otherOffersContainer: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  otherOffersContainerWide: {
+    paddingHorizontal: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+  },
+  secondaryOfferCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  secondaryOfferCardWide: {
+    flex: 1,
+    minWidth: 300,
+    padding: 20,
+    borderRadius: 20,
+  },
+  secondaryOfferHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  secondaryOfferTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  secondaryOfferIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF7ED',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  secondaryOfferTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  secondaryOfferValidity: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginTop: 1,
+  },
+  secondaryOfferReward: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#059669',
+  },
+  secondaryOfferDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 18,
+  },
+  offerEarnedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  offerEarnedTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+
+  /* ── Error & Skeleton States ── */
+  errorCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+    borderRadius: 14,
+    marginHorizontal: 16,
+    padding: 14,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#991B1B',
   },
   errorSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#B91C1C',
     marginTop: 2,
   },
@@ -860,570 +1305,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   retryButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
   },
-  // ── Summary Cards (Section A) ──
-  totalEarningsCard: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1.5,
-    borderColor: '#A7F3D0',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  totalEarningsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  totalEarningsIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#D1FAE5',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  totalEarningsLabel: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#065F46',
-    letterSpacing: 0.8,
-  },
-  totalEarningsSublabel: {
-    fontSize: 11,
-    color: '#047857',
-    fontWeight: '500',
-  },
-  verifiedBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  verifiedBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#065F46',
-  },
-  totalEarningsAmount: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#064E3B',
-    marginBottom: 6,
-    letterSpacing: 0.5,
-  },
-  totalEarningsFootnote: {
-    fontSize: 12,
-    color: '#047857',
-    fontWeight: '600',
-    lineHeight: 16,
-  },
-  splitCardsRow: {
-    flexDirection: 'row',
+  skeletonCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 20,
     gap: 12,
-    flexWrap: 'wrap',
-  },
-  earnedCard: {
-    flex: 1,
-    minWidth: 140,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  pendingCard: {
-    flex: 1,
-    minWidth: 140,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  miniCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  miniIconWrap: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  miniCardLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  earnedAmountText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#166534',
-    marginBottom: 2,
-  },
-  pendingAmountText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#B45309',
-    marginBottom: 2,
-  },
-  miniCardSubtext: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  // ── Section Headers ──
-  sectionHeaderWrap: {
-    marginBottom: 12,
-  },
-  sectionIconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#DCFCE7',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#1E293B',
-    letterSpacing: 0.2,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  // ── Milestone Cards (Section B) ──
-  milestoneCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  milestoneCardCompleted: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
-  },
-  milestoneCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  milestoneTag: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  milestoneTagText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#475569',
-    letterSpacing: 0.5,
-  },
-  milestoneDetailsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  milestoneTargetHeading: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1E293B',
-    marginBottom: 2,
-  },
-  milestoneProgressCounter: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  milestoneRewardBadge: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  milestoneRewardLabel: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#047857',
-    letterSpacing: 0.6,
-  },
-  milestoneRewardAmount: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#15803D',
-  },
-  milestoneProgressBarContainer: {
-    marginBottom: 8,
-  },
-  milestoneProgressBarTrack: {
-    height: 8,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  milestoneProgressBarFill: {
-    height: '100%',
-    backgroundColor: '#F59E0B',
-    borderRadius: 4,
-  },
-  milestoneCardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 4,
-  },
-  milestonePercentLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  milestoneRemainingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#D97706',
-  },
-  milestoneAchievedTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  milestoneAchievedText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#059669',
-  },
-  // ── Status Badges ──
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  statusBadgeCompleted: {
-    backgroundColor: '#ECFDF5',
-    borderColor: '#A7F3D0',
-  },
-  statusBadgeInProgress: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
-  },
-  statusBadgeUpcoming: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#E2E8F0',
-  },
-  statusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  statusBadgeTextCompleted: {
-    color: '#047857',
-  },
-  statusBadgeTextInProgress: {
-    color: '#D97706',
-  },
-  statusBadgeTextUpcoming: {
-    color: '#64748B',
-  },
-  // ── Active Incentive Offer Cards (Section C) ──
-  offerCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 16,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  offerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  offerTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  offerIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  offerTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1A202C',
-  },
-  offerValidity: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#718096',
-    marginTop: 2,
-  },
-  offerDescription: {
-    fontSize: 13,
-    color: '#4A5568',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  progressBarSection: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#EDF2F7',
-  },
-  progressLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  progressCountText: {
-    fontSize: 12,
-    color: '#718096',
-  },
-  progressPercentText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#14532D',
-  },
-  progressBarTrack: {
-    height: 8,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: '#F59E0B',
-    borderRadius: 4,
-  },
-  offerFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  rewardTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  rewardTagText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4A5568',
-  },
-  rewardTagAmount: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#14532D',
-  },
-  remainingText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#D97706',
-  },
-  earnedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  earnedPillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#059669',
-  },
-  // ── Transactions Section (Section D) ──
-  miniRefreshBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#EEF2FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  transactionsContainer: {
-    marginBottom: 24,
-    gap: 8,
-  },
-  transactionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  transactionIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#ECFDF5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
-  },
-  transactionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  transactionDate: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  transactionReference: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 1,
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#15803D',
-    marginBottom: 4,
-  },
-  creditedPill: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  creditedPillText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#166534',
-  },
-  emptyTransactionsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 28,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 24,
-  },
-  emptyIconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  emptyTransactionsMessage: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#334155',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  emptyTransactionsSubtext: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  emptyStateCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 20,
-  },
-  emptyStateTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 4,
-  },
-  emptyStateSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
   },
 });
