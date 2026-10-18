@@ -74,7 +74,7 @@ export async function startBackgroundLocationTracking(): Promise<void> {
             timeInterval: 15000,
             showsBackgroundLocationIndicator: true,
             foregroundService: {
-                notificationTitle: 'Foodie Delivery is Active',
+                notificationTitle: 'Delimo Delivery Partner is Active',
                 notificationBody: 'Tracking your location to assign nearby orders',
                 notificationColor: '#F59E0B',
             },

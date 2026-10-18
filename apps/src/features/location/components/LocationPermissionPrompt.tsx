@@ -130,19 +130,19 @@ export function LocationPermissionPrompt() {
             {isGpsDisabled
               ? 'Enable Device Location (GPS)'
               : isBlocked
-              ? 'Location Permission Required'
-              : 'Allow Location Access'}
+                ? 'Location Permission Required'
+                : 'Allow Location Access'}
           </Text>
 
           {/* Description */}
           <Text style={styles.description}>
             {isGpsDisabled
-              ? 'Location services are turned off on your device. Please turn on GPS so Foodie can assign orders and provide live navigation.'
+              ? 'Location services are turned off on your device. Please turn on GPS so Delimo can assign orders and provide live navigation.'
               : isBlocked
-              ? Platform.OS === 'web'
-                ? 'Location access was blocked in your browser. Please allow location in your browser site settings and click "Check Again".'
-                : 'Location permission is disabled in device settings. Please allow location access to continue delivery operations.'
-              : 'Foodie Delivery requires location access to find nearby delivery offers, navigate to pickup & dropoff points, and update delivery status in real-time.'}
+                ? Platform.OS === 'web'
+                  ? 'Location access was blocked in your browser. Please allow location in your browser site settings and click "Check Again".'
+                  : 'Location permission is disabled in device settings. Please allow location access to continue delivery operations.'
+                : 'Delimo Delivery Partner requires location access to find nearby delivery offers, navigate to pickup & dropoff points, and update delivery status in real-time.'}
           </Text>
 
           {/* Key Feature Benefits */}

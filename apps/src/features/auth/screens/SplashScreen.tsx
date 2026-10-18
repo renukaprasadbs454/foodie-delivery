@@ -29,7 +29,7 @@ export function SplashScreen() {
       }}
     >
       <Text variant="heading1" accessibilityRole="header">
-        Foodie Delivery
+        Delimo Delivery Partner
       </Text>
       <LoadingSpinner accessibilityLabel="Restoring session" />
     </View>

@@ -62,7 +62,11 @@ function resolveApiBaseUrl(): string {
   }
 
   // 2. Explicit environment variable (injected at build time or via .env)
-  const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || process.env.FOODIE_API_BASE_URL;
+  const envUrl =
+    process.env.EXPO_PUBLIC_API_URL ||
+    process.env.EXPO_PUBLIC_API_BASE_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    process.env.FOODIE_API_BASE_URL;
   if (envUrl && envUrl.trim()) {
     return normalizeUrl(envUrl.trim());
   }
