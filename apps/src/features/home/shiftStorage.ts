@@ -14,24 +14,8 @@ export interface ActiveShiftData {
 
 export const FALLBACK_ADMIN_SHIFTS = [
   {
-    shiftId: '67b534e5-f127-4772-8895-09602bc2d69e',
-    shiftName: 'Morning',
-    startTime: '06:00 AM',
-    endTime: '12:00 PM',
-    durationHours: '6h',
-    status: 'ACTIVE',
-  },
-  {
-    shiftId: 'fffb3e70-aaaf-42d0-9fc5-5f0788f81375',
-    shiftName: 'Afternoon',
-    startTime: '12:00 PM',
-    endTime: '05:00 PM',
-    durationHours: '5h',
-    status: 'ACTIVE',
-  },
-  {
-    shiftId: 'fc5dcb04-9451-4b65-8991-c004026bd9e1',
-    shiftName: 'Evening',
+    shiftId: 'cc903501-753c-4bb6-ab31-f3ab8f4cfe3a',
+    shiftName: 'Evening Peak',
     startTime: '05:00 PM',
     endTime: '11:00 PM',
     durationHours: '6h',
@@ -39,10 +23,26 @@ export const FALLBACK_ADMIN_SHIFTS = [
   },
   {
     shiftId: '48df5bfe-ccd8-4e35-8705-18ac859f9e04',
-    shiftName: 'Late Night',
+    shiftName: 'late night',
     startTime: '11:00 PM',
     endTime: '03:00 AM',
     durationHours: '4h',
+    status: 'ACTIVE',
+  },
+  {
+    shiftId: 'fffb3e70-aaaf-42d0-9fc5-5f0788f81375',
+    shiftName: 'afternoon',
+    startTime: '12:00 PM',
+    endTime: '05:00 PM',
+    durationHours: '5h',
+    status: 'ACTIVE',
+  },
+  {
+    shiftId: '67b534e5-f127-4772-8895-09602bc2d69e',
+    shiftName: 'Morning',
+    startTime: '06:00 AM',
+    endTime: '12:00 PM',
+    durationHours: '6h',
     status: 'ACTIVE',
   },
 ];

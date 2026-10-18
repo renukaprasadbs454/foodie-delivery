@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -50,14 +50,67 @@ export function MyShiftModal({
   const [bookShiftMutation, { isLoading: isBooking }] = useBookDeliveryShiftMutation();
 
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
+  const [adminLiveShifts, setAdminLiveShifts] = useState<DeliveryShift[]>([]);
 
-  // Merge available server shifts with known admin shifts fallback
+  useEffect(() => {
+    let isCancelled = false;
+    async function fetchAdminShifts() {
+      if (Platform.OS !== 'web' && typeof fetch === 'undefined') return;
+
+      const endpoints = [
+        'http://localhost:3000/api/bff/admin/shifts',
+        'http://localhost:8082/api/v1/delivery/shifts/available',
+        '/api/v1/delivery/shifts/available',
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const res = await fetch(endpoint, {
+            headers: { Accept: 'application/json' },
+          });
+          if (res.ok) {
+            const json = await res.json();
+            const list = Array.isArray(json?.data)
+              ? json.data
+              : Array.isArray(json)
+              ? json
+              : null;
+            if (list && list.length > 0) {
+              const activeList = list.filter(
+                (s: any) => !s.status || s.status.toUpperCase() === 'ACTIVE'
+              );
+              if (activeList.length > 0 && !isCancelled) {
+                setAdminLiveShifts(activeList);
+                if (activeList.length >= 2 || endpoint.includes('localhost')) {
+                  break;
+                }
+              }
+            }
+          }
+        } catch {
+          // Continue to next endpoint
+        }
+      }
+    }
+
+    if (visible) {
+      void fetchAdminShifts();
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [visible]);
+
+  // Merge available server shifts with live admin shifts and fallback
   const availableShifts = useMemo(() => {
-    if (serverShifts && serverShifts.length > 0) {
+    if (adminLiveShifts.length > 0) {
+      return adminLiveShifts;
+    }
+    if (serverShifts && serverShifts.length > 1) {
       return serverShifts;
     }
     return FALLBACK_ADMIN_SHIFTS;
-  }, [serverShifts]);
+  }, [adminLiveShifts, serverShifts]);
 
   // Determine current active shift ID
   const effectiveActiveId = activeShift?.shiftId || bookingsData?.[0]?.shiftId;

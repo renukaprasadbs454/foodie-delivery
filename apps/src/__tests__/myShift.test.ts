@@ -89,11 +89,11 @@ describe('Delivery Partner My Shift Integration', () => {
     it('contains all 4 standard admin shifts with valid properties', () => {
       expect(FALLBACK_ADMIN_SHIFTS).toHaveLength(4);
 
-      const shiftNames = FALLBACK_ADMIN_SHIFTS.map((s) => s.shiftName);
-      expect(shiftNames).toContain('Morning');
-      expect(shiftNames).toContain('Afternoon');
-      expect(shiftNames).toContain('Evening');
-      expect(shiftNames).toContain('Late Night');
+      const shiftNames = FALLBACK_ADMIN_SHIFTS.map((s) => s.shiftName.toLowerCase());
+      expect(shiftNames).toContain('morning');
+      expect(shiftNames).toContain('afternoon');
+      expect(shiftNames).toContain('evening peak');
+      expect(shiftNames).toContain('late night');
 
       for (const shift of FALLBACK_ADMIN_SHIFTS) {
         expect(shift.shiftId).toBeTruthy();
@@ -105,19 +105,19 @@ describe('Delivery Partner My Shift Integration', () => {
     });
 
     it('has non-overlapping shift window titles matching backend schedules', () => {
-      const morning = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName === 'Morning');
+      const morning = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName.toLowerCase() === 'morning');
       expect(morning?.startTime).toBe('06:00 AM');
       expect(morning?.endTime).toBe('12:00 PM');
 
-      const afternoon = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName === 'Afternoon');
+      const afternoon = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName.toLowerCase() === 'afternoon');
       expect(afternoon?.startTime).toBe('12:00 PM');
       expect(afternoon?.endTime).toBe('05:00 PM');
 
-      const evening = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName === 'Evening');
+      const evening = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName.toLowerCase().includes('evening'));
       expect(evening?.startTime).toBe('05:00 PM');
       expect(evening?.endTime).toBe('11:00 PM');
 
-      const lateNight = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName === 'Late Night');
+      const lateNight = FALLBACK_ADMIN_SHIFTS.find((s) => s.shiftName.toLowerCase() === 'late night');
       expect(lateNight?.startTime).toBe('11:00 PM');
       expect(lateNight?.endTime).toBe('03:00 AM');
     });
