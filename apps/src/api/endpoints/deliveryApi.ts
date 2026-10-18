@@ -21,6 +21,31 @@ export type DeliveryNavigationDetails = {
   restaurantLng: number | null;
 };
 
+export type DeliveryShift = {
+  shiftId: string;
+  shiftName: string;
+  startTime: string;
+  endTime: string;
+  durationHours: string;
+  status: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type DeliveryShiftBooking = {
+  bookingId: string;
+  deliveryPartnerId: string;
+  shiftId: string;
+  shiftName: string;
+  startTime: string;
+  endTime: string;
+  durationHours: string;
+  status: string;
+  bookedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export function dataUriToBlob(dataUri: string): Blob {
   const parts = dataUri.split(',');
   const mimeMatch = parts[0]?.match(/:(.*?);/);
@@ -515,6 +540,34 @@ export const deliveryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: [{ type: 'Delivery', id: 'PROFILE' }],
     }),
+    getAvailableShifts: builder.query<DeliveryShift[], void>({
+      query: () => '/api/v1/delivery/shifts/available',
+      transformResponse: (response: any) => {
+        if (Array.isArray(response)) return response;
+        if (response?.data && Array.isArray(response.data)) return response.data;
+        return [];
+      },
+      providesTags: [{ type: 'Delivery', id: 'SHIFTS' }],
+    }),
+    getMyShiftBookings: builder.query<DeliveryShiftBooking[], void>({
+      query: () => '/api/v1/delivery/shifts/my-bookings',
+      transformResponse: (response: any) => {
+        if (Array.isArray(response)) return response;
+        if (response?.data && Array.isArray(response.data)) return response.data;
+        return [];
+      },
+      providesTags: [{ type: 'Delivery', id: 'MY_SHIFTS' }],
+    }),
+    bookDeliveryShift: builder.mutation<DeliveryShiftBooking, string>({
+      query: (shiftId) => ({
+        url: `/api/v1/delivery/shifts/${shiftId}/book`,
+        method: 'POST',
+      }),
+      invalidatesTags: [
+        { type: 'Delivery', id: 'SHIFTS' },
+        { type: 'Delivery', id: 'MY_SHIFTS' },
+      ],
+    }),
   }),
 });
 
@@ -541,5 +594,8 @@ export const {
   useVerifyCashDepositMutation,
   useGetDeliveryZonesQuery,
   useVerifyDeliveryZoneMutation,
+  useGetAvailableShiftsQuery,
+  useGetMyShiftBookingsQuery,
+  useBookDeliveryShiftMutation,
 } = deliveryApi;
 

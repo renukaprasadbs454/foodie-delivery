@@ -32,6 +32,8 @@ import { Toast } from '@/components/Toast';
 import { BottomNav } from '@/navigation/BottomNav';
 import { useLocationTracker, requestAllLocationPermissions } from '@/features/location';
 import { ensureBackgroundLocationForOnline } from '@/features/home/locationPermission';
+import { MyShiftModal } from '@/features/home/components/MyShiftModal';
+import { getStoredActiveShift, type ActiveShiftData } from '@/features/home/shiftStorage';
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
 
@@ -84,6 +86,29 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const [rejectAssignment] = useRejectAssignmentMutation();
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, variant: 'info' | 'success' | 'error' | 'warning' } | null>(null);
+
+  // Delivery Partner Shifts state (Req: My Shift beside Online)
+  const [isShiftModalVisible, setIsShiftModalVisible] = useState(false);
+  const [activeShift, setActiveShift] = useState<ActiveShiftData | null>(null);
+  const prevIsOnlineRef = useRef<boolean>(isOnline);
+
+  useEffect(() => {
+    async function loadActiveShift() {
+      const stored = await getStoredActiveShift();
+      if (stored) {
+        setActiveShift(stored);
+      }
+    }
+    void loadActiveShift();
+  }, []);
+
+  // When delivery person comes online, if no active shift is set, prompt to create/choose shift
+  useEffect(() => {
+    if (!prevIsOnlineRef.current && isOnline && !activeShift) {
+      setIsShiftModalVisible(true);
+    }
+    prevIsOnlineRef.current = isOnline;
+  }, [isOnline, activeShift]);
 
   const onAccept = async (assignmentId: string, orderId: string) => {
     stopOrderOfferAlert();
@@ -317,6 +342,9 @@ export function DeliveryHomeScreen({ navigation }: Props) {
       trackAnalyticsEvent('delivery_availability_changed', { isOnline: true });
       trackAnalyticsEvent('go_online_photo_verified');
       setToast({ message: 'Face verified! You are now online.', variant: 'success' });
+      if (!activeShift) {
+        setIsShiftModalVisible(true);
+      }
     } catch (error: any) {
       setIsCameraVisible(false);
 
@@ -556,12 +584,44 @@ export function DeliveryHomeScreen({ navigation }: Props) {
           <View style={[styles.toggleSwitchContainer, isOnline ? styles.toggleSwitchContainerOnline : styles.toggleSwitchContainerOffline]}>
             <View style={styles.toggleSwitchLeft}>
               <View style={[styles.statusDot, { backgroundColor: isOnline ? '#10B981' : '#94A3B8' }]} />
-              <View>
-                <Text style={styles.toggleSwitchTitle}>
-                  {isOnline ? 'Online' : 'Offline'}
-                </Text>
+              <View style={{ flex: 1 }}>
+                <View style={styles.onlineTitleRow}>
+                  <Text style={styles.toggleSwitchTitle}>
+                    {isOnline ? 'Online' : 'Offline'}
+                  </Text>
+
+                  {/* Beside Online: My Shift Button */}
+                  <Pressable
+                    style={[
+                      styles.myShiftPillButton,
+                      activeShift ? styles.myShiftPillButtonActive : styles.myShiftPillButtonInactive,
+                    ]}
+                    onPress={() => setIsShiftModalVisible(true)}
+                    accessibilityRole="button"
+                    accessibilityLabel="My Shift"
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={14}
+                      color={activeShift ? '#065F46' : '#0369A1'}
+                    />
+                    <Text style={[styles.myShiftPillText, activeShift && styles.myShiftPillTextActive]}>
+                      My Shift
+                    </Text>
+                    {activeShift ? (
+                      <View style={styles.activeShiftDotBadge} />
+                    ) : (
+                      <View style={styles.selectShiftTag}>
+                        <Text style={styles.selectShiftTagText}>Select</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                </View>
+
                 <Text style={styles.toggleSwitchSubtitle}>
-                  {isOnline ? 'Receiving order offers' : 'Turn on to start receiving orders'}
+                  {activeShift
+                    ? `${activeShift.shiftName} (${activeShift.startTime} - ${activeShift.endTime}) • Active`
+                    : (isOnline ? 'Receiving order offers • Tap My Shift to set slot' : 'Turn on to start receiving orders')}
                 </Text>
               </View>
             </View>
@@ -721,6 +781,15 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         variant={toast?.variant ?? 'info'}
         accessibilityLabel={toast?.message ?? 'Toast'}
         onDismiss={() => setToast(null)}
+      />
+
+      {/* My Shift Selection & Creation Modal */}
+      <MyShiftModal
+        visible={isShiftModalVisible}
+        onClose={() => setIsShiftModalVisible(false)}
+        activeShift={activeShift}
+        onShiftUpdated={(updated) => setActiveShift(updated)}
+        onShowToast={(msg, variant) => setToast({ message: msg, variant })}
       />
 
       {/* Customer Ratings and Reviews Modal */}
@@ -1214,6 +1283,56 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#64748B',
     marginTop: 2,
+  },
+  onlineTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  myShiftPillButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 16,
+    gap: 4,
+  },
+  myShiftPillButtonActive: {
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: '#6EE7B7',
+  },
+  myShiftPillButtonInactive: {
+    backgroundColor: '#E0F2FE',
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  myShiftPillText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0369A1',
+  },
+  myShiftPillTextActive: {
+    color: '#065F46',
+  },
+  activeShiftDotBadge: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  selectShiftTag: {
+    backgroundColor: '#0284C7',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  selectShiftTagText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
   },
   toggleButtonDisabled: {
     backgroundColor: '#CBD5E0',
