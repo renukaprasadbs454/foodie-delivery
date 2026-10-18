@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -8,21 +8,25 @@ import {
   RefreshControl,
   useWindowDimensions,
   Platform,
+  AppState,
+  type AppStateStatus,
+  Animated,
+  Easing,
+  AccessibilityInfo,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Text } from '@/components/Text';
-import { Skeleton } from '@/components/Skeleton';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '@/navigation/types';
 import {
   useGetIncentivesProgressQuery,
-  useGetEarningsSummaryQuery,
-  useGetIncentiveEarningsQuery,
-  type IncentiveOfferProgress,
   type IncentiveMilestone,
+  type IncentiveConditionProgress,
 } from '@/api/endpoints/incentivesApi';
+import { getStoredActiveShift, type ActiveShiftData } from '@/features/home/shiftStorage';
 import { BottomNav } from '@/navigation/BottomNav';
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -74,15 +78,113 @@ function getBadgeForDate(date: Date): BadgeType {
   return null;
 }
 
+/** Default 4-milestone ladder matching screenshot */
+const DEFAULT_MILESTONES: IncentiveMilestone[] = [
+  { trips: 6, rewardAmount: 50, status: 'Locked', remaining: 6, isEarned: false },
+  { trips: 9, rewardAmount: 75, status: 'Locked', remaining: 9, isEarned: false },
+  { trips: 13, rewardAmount: 120, status: 'Locked', remaining: 13, isEarned: false },
+  { trips: 18, rewardAmount: 190, status: 'Locked', remaining: 18, isEarned: false },
+];
+
+/** Formats start and end times into clean card display matching screenshot (e.g. "7pm - 12am") */
+export function formatSlotDisplay(startTime?: string, endTime?: string): string {
+  if (!startTime || !endTime) return '7pm - 12am';
+  const formatTime = (t: string) => {
+    const trimmed = t.trim();
+    const match12 = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+    if (match12) {
+      const h = parseInt(match12[1], 10);
+      const m = match12[2] ? parseInt(match12[2], 10) : 0;
+      const ampm = match12[3].toLowerCase();
+      return m === 0 ? `${h}${ampm}` : `${h}:${String(m).padStart(2, '0')}${ampm}`;
+    }
+    const match24 = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+      const h = parseInt(match24[1], 10);
+      const m = parseInt(match24[2], 10);
+      const ampm = h >= 12 ? 'pm' : 'am';
+      const h12 = h % 12 === 0 ? 12 : h % 12;
+      return m === 0 ? `${h12}${ampm}` : `${h12}:${String(m).padStart(2, '0')}${ampm}`;
+    }
+    return trimmed.toLowerCase().replace(':00', '').replace(/\s+/g, '');
+  };
+  return `${formatTime(startTime)} - ${formatTime(endTime)}`;
+}
+
+/** Default offer conditions matching screenshot */
+const DEFAULT_CONDITIONS: IncentiveConditionProgress[] = [
+  {
+    id: 'login-slot-1',
+    type: 'LOGIN_SLOT',
+    title: 'Mandatory Login: Complete below slot',
+    value: '7pm - 12am',
+    subtext: '4h 30m',
+    status: 'PENDING',
+    progressPercentage: 0,
+  },
+  {
+    id: 'order-rej-1',
+    type: 'ORDER_REJECTION',
+    title: 'Other condition',
+    value: 'Do not reject',
+    subtext: 'more than 1 order',
+    status: 'PENDING',
+    progressPercentage: 100,
+  },
+];
+
+/**
+ * Calculates the horizontal percentage position (0% - 100%) of the animated airplane / rocket
+ * along the milestone timeline according to delivery partner's completed trips.
+ *
+ * - 0 trips: at the starting point (just before the 1st milestone)
+ * - At milestone trips (e.g. 6, 9, 13, 18): precisely reaches each milestone node
+ * - Between milestones: smoothly interpolates across segments
+ * - > final milestone: glides to end of track and remains at the end
+ */
+export function calculateAirplaneProgressPct(trips: number, milestones: IncentiveMilestone[]): number {
+  if (!milestones || milestones.length === 0) return 0;
+  const N = milestones.length;
+  const firstCenterPct = (0.5 / N) * 100;
+  const lastCenterPct = ((N - 1 + 0.5) / N) * 100;
+  const startPct = Math.max(2, firstCenterPct - 8);
+  const endPct = Math.min(98, lastCenterPct + 8);
+
+  if (trips <= 0) {
+    return startPct;
+  }
+
+  const firstTrips = milestones[0].trips;
+  if (trips <= firstTrips) {
+    const fraction = trips / firstTrips;
+    return startPct + fraction * (firstCenterPct - startPct);
+  }
+
+  const lastTrips = milestones[N - 1].trips;
+  if (trips >= lastTrips) {
+    const extraFraction = Math.min(1, (trips - lastTrips) / 2);
+    return lastCenterPct + extraFraction * (endPct - lastCenterPct);
+  }
+
+  for (let i = 0; i < N - 1; i++) {
+    const tCurrent = milestones[i].trips;
+    const tNext = milestones[i + 1].trips;
+    if (trips >= tCurrent && trips <= tNext) {
+      const segFraction = (trips - tCurrent) / (tNext - tCurrent);
+      const cCurrent = ((i + 0.5) / N) * 100;
+      const cNext = ((i + 1 + 0.5) / N) * 100;
+      return cCurrent + segFraction * (cNext - cCurrent);
+    }
+  }
+
+  return lastCenterPct;
+}
+
 type Props = NativeStackScreenProps<MainStackParamList, 'Incentives'>;
 
 export function IncentivesScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
-
-  // Responsive breakpoints
-  const isTablet = windowWidth >= 768 && windowWidth < 1024;
-  const isDesktop = windowWidth >= 1024;
   const isWide = windowWidth >= 768;
 
   const now = useMemo(() => new Date(), []);
@@ -103,42 +205,69 @@ export function IncentivesScreen({ navigation }: Props) {
   // Fetch real-time progress & active offers from backend for selected date
   const {
     data: progressData,
-    isLoading: isProgressLoading,
     isFetching: isProgressFetching,
     refetch: refetchProgress,
-    isError: isProgressError,
   } = useGetIncentivesProgressQuery({ date: selectedDateIso });
 
-  // Fetch summary and history for full verification
-  const {
-    data: summaryData,
-    isLoading: isSummaryLoading,
-    isFetching: isSummaryFetching,
-    refetch: refetchSummary,
-    isError: isSummaryError,
-  } = useGetEarningsSummaryQuery(undefined, { refetchOnMountOrArgChange: true });
-
-  const {
-    isFetching: isHistoryFetching,
-    refetch: refetchHistory,
-  } = useGetIncentiveEarningsQuery(undefined, { refetchOnMountOrArgChange: true });
-
-  const isRefreshing = isProgressFetching || isSummaryFetching || isHistoryFetching;
-  const isInitialLoading = isProgressLoading && isSummaryLoading && !progressData && !summaryData;
-  const hasError = isProgressError && isSummaryError && !progressData && !summaryData;
-
   const handleRefresh = useCallback(() => {
-    void Promise.all([refetchProgress(), refetchSummary(), refetchHistory()]);
-  }, [refetchProgress, refetchSummary, refetchHistory]);
+    void refetchProgress();
+  }, [refetchProgress]);
 
-  // Trips completed for selected date
+  const [activeShift, setActiveShift] = useState<ActiveShiftData | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    void getStoredActiveShift().then((stored) => {
+      if (stored && isMounted) {
+        setActiveShift(stored);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Live Refresh: Screen Focus & 20s polling interval
+  useFocusEffect(
+    useCallback(() => {
+      void refetchProgress();
+      void getStoredActiveShift().then((stored) => {
+        if (stored) setActiveShift(stored);
+      });
+      const pollInterval = setInterval(() => {
+        void refetchProgress();
+      }, 20000);
+
+      return () => {
+        clearInterval(pollInterval);
+      };
+    }, [refetchProgress])
+  );
+
+  // Live Refresh: AppState return to foreground
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        void refetchProgress();
+        void getStoredActiveShift().then((stored) => {
+          if (stored) setActiveShift(stored);
+        });
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => {
+      subscription.remove();
+    };
+  }, [refetchProgress]);
+
+  // Trips completed for selected date (defaults to 0)
   const tripsCompleted = progressData?.tripsCompleted ?? 0;
 
   // Selected date offer status: is it today or past/future
   const isSelectedToday = isSameDay(selectedDate, todayMidnight);
-  const isSelectedDateLive = isSelectedToday;
 
-  // Formatted date string for the Daily Incentive card (e.g., "Today, 17 Oct" or "Mon, 19 Oct")
+  // Formatted date string for the Daily Incentive card (e.g. "Today, 18 Oct")
   const cardDateLabel = useMemo(() => {
     const dayNum = selectedDate.getDate();
     const month = MONTH_NAMES[selectedDate.getMonth()];
@@ -148,83 +277,117 @@ export function IncentivesScreen({ navigation }: Props) {
     return `${DAY_NAMES[selectedDate.getDay()]}, ${dayNum} ${month}`;
   }, [selectedDate, isSelectedToday]);
 
-  // Find daily target bonus offer (or first offer with milestones)
+  // Find dynamic daily target bonus offer configured for the partner
   const dailyTargetOffer = useMemo(() => {
     if (!progressData?.offers) return null;
     return (
-      progressData.offers.find((o) => o.id === 'dailyTargetBonus') ||
-      progressData.offers.find((o) => o.milestones && o.milestones.length > 0) ||
-      progressData.offers.find((o) => o.category === 'Target & Mileage') ||
+      progressData.offers.find((o) => o.id === 'dailyTargetBonus' && o.active !== false) ||
+      progressData.offers.find((o) => o.category === 'Target & Mileage' && (o.milestones?.length ?? 0) > 0 && o.active !== false) ||
+      progressData.offers.find((o) => (o.milestones?.length ?? 0) > 0 && o.active !== false) ||
       null
     );
   }, [progressData?.offers]);
 
-  // Default standard 4-tier milestone ladder configured by the platform
-  const defaultMilestones: IncentiveMilestone[] = useMemo(() => {
-    return [
-      {
-        trips: 6,
-        rewardAmount: 50,
-        status: tripsCompleted >= 6 ? 'Completed' : 'In Progress',
-        remaining: Math.max(0, 6 - tripsCompleted),
-        isEarned: tripsCompleted >= 6,
-      },
-      {
-        trips: 9,
-        rewardAmount: 75,
-        status: tripsCompleted >= 9 ? 'Completed' : (tripsCompleted >= 6 ? 'In Progress' : 'Locked'),
-        remaining: Math.max(0, 9 - tripsCompleted),
-        isEarned: tripsCompleted >= 9,
-      },
-      {
-        trips: 13,
-        rewardAmount: 120,
-        status: tripsCompleted >= 13 ? 'Completed' : (tripsCompleted >= 9 ? 'In Progress' : 'Locked'),
-        remaining: Math.max(0, 13 - tripsCompleted),
-        isEarned: tripsCompleted >= 13,
-      },
-      {
-        trips: 18,
-        rewardAmount: 190,
-        status: tripsCompleted >= 18 ? 'Completed' : (tripsCompleted >= 13 ? 'In Progress' : 'Locked'),
-        remaining: Math.max(0, 18 - tripsCompleted),
-        isEarned: tripsCompleted >= 18,
-      },
-    ];
-  }, [tripsCompleted]);
-
-  // Milestone list from active backend config (or standard 4-tier ladder)
+  // Milestone list: active backend config or default fallback matching screenshot
   const milestoneList: IncentiveMilestone[] = useMemo(() => {
-    if (dailyTargetOffer?.milestones && dailyTargetOffer.milestones.length >= 2) {
+    if (dailyTargetOffer?.milestones && dailyTargetOffer.milestones.length > 0) {
       return [...dailyTargetOffer.milestones].sort((a, b) => a.trips - b.trips);
     }
-    return defaultMilestones;
-  }, [dailyTargetOffer, defaultMilestones]);
+    return DEFAULT_MILESTONES;
+  }, [dailyTargetOffer]);
 
-  // Maximum reward amount configured (e.g. ₹190)
+  // Maximum reward amount configured
   const maxConfiguredReward = useMemo(() => {
     if (milestoneList.length > 0) {
       const maxM = milestoneList[milestoneList.length - 1];
-      return Math.round(Number(maxM.rewardAmount || 190));
+      return Math.round(Number(maxM.rewardAmount || 0));
+    }
+    if (dailyTargetOffer?.rewardAmount) {
+      return Math.round(Number(dailyTargetOffer.rewardAmount));
     }
     return 190;
-  }, [milestoneList]);
+  }, [milestoneList, dailyTargetOffer]);
 
-  // Progress percentage across milestones for timeline bar
-  const overallMilestoneProgressPct = useMemo(() => {
-    if (milestoneList.length === 0) return 0;
-    const maxTrips = milestoneList[milestoneList.length - 1].trips;
-    if (maxTrips <= 0) return 0;
-    return Math.min(100, Math.max(0, Math.round((tripsCompleted / maxTrips) * 100)));
-  }, [milestoneList, tripsCompleted]);
+  // Conditions list: active backend config or default fallback matching screenshot
+  const conditionsList: IncentiveConditionProgress[] = useMemo(() => {
+    if (dailyTargetOffer?.conditions && dailyTargetOffer.conditions.length > 0) {
+      return dailyTargetOffer.conditions.map((cond) => {
+        if (cond.type === 'LOGIN_SLOT' && activeShift && (!cond.value || cond.value === '7pm - 12am')) {
+          const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
+          return {
+            ...cond,
+            value: cond.value && cond.value !== '7pm - 12am' ? cond.value : formattedShift,
+          };
+        }
+        return cond;
+      });
+    }
 
-  // Secondary active offers (e.g. peakHourBonus, weeklyTargetBonus, rainBonus)
-  const otherOffers: IncentiveOfferProgress[] = useMemo(() => {
-    if (!progressData?.offers) return [];
-    return progressData.offers.filter(
-      (o) => o.id !== 'dailyTargetBonus' && o.active !== false
-    );
-  }, [progressData?.offers]);
+    if (activeShift) {
+      const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
+      const durationStr = activeShift.durationHours
+        ? (activeShift.durationHours.includes('h') ? activeShift.durationHours : `${activeShift.durationHours}h`)
+        : '4h 30m';
+      return [
+        {
+          id: 'login-slot-1',
+          type: 'LOGIN_SLOT',
+          title: 'Mandatory Login: Complete below slot',
+          value: formattedShift,
+          subtext: durationStr,
+          status: 'PENDING',
+          progressPercentage: 0,
+        },
+        DEFAULT_CONDITIONS[1],
+      ];
+    }
+
+    return DEFAULT_CONDITIONS;
+  }, [dailyTargetOffer, activeShift]);
+
+  // Animated Airplane & Progress Track
+  const initialAirplanePct = useMemo(
+    () => calculateAirplaneProgressPct(tripsCompleted, milestoneList),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+  const animatedAirplaneProgress = useRef(new Animated.Value(initialAirplanePct)).current;
+  const animatedTrackFill = useRef(new Animated.Value(tripsCompleted > 0 ? initialAirplanePct : 0)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => setReduceMotion(enabled))
+      .catch(() => {});
+
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', (enabled) => {
+      setReduceMotion(enabled);
+    });
+    return () => {
+      sub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const targetAirplanePct = calculateAirplaneProgressPct(tripsCompleted, milestoneList);
+    const targetFillPct = tripsCompleted <= 0 ? 0 : targetAirplanePct;
+    const duration = reduceMotion ? 0 : 700;
+
+    Animated.parallel([
+      Animated.timing(animatedAirplaneProgress, {
+        toValue: targetAirplanePct,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+      Animated.timing(animatedTrackFill, {
+        toValue: targetFillPct,
+        duration,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [tripsCompleted, milestoneList, reduceMotion]);
 
   return (
     <View style={styles.screenWrapper}>
@@ -234,21 +397,21 @@ export function IncentivesScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing}
+            refreshing={isProgressFetching}
             onRefresh={handleRefresh}
             tintColor="#FFF"
             colors={['#FCD34D', '#10B981']}
           />
         }
       >
-        {/* ── Signature Payout-Style Dark Green Gradient Header Arch (Placed inside ScrollView so ENTIRE page scrolls together) ── */}
+        {/* ── Signature Dark Green Gradient Header Arch ── */}
         <LinearGradient
           colors={['#0F3E22', '#14532D', '#1B6A3A']}
           style={[
             styles.topGradientArch,
             {
               paddingTop: Math.max(insets.top, 14) + 14,
-              paddingBottom: isWide ? 44 : 36,
+              paddingBottom: isWide ? 48 : 38,
             },
           ]}
         >
@@ -308,11 +471,8 @@ export function IncentivesScreen({ navigation }: Props) {
                         </View>
                       )}
                       {badge === 'special' && (
-                        <View style={styles.specialBadgeRow}>
-                          <Text style={styles.crownEmoji}>👑</Text>
-                          <View style={styles.specialBadge}>
-                            <Text style={styles.specialBadgeText}>Special</Text>
-                          </View>
+                        <View style={styles.specialBadge}>
+                          <Text style={styles.specialBadgeText}>Special</Text>
                         </View>
                       )}
                     </View>
@@ -370,42 +530,19 @@ export function IncentivesScreen({ navigation }: Props) {
             />
           </Pressable>
 
-          {/* ── Error Notification State ── */}
-          {hasError && (
-            <View style={styles.errorCard}>
-              <Feather name="alert-circle" size={20} color="#DC2626" />
-              <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.errorTitle}>Could not load offers</Text>
-                <Text style={styles.errorSubtitle}>Tap Retry to refresh data</Text>
-              </View>
-              <Pressable onPress={handleRefresh} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>Retry</Text>
-              </Pressable>
-            </View>
-          )}
-
-          {/* ── Loading Skeleton ── */}
-          {isInitialLoading && (
-            <View style={[styles.skeletonCard, isWide && styles.cardWide]}>
-              <Skeleton.Block width="40%" height={20} />
-              <Skeleton.Block width="60%" height={28} />
-              <Skeleton.Block width="100%" height={100} />
-            </View>
-          )}
-
-          {/* ── Daily Incentive Card ── */}
-          {!isInitialLoading && isAllDayOffersExpanded && (
+          {/* ── Daily Incentive Card (Always visible with fallback defaults + live updates) ── */}
+          {isAllDayOffersExpanded && (
             <View style={[styles.dailyIncentiveCard, isWide && styles.cardWide]}>
-              {/* Top Row: Gift Icon, Daily Incentive, LIVE badge */}
+              {/* Top Row: Gift Icon, Daily Incentive Title, LIVE badge */}
               <View style={styles.cardHeaderRow}>
                 <View style={styles.cardHeaderLeft}>
                   <Feather name="gift" size={isWide ? 24 : 22} color="#C2410C" style={styles.giftIcon} />
                   <Text style={[styles.dailyIncentiveHeading, isWide && styles.dailyIncentiveHeadingWide]}>
-                    Daily Incentive
+                    {dailyTargetOffer?.title || 'Daily Incentive'}
                   </Text>
                 </View>
 
-                {isSelectedDateLive && (
+                {isSelectedToday && (
                   <View style={styles.liveBadge}>
                     <View style={styles.liveDot} />
                     <Text style={styles.liveBadgeText}>LIVE</Text>
@@ -413,7 +550,7 @@ export function IncentivesScreen({ navigation }: Props) {
                 )}
               </View>
 
-              {/* Date line (e.g. Today, 17 Oct) */}
+              {/* Date line & validity */}
               <Text style={[styles.cardDateSubtext, isWide && styles.cardDateSubtextWide]}>
                 {cardDateLabel}
               </Text>
@@ -444,19 +581,40 @@ export function IncentivesScreen({ navigation }: Props) {
                 <View style={styles.milestonesTrackContainer}>
                   {/* Continuous Horizontal Track Line Behind Nodes */}
                   <View style={styles.horizontalTrackBg}>
-                    <View
+                    <Animated.View
                       style={[
                         styles.horizontalTrackFill,
-                        { width: `${overallMilestoneProgressPct}%` },
+                        {
+                          width: animatedTrackFill.interpolate({
+                            inputRange: [0, 100],
+                            outputRange: ['0%', '100%'],
+                          }),
+                        },
                       ]}
                     />
                   </View>
 
+                  {/* Floating Animated Airplane / Rocket on Track */}
+                  <Animated.View
+                    style={[
+                      styles.animatedAirplaneWrapper,
+                      {
+                        left: animatedAirplaneProgress.interpolate({
+                          inputRange: [0, 100],
+                          outputRange: ['0%', '100%'],
+                        }),
+                      },
+                    ]}
+                    pointerEvents="none"
+                    accessibilityLabel="Delivery trip progress airplane"
+                  >
+                    <View style={styles.airplaneBadge}>
+                      <Text style={styles.airplaneEmoji}>🚀</Text>
+                    </View>
+                  </Animated.View>
+
                   {milestoneList.map((m, idx) => {
-                    const isCompleted = m.isEarned || tripsCompleted >= m.trips;
-                    const isCurrentTarget =
-                      !isCompleted &&
-                      (idx === 0 || tripsCompleted >= milestoneList[idx - 1].trips);
+                    const isCompleted = m.isEarned || (tripsCompleted >= m.trips && m.status === 'Completed');
 
                     return (
                       <View key={idx} style={styles.milestoneColumn}>
@@ -470,16 +628,6 @@ export function IncentivesScreen({ navigation }: Props) {
                           {isCompleted ? (
                             <View style={styles.completedNode}>
                               <Feather name="check" size={13} color="#FFFFFF" />
-                            </View>
-                          ) : isCurrentTarget ? (
-                            <View style={styles.progressMarkerRow}>
-                              {/* Cute Delivery Rocket / Scooter Marker Indicator */}
-                              <View style={styles.scooterMarkerBadge}>
-                                <Text style={styles.scooterMarkerEmoji}>🚀</Text>
-                              </View>
-                              <View style={styles.lockNode}>
-                                <Feather name="lock" size={11} color="#FFFFFF" />
-                              </View>
                             </View>
                           ) : (
                             <View style={styles.lockNode}>
@@ -515,105 +663,96 @@ export function IncentivesScreen({ navigation }: Props) {
                 <View style={styles.conditionDividerLine} />
               </View>
 
-              {/* Responsive Conditions Grid (Side-by-side on Laptop/Tablet, Stacked on Mobile) */}
+              {/* Responsive Conditions Grid (Side-by-side) */}
               <View style={[styles.conditionsGrid, isWide && styles.conditionsGridWide]}>
-                {/* Condition 1: Mandatory Login Slot */}
-                <View style={[styles.conditionSection, isWide && styles.conditionSectionWide]}>
-                  <View style={styles.conditionTitleRow}>
-                    <Feather name="clock" size={16} color="#4B5563" style={{ marginRight: 8 }} />
-                    <Text style={styles.conditionHeading}>
-                      Mandatory Login: Complete below slot
-                    </Text>
-                  </View>
+                {conditionsList.map((cond) => {
+                  const isSatisfied = cond.status === 'SATISFIED';
+                  const isFailed = cond.status === 'FAILED';
 
-                  <View style={[styles.slotConditionCard, isWide && styles.slotConditionCardWide]}>
-                    <View style={styles.slotCardTopRow}>
-                      <Text style={styles.slotTimeText}>7pm - 12am</Text>
-                      <View style={styles.unselectedRadioCircle} />
-                    </View>
-                    <Text style={styles.slotDurationText}>4h 30m</Text>
-                    {/* Thin progress bar at bottom of slot card */}
-                    <View style={styles.slotProgressTrack}>
-                      <View style={styles.slotProgressFill} />
-                    </View>
-                  </View>
-                </View>
+                  const renderStatusIndicator = () => {
+                    if (isSatisfied) {
+                      return (
+                        <View style={styles.satisfiedRadioCircle}>
+                          <Feather name="check" size={10} color="#FFFFFF" />
+                        </View>
+                      );
+                    }
+                    if (isFailed) {
+                      return (
+                        <View style={styles.failedRadioCircle}>
+                          <Feather name="x" size={10} color="#FFFFFF" />
+                        </View>
+                      );
+                    }
+                    return <View style={styles.unselectedRadioCircle} />;
+                  };
 
-                {/* Condition 2: Other condition (Order Acceptance) */}
-                <View style={[styles.conditionSection, isWide && styles.conditionSectionWide]}>
-                  <View style={styles.conditionTitleRow}>
-                    <Feather name="clock" size={16} color="#4B5563" style={{ marginRight: 8 }} />
-                    <Text style={styles.conditionHeading}>Other condition</Text>
-                  </View>
+                  if (cond.type === 'LOGIN_SLOT') {
+                    const progressPct = Math.min(100, Math.max(0, cond.progressPercentage ?? 0));
+                    const fillColor = isSatisfied ? '#10B981' : isFailed ? '#EF4444' : '#10B981';
 
-                  <View style={[styles.slotConditionCard, isWide && styles.slotConditionCardWide]}>
-                    <View style={styles.slotCardTopRow}>
-                      <Text style={styles.otherConditionTitle}>Do not reject</Text>
-                      <View style={styles.unselectedRadioCircle} />
+                    return (
+                      <View key={cond.id} style={[styles.conditionSection, isWide && styles.conditionSectionWide]}>
+                        <View style={styles.conditionTitleRow}>
+                          <Feather name="clock" size={16} color="#334155" style={{ marginRight: 8 }} />
+                          <Text style={styles.conditionHeading}>{cond.title}</Text>
+                        </View>
+
+                        <View style={[styles.slotConditionCard, isWide && styles.slotConditionCardWide]}>
+                          <View style={styles.slotCardTopRow}>
+                            <Text style={styles.slotTimeText}>{cond.value}</Text>
+                            {renderStatusIndicator()}
+                          </View>
+                          <Text style={styles.slotDurationText}>{cond.subtext}</Text>
+                          {/* Live Progress Bar */}
+                          <View style={styles.slotProgressTrack}>
+                            <View
+                              style={[
+                                styles.slotProgressFill,
+                                {
+                                  width: `${progressPct}%`,
+                                  backgroundColor: fillColor,
+                                },
+                              ]}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  }
+
+                  // ORDER_REJECTION or other condition
+                  return (
+                    <View key={cond.id} style={[styles.conditionSection, isWide && styles.conditionSectionWide]}>
+                      <View style={styles.conditionTitleRow}>
+                        <Feather name="clock" size={16} color="#334155" style={{ marginRight: 8 }} />
+                        <Text style={styles.conditionHeading}>
+                          {cond.type === 'ORDER_REJECTION' && cond.title === 'Do not reject'
+                            ? 'Other condition'
+                            : (cond.title || 'Other condition')}
+                        </Text>
+                      </View>
+
+                      <View style={[styles.slotConditionCard, isWide && styles.slotConditionCardWide]}>
+                        <View style={styles.slotCardTopRow}>
+                          <Text style={styles.otherConditionTitle}>{cond.value}</Text>
+                          {renderStatusIndicator()}
+                        </View>
+                        <Text style={styles.otherConditionSubtext}>{cond.subtext}</Text>
+                      </View>
                     </View>
-                    <Text style={styles.otherConditionSubtext}>more than 1 order</Text>
-                  </View>
-                </View>
+                  );
+                })}
               </View>
             </View>
           )}
 
-          {/* ── Additional Active Surge / Promotion Offers ── */}
-          {!isInitialLoading && isAllDayOffersExpanded && otherOffers.length > 0 && (
-            <View style={[styles.otherOffersContainer, isWide && styles.otherOffersContainerWide]}>
-              {otherOffers.map((offer) => {
-                const isOfferEarned = offer.isEarned || offer.status === 'Completed';
-
-                return (
-                  <View key={offer.id} style={[styles.secondaryOfferCard, isWide && styles.secondaryOfferCardWide]}>
-                    <View style={styles.secondaryOfferHeader}>
-                      <View style={styles.secondaryOfferTitleRow}>
-                        <View style={styles.secondaryOfferIconWrap}>
-                          <Feather
-                            name={
-                              offer.id.toLowerCase().includes('peak')
-                                ? 'zap'
-                                : offer.id.toLowerCase().includes('rain')
-                                ? 'cloud-rain'
-                                : 'award'
-                            }
-                            size={18}
-                            color="#EA580C"
-                          />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={styles.secondaryOfferTitle}>{offer.title}</Text>
-                          <Text style={styles.secondaryOfferValidity}>
-                            {offer.validityPeriod || offer.category}
-                          </Text>
-                        </View>
-                      </View>
-
-                      <Text style={styles.secondaryOfferReward}>
-                        +₹{Number(offer.rewardAmount || 0).toFixed(0)}
-                      </Text>
-                    </View>
-
-                    <Text style={styles.secondaryOfferDesc}>{offer.description}</Text>
-
-                    {isOfferEarned && (
-                      <View style={styles.offerEarnedTag}>
-                        <Feather name="check" size={13} color="#059669" style={{ marginRight: 4 }} />
-                        <Text style={styles.offerEarnedTagText}>Earned today</Text>
-                      </View>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          )}
-
-          {/* Space above BottomNav */}
+          {/* Bottom spacing above BottomNav */}
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
 
-      {/* Preserve Bottom Navigation */}
+      {/* Bottom Navigation */}
       <BottomNav />
     </View>
   );
@@ -623,7 +762,7 @@ const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
     height: '100%',
-    backgroundColor: '#F2F2F7', // Apple/iOS soft grey background matching Payout page
+    backgroundColor: '#F2F2F7', // iOS/Apple style soft background
   },
   mainScrollView: {
     flex: 1,
@@ -661,7 +800,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#FCD34D', // Gold accent matching Payout screen
+    color: '#FCD34D', // Gold accent
     letterSpacing: 0.3,
     marginBottom: 2,
   },
@@ -686,7 +825,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
 
-  /* ── Date Selector Elevated Card ── */
+  /* ── Date Selector Elevated Card (Overlapping header arch) ── */
   dateSelectorCard: {
     backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
@@ -748,16 +887,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#059669',
   },
-  specialBadgeRow: {
-    alignItems: 'center',
-  },
-  crownEmoji: {
-    fontSize: 12,
-    lineHeight: 12,
-    marginBottom: -2,
-  },
   specialBadge: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#2563EB', // Solid royal blue matching monitor photo
     paddingHorizontal: 8,
     paddingVertical: 2.5,
     borderRadius: 6,
@@ -881,7 +1012,7 @@ const styles = StyleSheet.create({
   dailyIncentiveHeading: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#C2410C', // Rich warm orange
+    color: '#C2410C',
   },
   dailyIncentiveHeadingWide: {
     fontSize: 22,
@@ -889,7 +1020,7 @@ const styles = StyleSheet.create({
   liveBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEE2E2', // Soft pink/red
+    backgroundColor: '#FEE2E2',
     paddingHorizontal: 10,
     paddingVertical: 4.5,
     borderRadius: 14,
@@ -934,7 +1065,7 @@ const styles = StyleSheet.create({
 
   /* ── Milestone Table Tracker ── */
   milestoneTableContainer: {
-    backgroundColor: '#F1F5F9', // Crisp cool light grey
+    backgroundColor: '#F1F5F9',
     borderRadius: 14,
     flexDirection: 'row',
     paddingVertical: 14,
@@ -1036,16 +1167,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  progressMarkerRow: {
-    flexDirection: 'row',
+  animatedAirplaneWrapper: {
+    position: 'absolute',
+    top: 30,
+    marginLeft: -12,
+    zIndex: 10,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  scooterMarkerBadge: {
-    marginRight: -4,
-    zIndex: 3,
+  airplaneBadge: {
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  scooterMarkerEmoji: {
-    fontSize: 14,
+  airplaneEmoji: {
+    fontSize: 16,
+    lineHeight: 18,
   },
   milestoneTripsText: {
     fontSize: 13,
@@ -1067,6 +1205,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
     marginBottom: 20,
   },
   yourTripsBadgeWide: {
@@ -1107,7 +1246,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
 
-  /* ── Conditions Grid (Side-by-side on wide screens) ── */
+  /* ── Conditions Grid ── */
   conditionsGrid: {
     flexDirection: 'column',
     gap: 14,
@@ -1138,7 +1277,7 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     borderRadius: 14,
     padding: 14,
-    width: 150,
+    width: '100%',
     backgroundColor: '#FFFFFF',
   },
   slotConditionCardWide: {
@@ -1163,6 +1302,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#D1D5DB',
   },
+  satisfiedRadioCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#10B981',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  failedRadioCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   slotDurationText: {
     fontSize: 14,
     fontWeight: '800',
@@ -1178,146 +1333,18 @@ const styles = StyleSheet.create({
   },
   slotProgressFill: {
     height: 3.5,
-    width: '28%',
     backgroundColor: '#10B981',
     borderRadius: 2,
   },
   otherConditionTitle: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '700',
-    color: '#4B5563',
+    color: '#1F2937',
   },
   otherConditionSubtext: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: '#111827',
     marginTop: 8,
-  },
-
-  /* ── Secondary Offers ── */
-  otherOffersContainer: {
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  otherOffersContainerWide: {
-    paddingHorizontal: 0,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  secondaryOfferCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  secondaryOfferCardWide: {
-    flex: 1,
-    minWidth: 300,
-    padding: 20,
-    borderRadius: 20,
-  },
-  secondaryOfferHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  secondaryOfferTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  secondaryOfferIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFF7ED',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryOfferTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  secondaryOfferValidity: {
-    fontSize: 11,
-    color: '#6B7280',
-    marginTop: 1,
-  },
-  secondaryOfferReward: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#059669',
-  },
-  secondaryOfferDesc: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 18,
-  },
-  offerEarnedTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#ECFDF5',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  offerEarnedTagText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#059669',
-  },
-
-  /* ── Error & Skeleton States ── */
-  errorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1,
-    borderColor: '#FEE2E2',
-    borderRadius: 14,
-    marginHorizontal: 16,
-    padding: 14,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#991B1B',
-  },
-  errorSubtitle: {
-    fontSize: 11,
-    color: '#B91C1C',
-    marginTop: 2,
-  },
-  retryButton: {
-    backgroundColor: '#DC2626',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  skeletonCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 20,
-    gap: 12,
   },
 });

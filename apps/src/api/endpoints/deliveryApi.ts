@@ -287,6 +287,7 @@ export const deliveryApi = baseApi.injectEndpoints({
           body,
         }),
         invalidatesTags: [
+          'Delivery',
           { type: 'Delivery', id: 'AVAILABILITY' },
           { type: 'Delivery', id: 'PROFILE' },
         ],
@@ -564,6 +565,7 @@ export const deliveryApi = baseApi.injectEndpoints({
         method: 'POST',
       }),
       invalidatesTags: [
+        'Delivery',
         { type: 'Delivery', id: 'SHIFTS' },
         { type: 'Delivery', id: 'MY_SHIFTS' },
       ],

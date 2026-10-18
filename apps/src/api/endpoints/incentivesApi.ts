@@ -8,6 +8,17 @@ export interface IncentiveMilestone {
   isEarned: boolean;
 }
 
+export interface IncentiveConditionProgress {
+  id: string;
+  type: string;
+  title: string;
+  value: string;
+  subtext: string;
+  status: 'SATISFIED' | 'PENDING' | 'FAILED';
+  progressPercentage: number;
+  currentProgressText?: string;
+}
+
 export interface IncentiveOfferProgress {
   id: string;
   title: string;
@@ -23,6 +34,7 @@ export interface IncentiveOfferProgress {
   isEarned: boolean;
   active: boolean;
   milestones?: IncentiveMilestone[];
+  conditions?: IncentiveConditionProgress[];
 }
 
 export interface IncentivesProgressResponse {
