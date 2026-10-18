@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  TextInput,
   Platform,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
@@ -25,9 +24,6 @@ import {
   type ActiveShiftData,
 } from '../shiftStorage';
 
-const THEME_PRIMARY = '#10B981';
-const THEME_DARK = '#14532D';
-
 interface MyShiftModalProps {
   visible: boolean;
   onClose: () => void;
@@ -45,7 +41,7 @@ export function MyShiftModal({
 }: MyShiftModalProps) {
   const insets = useSafeAreaInsets();
 
-  const { data: serverShifts, isLoading: isLoadingShifts, refetch: refetchShifts } = useGetAvailableShiftsQuery(undefined, {
+  const { data: serverShifts, isLoading: isLoadingShifts } = useGetAvailableShiftsQuery(undefined, {
     refetchOnMountOrArgChange: true,
   });
   const { data: bookingsData } = useGetMyShiftBookingsQuery(undefined, {
@@ -54,9 +50,6 @@ export function MyShiftModal({
   const [bookShiftMutation, { isLoading: isBooking }] = useBookDeliveryShiftMutation();
 
   const [selectedShiftId, setSelectedShiftId] = useState<string | null>(null);
-  const [isCustomMode, setIsCustomMode] = useState(false);
-  const [customVehicle, setCustomVehicle] = useState<'BIKE' | 'EV_SCOOTER' | 'BICYCLE'>('BIKE');
-  const [customNotes, setCustomNotes] = useState('');
 
   // Merge available server shifts with known admin shifts fallback
   const availableShifts = useMemo(() => {
@@ -85,7 +78,6 @@ export function MyShiftModal({
       try {
         await bookShiftMutation(shiftToBook.shiftId).unwrap();
       } catch (err: any) {
-        // If already booked or local dev, proceed gracefully
         console.info('[ShiftModal] Backend shift booking response:', err);
       }
 
@@ -99,7 +91,6 @@ export function MyShiftModal({
         date: todayStr,
         status: 'ACTIVE',
         startedAt: new Date().toISOString(),
-        notes: isCustomMode && customNotes.trim() ? `${customVehicle} • ${customNotes.trim()}` : customVehicle,
       };
 
       await storeActiveShift(newActiveShift);
@@ -136,6 +127,12 @@ export function MyShiftModal({
     return '#10B981';
   };
 
+  const formatShiftDisplayName = (name: string) => {
+    if (!name) return 'Shift';
+    const trimmed = name.trim();
+    return trimmed.toLowerCase().endsWith('shift') ? trimmed : `${trimmed} Shift`;
+  };
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
@@ -148,7 +145,7 @@ export function MyShiftModal({
               </View>
               <View>
                 <Text style={styles.title}>My Delivery Shift</Text>
-                <Text style={styles.subtitle}>Choose or create shift from admin schedules</Text>
+                <Text style={styles.subtitle}>Select an official shift created by admin</Text>
               </View>
             </View>
             <Pressable style={styles.closeBtn} onPress={onClose} accessibilityLabel="Close shift modal">
@@ -173,48 +170,25 @@ export function MyShiftModal({
                 <View style={styles.activeDetailsRow}>
                   <Ionicons name="time" size={22} color="#065F46" />
                   <View style={{ marginLeft: 10, flex: 1 }}>
-                    <Text style={styles.activeShiftTitle}>{activeShift.shiftName} Shift</Text>
+                    <Text style={styles.activeShiftTitle}>{formatShiftDisplayName(activeShift.shiftName)}</Text>
                     <Text style={styles.activeShiftTiming}>
                       {activeShift.startTime} — {activeShift.endTime} ({activeShift.durationHours || 'Active'})
                     </Text>
-                    {activeShift.notes ? (
-                      <Text style={styles.activeShiftNotes}>Mode: {activeShift.notes}</Text>
-                    ) : null}
                   </View>
                 </View>
               </View>
             )}
 
-            {/* Mode Switcher: Direct Admin Shift vs Customize */}
-            <View style={styles.tabContainer}>
-              <Pressable
-                style={[styles.tabButton, !isCustomMode && styles.tabButtonActive]}
-                onPress={() => setIsCustomMode(false)}
-              >
-                <Text style={[styles.tabText, !isCustomMode && styles.tabTextActive]}>
-                  Admin Available Shifts ({availableShifts.length})
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[styles.tabButton, isCustomMode && styles.tabButtonActive]}
-                onPress={() => setIsCustomMode(true)}
-              >
-                <Text style={[styles.tabText, isCustomMode && styles.tabTextActive]}>
-                  Customise My Slot
-                </Text>
-              </Pressable>
-            </View>
-
             {/* Section: Admin Shifts List */}
             <View style={styles.shiftsSection}>
               <View style={styles.sectionTitleRow}>
                 <Text style={styles.sectionTitle}>
-                  {isCustomMode ? 'Step 1: Select Admin Shift Template' : 'Select Today\'s Shift'}
+                  Admin Available Shifts ({availableShifts.length})
                 </Text>
                 {isLoadingShifts && <ActivityIndicator size="small" color="#10B981" />}
               </View>
               <Text style={styles.sectionSubtitle}>
-                Shifts created and verified by admin dispatch
+                Select an official shift scheduled and verified by admin
               </Text>
 
               <View style={styles.cardsGrid}>
@@ -253,46 +227,6 @@ export function MyShiftModal({
               </View>
             </View>
 
-            {/* Custom Mode Extra Options */}
-            {isCustomMode && (
-              <View style={styles.customSection}>
-                <Text style={styles.sectionTitle}>Step 2: Delivery Vehicle & Preferences</Text>
-                <View style={styles.vehicleRow}>
-                  {(
-                    [
-                      { key: 'BIKE', label: 'Motorcycle', icon: 'bicycle-outline' },
-                      { key: 'EV_SCOOTER', label: 'EV Scooter', icon: 'flash-outline' },
-                      { key: 'BICYCLE', label: 'Bicycle', icon: 'navigate-outline' },
-                    ] as const
-                  ).map((v) => (
-                    <Pressable
-                      key={v.key}
-                      style={[styles.vehicleChip, customVehicle === v.key && styles.vehicleChipActive]}
-                      onPress={() => setCustomVehicle(v.key)}
-                    >
-                      <Ionicons
-                        name={v.icon as any}
-                        size={16}
-                        color={customVehicle === v.key ? '#FFF' : '#4B5563'}
-                      />
-                      <Text style={[styles.vehicleChipText, customVehicle === v.key && styles.vehicleChipTextActive]}>
-                        {v.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-
-                <Text style={[styles.inputLabel, { marginTop: 14 }]}>Shift Notes / Preferred Zone</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g. Near City Center, Ready for express food orders"
-                  placeholderTextColor="#9CA3AF"
-                  value={customNotes}
-                  onChangeText={setCustomNotes}
-                />
-              </View>
-            )}
-
             {/* Shift Incentives Tip Box */}
             <View style={styles.tipBox}>
               <Ionicons name="information-circle-outline" size={18} color="#059669" />
@@ -315,7 +249,7 @@ export function MyShiftModal({
                 <>
                   <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
                   <Text style={styles.confirmBtnText}>
-                    {activeShift ? 'Update & Start Shift' : 'Start My Shift'}
+                    {activeShift ? 'Update & Start Shift' : 'Select & Start Shift'}
                   </Text>
                 </>
               )}
@@ -337,7 +271,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '90%',
+    maxHeight: '88%',
     paddingTop: 20,
     paddingHorizontal: 20,
     ...Platform.select({
@@ -455,47 +389,6 @@ const styles = StyleSheet.create({
     color: '#047857',
     marginTop: 1,
   },
-  activeShiftNotes: {
-    fontSize: 11,
-    color: '#059669',
-    marginTop: 2,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 16,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  tabButtonActive: {
-    backgroundColor: '#FFFFFF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  tabText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
-  },
-  tabTextActive: {
-    fontWeight: '700',
-    color: '#111827',
-  },
   shiftsSection: {
     marginBottom: 16,
   },
@@ -584,60 +477,6 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     backgroundColor: '#10B981',
-  },
-  customSection: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  vehicleRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  vehicleChip: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  vehicleChipActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
-  },
-  vehicleChipText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#4B5563',
-  },
-  vehicleChipTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  textInput: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 13,
-    color: '#111827',
-    marginTop: 6,
   },
   tipBox: {
     flexDirection: 'row',
