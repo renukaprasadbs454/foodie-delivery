@@ -429,4 +429,72 @@ describe('Incentive Offers & Milestone Tracker Logic (Screenshot 2 Match)', () =
       expect(evaluateOrderRejection(3, 1)).toBe('FAILED');
     });
   });
+
+  describe('Zone-Wise Incentive Visibility & Active Filter Logic', () => {
+    interface IncentiveRule {
+      id: string;
+      title: string;
+      active: boolean;
+      zoneId?: string;
+    }
+
+    const universalOffers: IncentiveRule[] = [
+      { id: 'dailyTargetBonus', title: 'Daily Milestone Bonus', active: true },
+      { id: 'weekendSurgeBonus', title: 'Weekend Surge Bonus', active: false },
+    ];
+
+    const tumkurOffers: IncentiveRule[] = [
+      { id: 'tumkurMonsoonBonus', title: 'Tumkur Monsoon Extra', active: true, zoneId: 'zone-tumkur' },
+      { id: 'tumkurEveningBonus', title: 'Tumkur Evening Peak', active: false, zoneId: 'zone-tumkur' },
+    ];
+
+    const bangaloreOffers: IncentiveRule[] = [
+      { id: 'blrTrafficBonus', title: 'Bangalore Peak Traffic', active: true, zoneId: 'zone-bangalore' },
+    ];
+
+    const resolvePartnerOffers = (
+      partnerZoneId: string,
+      allRules: IncentiveRule[]
+    ): IncentiveRule[] => {
+      return allRules.filter((r) => {
+        // Must be active
+        if (!r.active) return false;
+        // Universal (no zoneId) is visible to all partners
+        if (!r.zoneId) return true;
+        // Zone-specific rule must match partner zone
+        return r.zoneId === partnerZoneId;
+      });
+    };
+
+    it('displays Super Admin universal active incentives to partners in any zone', () => {
+      const allRules = [...universalOffers, ...tumkurOffers, ...bangaloreOffers];
+      const tumkurVisible = resolvePartnerOffers('zone-tumkur', allRules);
+      const blrVisible = resolvePartnerOffers('zone-bangalore', allRules);
+      const mysoreVisible = resolvePartnerOffers('zone-mysore', allRules);
+
+      expect(tumkurVisible.some((r) => r.id === 'dailyTargetBonus')).toBe(true);
+      expect(blrVisible.some((r) => r.id === 'dailyTargetBonus')).toBe(true);
+      expect(mysoreVisible.some((r) => r.id === 'dailyTargetBonus')).toBe(true);
+    });
+
+    it('displays Tumkur incentives ONLY to Tumkur delivery partners and NOT to Bangalore partners', () => {
+      const allRules = [...universalOffers, ...tumkurOffers, ...bangaloreOffers];
+      const tumkurVisible = resolvePartnerOffers('zone-tumkur', allRules);
+      const blrVisible = resolvePartnerOffers('zone-bangalore', allRules);
+
+      expect(tumkurVisible.some((r) => r.id === 'tumkurMonsoonBonus')).toBe(true);
+      expect(blrVisible.some((r) => r.id === 'tumkurMonsoonBonus')).toBe(false);
+    });
+
+    it('filters out inactive incentives even if the zone matches', () => {
+      const allRules = [...universalOffers, ...tumkurOffers, ...bangaloreOffers];
+      const tumkurVisible = resolvePartnerOffers('zone-tumkur', allRules);
+
+      // tumkurEveningBonus is active: false, so it should NOT be visible
+      expect(tumkurVisible.some((r) => r.id === 'tumkurEveningBonus')).toBe(false);
+      // weekendSurgeBonus is universal but active: false, so it should NOT be visible
+      expect(tumkurVisible.some((r) => r.id === 'weekendSurgeBonus')).toBe(false);
+    });
+  });
 });
+

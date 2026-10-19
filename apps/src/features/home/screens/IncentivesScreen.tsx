@@ -13,6 +13,7 @@ import {
   Animated,
   Easing,
   AccessibilityInfo,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -86,9 +87,9 @@ const DEFAULT_MILESTONES: IncentiveMilestone[] = [
   { trips: 18, rewardAmount: 190, status: 'Locked', remaining: 18, isEarned: false },
 ];
 
-/** Formats start and end times into clean card display matching screenshot (e.g. "7pm - 12am") */
+/** Formats start and end times into clean card display matching screenshot (e.g. "5pm - 11pm") */
 export function formatSlotDisplay(startTime?: string, endTime?: string): string {
-  if (!startTime || !endTime) return '7pm - 12am';
+  if (!startTime || !endTime) return '5pm - 11pm';
   const formatTime = (t: string) => {
     const trimmed = t.trim();
     const match12 = trimmed.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
@@ -117,8 +118,8 @@ const DEFAULT_CONDITIONS: IncentiveConditionProgress[] = [
     id: 'login-slot-1',
     type: 'LOGIN_SLOT',
     title: 'Mandatory Login: Complete below slot',
-    value: '7pm - 12am',
-    subtext: '4h 30m',
+    value: '5pm - 11pm',
+    subtext: '6h',
     status: 'PENDING',
     progressPercentage: 0,
   },
@@ -132,6 +133,20 @@ const DEFAULT_CONDITIONS: IncentiveConditionProgress[] = [
     progressPercentage: 100,
   },
 ];
+
+/** Returns an appropriate icon name for each offer type */
+export function getOfferIcon(id: string, category?: string): any {
+  const lowerId = (id || '').toLowerCase();
+  if (lowerId.includes('rain') || lowerId.includes('weather')) return 'cloud-rain';
+  if (lowerId.includes('peak') || lowerId.includes('hour') || lowerId.includes('time')) return 'clock';
+  if (lowerId.includes('weekly') || lowerId.includes('target')) return 'trending-up';
+  if (lowerId.includes('distance') || lowerId.includes('mileage') || lowerId.includes('location')) return 'map-pin';
+  if (lowerId.includes('referral')) return 'users';
+  if (lowerId.includes('rating') || lowerId.includes('performance')) return 'award';
+  if (category === 'Weather & Surge') return 'zap';
+  if (category === 'Reward & Rating') return 'award';
+  return 'gift';
+}
 
 /**
  * Calculates the horizontal percentage position (0% - 100%) of the animated airplane / rocket
@@ -227,7 +242,7 @@ export function IncentivesScreen({ navigation }: Props) {
     };
   }, []);
 
-  // Live Refresh: Screen Focus & 20s polling interval
+  // Live Refresh: Screen Focus & 5s polling interval for immediate Admin sync
   useFocusEffect(
     useCallback(() => {
       void refetchProgress();
@@ -236,7 +251,7 @@ export function IncentivesScreen({ navigation }: Props) {
       });
       const pollInterval = setInterval(() => {
         void refetchProgress();
-      }, 20000);
+      }, 5000);
 
       return () => {
         clearInterval(pollInterval);
@@ -288,12 +303,20 @@ export function IncentivesScreen({ navigation }: Props) {
     );
   }, [progressData?.offers]);
 
+  // Other active offers configured in Admin (marked ON)
+  const otherActiveOffers = useMemo(() => {
+    if (!progressData?.offers) return [];
+    return progressData.offers.filter(
+      (o) => o.id !== dailyTargetOffer?.id && o.active !== false
+    );
+  }, [progressData?.offers, dailyTargetOffer]);
+
   // Milestone list: active backend config or default fallback matching screenshot
   const milestoneList: IncentiveMilestone[] = useMemo(() => {
     if (dailyTargetOffer?.milestones && dailyTargetOffer.milestones.length > 0) {
       return [...dailyTargetOffer.milestones].sort((a, b) => a.trips - b.trips);
     }
-    return DEFAULT_MILESTONES;
+    return dailyTargetOffer ? DEFAULT_MILESTONES : [];
   }, [dailyTargetOffer]);
 
   // Maximum reward amount configured
@@ -312,11 +335,14 @@ export function IncentivesScreen({ navigation }: Props) {
   const conditionsList: IncentiveConditionProgress[] = useMemo(() => {
     if (dailyTargetOffer?.conditions && dailyTargetOffer.conditions.length > 0) {
       return dailyTargetOffer.conditions.map((cond) => {
-        if (cond.type === 'LOGIN_SLOT' && activeShift && (!cond.value || cond.value === '7pm - 12am')) {
+        if (cond.type === 'LOGIN_SLOT' && activeShift && (!cond.value || cond.value === '7pm - 12am' || cond.value === '5pm - 11pm')) {
           const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
           return {
             ...cond,
-            value: cond.value && cond.value !== '7pm - 12am' ? cond.value : formattedShift,
+            value: cond.value && cond.value !== '7pm - 12am' && cond.value !== '5pm - 11pm' ? cond.value : formattedShift,
+            subtext: activeShift.durationHours
+              ? (activeShift.durationHours.includes('h') ? activeShift.durationHours : `${activeShift.durationHours}h`)
+              : (cond.subtext || '6h'),
           };
         }
         return cond;
@@ -327,7 +353,7 @@ export function IncentivesScreen({ navigation }: Props) {
       const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
       const durationStr = activeShift.durationHours
         ? (activeShift.durationHours.includes('h') ? activeShift.durationHours : `${activeShift.durationHours}h`)
-        : '4h 30m';
+        : '6h';
       return [
         {
           id: 'login-slot-1',
@@ -530,15 +556,15 @@ export function IncentivesScreen({ navigation }: Props) {
             />
           </Pressable>
 
-          {/* ── Daily Incentive Card (Always visible with fallback defaults + live updates) ── */}
-          {isAllDayOffersExpanded && (
+          {/* ── Daily Incentive Card (Rendered only when marked ON in Admin) ── */}
+          {isAllDayOffersExpanded && dailyTargetOffer && (
             <View style={[styles.dailyIncentiveCard, isWide && styles.cardWide]}>
               {/* Top Row: Gift Icon, Daily Incentive Title, LIVE badge */}
               <View style={styles.cardHeaderRow}>
                 <View style={styles.cardHeaderLeft}>
                   <Feather name="gift" size={isWide ? 24 : 22} color="#C2410C" style={styles.giftIcon} />
                   <Text style={[styles.dailyIncentiveHeading, isWide && styles.dailyIncentiveHeadingWide]}>
-                    {dailyTargetOffer?.title || 'Daily Incentive'}
+                    {dailyTargetOffer.title || 'Daily Target Bonus'}
                   </Text>
                 </View>
 
@@ -744,6 +770,100 @@ export function IncentivesScreen({ navigation }: Props) {
                   );
                 })}
               </View>
+            </View>
+          )}
+
+          {/* ── Other Active Offers Configured in Admin (Rendered only when marked ON) ── */}
+          {isAllDayOffersExpanded &&
+            otherActiveOffers.map((offer) => {
+              const offerIcon = getOfferIcon(offer.id, offer.category);
+              const isTargetBased = offer.target > 1;
+              const targetTrips = offer.target;
+              const progress = offer.currentProgress;
+              const progressPct =
+                targetTrips > 0 ? Math.min(100, Math.round((progress / targetTrips) * 100)) : 0;
+
+              return (
+                <View key={offer.id} style={[styles.secondaryOfferCard, isWide && styles.cardWide]}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.cardHeaderLeft}>
+                      <Feather
+                        name={offerIcon}
+                        size={isWide ? 22 : 20}
+                        color="#C2410C"
+                        style={styles.giftIcon}
+                      />
+                      <Text
+                        style={[
+                          styles.secondaryOfferHeading,
+                          isWide && styles.dailyIncentiveHeadingWide,
+                        ]}
+                      >
+                        {offer.title}
+                      </Text>
+                    </View>
+
+                    {offer.isEarned ? (
+                      <View style={styles.earnedBadge}>
+                        <Feather name="check" size={12} color="#059669" style={{ marginRight: 4 }} />
+                        <Text style={styles.earnedBadgeText}>EARNED</Text>
+                      </View>
+                    ) : isSelectedToday ? (
+                      <View style={styles.liveBadge}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.liveBadgeText}>LIVE</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.activeBadge}>
+                        <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {offer.validityPeriod ? (
+                    <Text style={[styles.cardDateSubtext, isWide && styles.cardDateSubtextWide]}>
+                      {offer.validityPeriod}
+                    </Text>
+                  ) : null}
+
+                  <Text style={[styles.secondaryRewardHeading, isWide && styles.earnUpToHeadingWide]}>
+                    Earn ₹{Math.round(Number(offer.rewardAmount || 0))}{' '}
+                    {offer.unit ? offer.unit.replace('₹', '').replace('/', '').trim() : 'extra'}
+                  </Text>
+
+                  {offer.description ? (
+                    <Text style={styles.secondaryDescriptionText}>{offer.description}</Text>
+                  ) : null}
+
+                  {isTargetBased && (
+                    <View style={styles.secondaryProgressWrapper}>
+                      <View style={styles.secondaryProgressRow}>
+                        <Text style={styles.secondaryProgressLabel}>
+                          Target: {targetTrips} orders
+                        </Text>
+                        <Text style={styles.secondaryProgressRemaining}>
+                          {offer.remaining != null && offer.remaining > 0
+                            ? `${offer.remaining} remaining`
+                            : 'Completed'}
+                        </Text>
+                      </View>
+                      <View style={styles.secondaryTrackBg}>
+                        <View style={[styles.secondaryTrackFill, { width: `${progressPct}%` }]} />
+                      </View>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
+
+          {/* ── Empty State when all offers are OFF ── */}
+          {isAllDayOffersExpanded && !dailyTargetOffer && otherActiveOffers.length === 0 && (
+            <View style={[styles.emptyOffersCard, isWide && styles.cardWide]}>
+              <Feather name="gift" size={36} color="#9CA3AF" style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyOffersTitle}>No Active Offers</Text>
+              <Text style={styles.emptyOffersSubtitle}>
+                There are currently no active extra earning offers in your zone. Please check back later!
+              </Text>
             </View>
           )}
 
@@ -1346,5 +1466,124 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#111827',
     marginTop: 8,
+  },
+  /* ── Secondary / Other Active Offer Cards ── */
+  secondaryOfferCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    marginBottom: 16,
+  },
+  secondaryOfferHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  secondaryRewardHeading: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#C2410C',
+    marginTop: 10,
+    marginBottom: 6,
+    letterSpacing: -0.3,
+  },
+  secondaryDescriptionText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#4B5563',
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  secondaryProgressWrapper: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  secondaryProgressRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  secondaryProgressLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  secondaryProgressRemaining: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  secondaryTrackBg: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  secondaryTrackFill: {
+    height: 4,
+    backgroundColor: '#10B981',
+    borderRadius: 2,
+  },
+  activeBadge: {
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 14,
+  },
+  activeBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#2563EB',
+    letterSpacing: 0.5,
+  },
+  earnedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 10,
+    paddingVertical: 4.5,
+    borderRadius: 14,
+  },
+  earnedBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#059669',
+    letterSpacing: 0.5,
+  },
+  /* ── Empty State Card ── */
+  emptyOffersCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyOffersTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginBottom: 6,
+  },
+  emptyOffersSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 320,
   },
 });
