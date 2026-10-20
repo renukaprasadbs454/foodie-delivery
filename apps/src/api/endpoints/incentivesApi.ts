@@ -33,6 +33,9 @@ export interface IncentiveOfferProgress {
   validityPeriod: string;
   isEarned: boolean;
   active: boolean;
+  creatorRole?: string;
+  scope?: string;
+  zoneId?: string;
   milestones?: IncentiveMilestone[];
   conditions?: IncentiveConditionProgress[];
 }
