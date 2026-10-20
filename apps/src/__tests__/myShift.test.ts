@@ -122,4 +122,32 @@ describe('Delivery Partner My Shift Integration', () => {
       expect(lateNight?.endTime).toBe('03:00 AM');
     });
   });
+
+  describe('Shift Booking Gate & Online Eligibility', () => {
+    it('disallows going online without a booked shift', async () => {
+      const stored = await getStoredActiveShift();
+      const canGoOnline = Boolean(stored && stored.status === 'ACTIVE');
+      expect(canGoOnline).toBe(false);
+    });
+
+    it('allows going online after shift is successfully booked', async () => {
+      const mockShift: ActiveShiftData = {
+        shiftId: 'afternoon-shift-id',
+        shiftName: 'afternoon',
+        startTime: '12:00 PM',
+        endTime: '05:00 PM',
+        durationHours: '5h',
+        date: '2026-10-20',
+        status: 'ACTIVE',
+        startedAt: new Date().toISOString(),
+      };
+
+      await storeActiveShift(mockShift);
+      const stored = await getStoredActiveShift();
+      const canGoOnline = Boolean(stored && stored.status === 'ACTIVE');
+      expect(canGoOnline).toBe(true);
+      expect(stored?.shiftName).toBe('afternoon');
+    });
+  });
 });
+

@@ -22,9 +22,10 @@ export type KycStackParamList = {
  * Home is primary; Assignment / Navigation / Wallet are modal stacks.
  */
 export type MainStackParamList = {
-  DeliveryHome: undefined;
+  DeliveryHome: { autoGoOnline?: boolean } | undefined;
   Availability: undefined;
   DeliveryOffers: undefined;
+  MyShift: undefined;
   /**
    * assignmentId optional for deep-link `/orders/{orderId}` (UI-API only
    * provides orderId in the URL).

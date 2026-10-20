@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Platform, Dimensions, RefreshControl, Vibration, Alert, Linking, Switch, Modal } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,7 +33,6 @@ import { Toast } from '@/components/Toast';
 import { BottomNav } from '@/navigation/BottomNav';
 import { useLocationTracker, requestAllLocationPermissions } from '@/features/location';
 import { ensureBackgroundLocationForOnline } from '@/features/home/locationPermission';
-import { MyShiftModal } from '@/features/home/components/MyShiftModal';
 import { getStoredActiveShift, type ActiveShiftData } from '@/features/home/shiftStorage';
 
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
@@ -47,7 +47,7 @@ const THEME_BG = '#F5F7FA';
 const THEME_TEXT_MUTED = '#718096';
 const THEME_CARD = '#FFFFFF';
 
-export function DeliveryHomeScreen({ navigation }: Props) {
+export function DeliveryHomeScreen({ navigation, route }: Props) {
   const insets = useSafeAreaInsets();
   const { isConnected } = useConnectivity();
   const reduxIsOnline = useAppSelector(selectIsOnline);
@@ -64,14 +64,7 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const [uploadImage] = useUploadDeliveryProfileImageMutation();
 
   const profileQuery = useGetDeliveryProfileQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
-  const isOnline = profileQuery.data !== undefined ? Boolean(profileQuery.data.isOnline) : reduxIsOnline;
-
-  // Synchronize persisted backend isOnline state into Redux whenever profile query resolves
-  useEffect(() => {
-    if (profileQuery.data && typeof profileQuery.data.isOnline === 'boolean') {
-      dispatch(setIsOnline(profileQuery.data.isOnline));
-    }
-  }, [profileQuery.data, dispatch]);
+  const isOnline = reduxIsOnline;
 
   // Camera / selfie state
   const [isCameraVisible, setIsCameraVisible] = useState(false);
@@ -87,28 +80,33 @@ export function DeliveryHomeScreen({ navigation }: Props) {
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string, variant: 'info' | 'success' | 'error' | 'warning' } | null>(null);
 
-  // Delivery Partner Shifts state (Req: My Shift beside Online)
-  const [isShiftModalVisible, setIsShiftModalVisible] = useState(false);
+  // Delivery Partner Shifts state (managed via My Shift tab)
   const [activeShift, setActiveShift] = useState<ActiveShiftData | null>(null);
   const prevIsOnlineRef = useRef<boolean>(isOnline);
 
-  useEffect(() => {
-    async function loadActiveShift() {
+  const loadActiveShift = useCallback(async () => {
+    try {
       const stored = await getStoredActiveShift();
-      if (stored) {
-        setActiveShift(stored);
-      }
+      setActiveShift(stored);
+    } catch {
+      // Continue silently
     }
-    void loadActiveShift();
   }, []);
 
-  // When delivery person comes online, if no active shift is set, prompt to create/choose shift
+  useFocusEffect(
+    useCallback(() => {
+      void loadActiveShift();
+    }, [loadActiveShift])
+  );
+
+  // Requirement: Handle autoGoOnline request from Shift Booked modal
   useEffect(() => {
-    if (!prevIsOnlineRef.current && isOnline && !activeShift) {
-      setIsShiftModalVisible(true);
+    if (route?.params?.autoGoOnline && !isOnline && activeShift) {
+      navigation.setParams({ autoGoOnline: undefined });
+      void toggleAvailability();
     }
-    prevIsOnlineRef.current = isOnline;
-  }, [isOnline, activeShift]);
+  }, [route?.params?.autoGoOnline, isOnline, activeShift, navigation]);
+
 
   const onAccept = async (assignmentId: string, orderId: string) => {
     stopOrderOfferAlert();
@@ -342,9 +340,6 @@ export function DeliveryHomeScreen({ navigation }: Props) {
       trackAnalyticsEvent('delivery_availability_changed', { isOnline: true });
       trackAnalyticsEvent('go_online_photo_verified');
       setToast({ message: 'Face verified! You are now online.', variant: 'success' });
-      if (!activeShift) {
-        setIsShiftModalVisible(true);
-      }
     } catch (error: any) {
       setIsCameraVisible(false);
 
@@ -371,6 +366,26 @@ export function DeliveryHomeScreen({ navigation }: Props) {
     }
 
     if (!isOnline) {
+      // 0. Shift Booking Gate: The delivery person first has to book the shift before coming online
+      if (!activeShift) {
+        setToast({
+          message: 'Please book a shift first. Shift booking is required to go online.',
+          variant: 'warning',
+        });
+        Alert.alert(
+          'Shift Booking Required',
+          'You must first book an available shift before you can come online. Please select a shift from My Shift.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Book Shift',
+              onPress: () => navigation.navigate('MyShift' as any),
+            },
+          ]
+        );
+        return;
+      }
+
       // 1. Verify Location services and permissions gate (Req 1, 4, 6)
       const locationGate = await ensureBackgroundLocationForOnline();
       if (!locationGate.ok) {
@@ -589,40 +604,32 @@ export function DeliveryHomeScreen({ navigation }: Props) {
                   <Text style={styles.toggleSwitchTitle}>
                     {isOnline ? 'Online' : 'Offline'}
                   </Text>
-
-                  {/* Beside Online: My Shift Button */}
-                  <Pressable
-                    style={[
-                      styles.myShiftPillButton,
-                      activeShift ? styles.myShiftPillButtonActive : styles.myShiftPillButtonInactive,
-                    ]}
-                    onPress={() => setIsShiftModalVisible(true)}
-                    accessibilityRole="button"
-                    accessibilityLabel="My Shift"
-                  >
-                    <Ionicons
-                      name="time-outline"
-                      size={14}
-                      color={activeShift ? '#065F46' : '#0369A1'}
-                    />
-                    <Text style={[styles.myShiftPillText, activeShift && styles.myShiftPillTextActive]}>
-                      My Shift
-                    </Text>
-                    {activeShift ? (
-                      <View style={styles.activeShiftDotBadge} />
-                    ) : (
-                      <View style={styles.selectShiftTag}>
-                        <Text style={styles.selectShiftTagText}>Select</Text>
-                      </View>
-                    )}
-                  </Pressable>
+                  {!isOnline && (
+                    <View style={[
+                      styles.shiftRequirementBadge,
+                      activeShift ? styles.shiftRequirementBadgeReady : styles.shiftRequirementBadgeRequired
+                    ]}>
+                      <Text style={[
+                        styles.shiftRequirementBadgeText,
+                        activeShift ? styles.shiftRequirementBadgeTextReady : styles.shiftRequirementBadgeTextRequired
+                      ]}>
+                        {activeShift ? 'Shift Booked' : 'Shift Required'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
-                <Text style={styles.toggleSwitchSubtitle}>
-                  {activeShift
-                    ? `${activeShift.shiftName} (${activeShift.startTime} - ${activeShift.endTime}) • Active`
-                    : (isOnline ? 'Receiving order offers • Tap My Shift to set slot' : 'Turn on to start receiving orders')}
-                </Text>
+                <Pressable
+                  onPress={() => navigation.navigate('MyShift' as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel="My Shift details"
+                >
+                  <Text style={styles.toggleSwitchSubtitle}>
+                    {activeShift
+                      ? `${activeShift.shiftName} (${activeShift.startTime} - ${activeShift.endTime}) • Active`
+                      : (isOnline ? 'Receiving order offers' : 'Book a shift first to come online • Tap to view shifts')}
+                  </Text>
+                </Pressable>
               </View>
             </View>
 
@@ -783,14 +790,6 @@ export function DeliveryHomeScreen({ navigation }: Props) {
         onDismiss={() => setToast(null)}
       />
 
-      {/* My Shift Selection & Creation Modal */}
-      <MyShiftModal
-        visible={isShiftModalVisible}
-        onClose={() => setIsShiftModalVisible(false)}
-        activeShift={activeShift}
-        onShiftUpdated={(updated) => setActiveShift(updated)}
-        onShowToast={(msg, variant) => setToast({ message: msg, variant })}
-      />
 
       {/* Customer Ratings and Reviews Modal */}
       <Modal
@@ -1289,6 +1288,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  shiftRequirementBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  shiftRequirementBadgeReady: {
+    backgroundColor: '#D1FAE5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  shiftRequirementBadgeRequired: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  shiftRequirementBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  shiftRequirementBadgeTextReady: {
+    color: '#065F46',
+  },
+  shiftRequirementBadgeTextRequired: {
+    color: '#92400E',
   },
   myShiftPillButton: {
     flexDirection: 'row',

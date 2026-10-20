@@ -195,10 +195,11 @@ export const deliveryApi = baseApi.injectEndpoints({
     getDeliveryProfile: builder.query<DeliveryProfile, void>({
       query: () => '/api/v1/delivery/me',
       providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
-      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+      async onQueryStarted(_arg, { dispatch, queryFulfilled, getState }) {
         try {
           const { data } = await queryFulfilled;
-          if (data && typeof data.isOnline === 'boolean') {
+          const currentIsOnline = (getState() as any)?.availability?.isOnline;
+          if (data && typeof data.isOnline === 'boolean' && !currentIsOnline) {
             dispatch(setIsOnline(data.isOnline));
           }
         } catch {

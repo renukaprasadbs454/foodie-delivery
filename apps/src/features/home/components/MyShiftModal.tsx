@@ -148,7 +148,7 @@ export function MyShiftModal({
 
       await storeActiveShift(newActiveShift);
       onShiftUpdated(newActiveShift);
-      onShowToast(`Shift "${shiftToBook.shiftName}" confirmed and active!`, 'success');
+      onShowToast(`Shift booked! "${shiftToBook.shiftName}" is confirmed. You can now go online.`, 'success');
       onClose();
     } catch (e: any) {
       console.error('[ShiftModal] Failed to activate shift:', e);

@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DeliveryHomeScreen } from '@/features/home/screens/DeliveryHomeScreen';
 import { AvailabilityScreen } from '@/features/home/screens/AvailabilityScreen';
 import { DeliveryOffersScreen } from '@/features/home/screens/DeliveryOffersScreen';
+import { MyShiftScreen } from '@/features/home/screens/MyShiftScreen';
 import { AssignmentDetailsScreen } from '@/features/home/screens/AssignmentDetailsScreen';
 import { DeliveryNavigationScreen } from '@/features/navigation/screens/DeliveryNavigationScreen';
 import { CustomerDeliveryScreen } from '@/features/navigation/screens/CustomerDeliveryScreen';
@@ -49,6 +50,11 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
         name="DeliveryOffers"
         component={DeliveryOffersScreen}
         options={{ presentation: 'modal', headerShown: true, title: 'Offers' }}
+      />
+      <Stack.Screen
+        name="MyShift"
+        component={MyShiftScreen}
+        options={{ presentation: 'modal', headerShown: false }}
       />
       <Stack.Screen
         name="AssignmentDetails"

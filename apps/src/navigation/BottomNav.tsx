@@ -22,6 +22,11 @@ export function BottomNav() {
                 <Text style={[styles.bottomNavText, currentRouteName === 'DeliveryOffers' && { color: '#F59E0B' }]}>Orders</Text>
             </Pressable>
 
+            <Pressable style={styles.bottomNavItem} onPress={() => navigation.navigate('MyShift' as any)}>
+                <Ionicons name={currentRouteName === 'MyShift' ? 'time' : 'time-outline'} size={24} color={currentRouteName === 'MyShift' ? '#F59E0B' : '#718096'} />
+                <Text style={[styles.bottomNavText, currentRouteName === 'MyShift' && { color: '#F59E0B' }]}>My Shift</Text>
+            </Pressable>
+
             <Pressable style={styles.bottomNavItem} onPress={() => navigation.navigate('Wallet' as any)}>
                 <Ionicons name="wallet-outline" size={24} color={currentRouteName === 'Wallet' ? '#F59E0B' : '#718096'} />
                 <Text style={[styles.bottomNavText, currentRouteName === 'Wallet' && { color: '#F59E0B' }]}>Earnings</Text>
