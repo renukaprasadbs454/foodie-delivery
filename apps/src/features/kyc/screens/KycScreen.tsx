@@ -87,15 +87,6 @@ export function KycScreen({ navigation }: Props) {
 
   const isZoneVerified = Boolean(profileQuery.data?.zoneVerified);
 
-  // If a user opens the KYC route directly without a valid zone verification, redirect them to the location page.
-  useEffect(() => {
-    if (profileQuery.isSuccess && profileQuery.data) {
-      if (!profileQuery.data.zoneVerified) {
-        navigation.replace('DeliveryZone');
-      }
-    }
-  }, [profileQuery.isSuccess, profileQuery.data, navigation]);
-
   useEffect(() => {
     if (profileQuery.data) {
       if (
@@ -109,15 +100,6 @@ export function KycScreen({ navigation }: Props) {
   }, [profileQuery.data, partnerName]);
 
   const handleDocumentPickAndUpload = async (docType: DeliveryDocType) => {
-    if (!profileQuery.data?.zoneVerified) {
-      setToast({
-        message: 'You are outside the delivery zone. Please move to an active delivery zone and try again.',
-        variant: 'error',
-      });
-      navigation.replace('DeliveryZone');
-      return;
-    }
-
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to upload documents.', variant: 'warning' });
       return;
@@ -180,15 +162,6 @@ export function KycScreen({ navigation }: Props) {
     useUploadDeliveryProfileImageMutation();
 
   const handleSelfieCapture = async () => {
-    if (!profileQuery.data?.zoneVerified) {
-      setToast({
-        message: 'You are outside the delivery zone. Please move to an active delivery zone and try again.',
-        variant: 'error',
-      });
-      navigation.replace('DeliveryZone');
-      return;
-    }
-
     if (!isConnected) {
       setToast({ message: 'Connect to the internet to upload selfie.', variant: 'warning' });
       return;
@@ -309,6 +282,43 @@ export function KycScreen({ navigation }: Props) {
           <Text variant="body" color={tokens.color.textSecondary}>
             We require these details to securely approve your partner account.
           </Text>
+        </View>
+
+        {/* Delivery Zone & Location Request Notice */}
+        <View
+          style={{
+            backgroundColor: isZoneVerified ? '#D1FAE5' : profileQuery.data?.locationApprovalStatus === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
+            borderColor: isZoneVerified ? '#34D399' : profileQuery.data?.locationApprovalStatus === 'REJECTED' ? '#FCA5A5' : '#FCD34D',
+            borderWidth: 1,
+            borderRadius: 14,
+            padding: 14,
+            marginBottom: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <MaterialIcons
+            name={isZoneVerified ? 'verified-user' : profileQuery.data?.locationApprovalStatus === 'REJECTED' ? 'cancel' : 'pending-actions'}
+            size={24}
+            color={isZoneVerified ? '#047857' : profileQuery.data?.locationApprovalStatus === 'REJECTED' ? '#DC2626' : '#B45309'}
+          />
+          <View style={{ flex: 1 }}>
+            <Text variant="caption" style={{ fontWeight: '700', color: isZoneVerified ? '#047857' : profileQuery.data?.locationApprovalStatus === 'REJECTED' ? '#DC2626' : '#92400E' }}>
+              {isZoneVerified
+                ? 'Delivery Zone: Verified & Approved'
+                : profileQuery.data?.locationApprovalStatus === 'REJECTED'
+                ? 'Delivery Zone: Rejected by Super Admin'
+                : 'Delivery Zone: Location Approval Sent (Pending Admin Review)'}
+            </Text>
+            <Text variant="caption" style={{ color: isZoneVerified ? '#065F46' : profileQuery.data?.locationApprovalStatus === 'REJECTED' ? '#991B1B' : '#78350F', marginTop: 2 }}>
+              {isZoneVerified
+                ? 'Your location is verified for order assignments once KYC documents are approved.'
+                : profileQuery.data?.locationApprovalStatus === 'REJECTED'
+                ? 'You may complete document submission, but deliveries cannot be received in an unapproved zone.'
+                : 'You are submitting documents from outside the zone. Your location request is under review with Super Admin.'}
+            </Text>
+          </View>
         </View>
 
         {/* Documents & Profile Section */}
@@ -461,7 +471,7 @@ export function KycScreen({ navigation }: Props) {
           <Text
             variant="heading3"
             style={{
-              color: isAllUploaded && isZoneVerified ? THEME_EMERALD : '#64748b',
+              color: isAllUploaded && (isZoneVerified || Boolean(profileQuery.data?.zoneId)) ? THEME_EMERALD : '#64748b',
               marginBottom: 12,
               textAlign: 'center',
             }}

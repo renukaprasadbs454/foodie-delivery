@@ -137,21 +137,17 @@ export function DeliveryZoneScreen({ navigation }: Props) {
         } else {
           setIsZoneVerified(false);
           setVerifiedZoneName(null);
-          const outsideMsg =
-            res.message ||
-            'You are outside the selected delivery zone. Please move into the zone and try again.';
+          const outsideMsg = 'Location approval request sent to Super Admin (Status: Pending). You can continue to documents.';
           setZoneStatusMessage(outsideMsg);
-          setToast({ message: outsideMsg, variant: 'error' });
+          setToast({ message: outsideMsg, variant: 'warning' });
         }
       } catch (e: any) {
         setHasAttemptedVerification(true);
         setIsZoneVerified(false);
         setVerifiedZoneName(null);
-        const errMsg =
-          e?.data?.message ||
-          'You are outside the selected delivery zone. Please move into the zone and try again.';
+        const errMsg = 'Location approval request sent to Super Admin (Status: Pending). You can continue to documents.';
         setZoneStatusMessage(errMsg);
-        setToast({ message: errMsg, variant: 'error' });
+        setToast({ message: errMsg, variant: 'warning' });
       }
     },
     [isConnected, referenceAddress, verifyDeliveryZone, activeZones]
@@ -261,36 +257,13 @@ export function DeliveryZoneScreen({ navigation }: Props) {
   };
 
   const handleContinueToDocuments = async () => {
-    if (!isZoneVerified) {
-      setToast({
-        message: 'You are outside the selected delivery zone. Please move into the zone and try again.',
-        variant: 'error',
-      });
-      return;
+    // If verification has not run yet for current coordinates and zone, execute it now to register the location request
+    if (!hasAttemptedVerification && selectedZoneId) {
+      try {
+        await executeVerification(currentLat, currentLng, selectedZoneId, referenceAddress);
+      } catch (ignored) {}
     }
-
-    // Authoritative backend check before navigation
-    try {
-      const refetched = await profileQuery.refetch().unwrap();
-      if (!refetched?.zoneVerified) {
-        setIsZoneVerified(false);
-        setToast({
-          message: 'You are outside the selected delivery zone. Please move into the zone and try again.',
-          variant: 'error',
-        });
-        return;
-      }
-      navigation.navigate('KycForm');
-    } catch {
-      if (isZoneVerified) {
-        navigation.navigate('KycForm');
-      } else {
-        setToast({
-          message: 'Delivery zone verification required. Please verify your location first.',
-          variant: 'error',
-        });
-      }
-    }
+    navigation.navigate('KycForm');
   };
 
   const selectedZone = activeZones.find((z) => z.id === selectedZoneId);
@@ -550,34 +523,57 @@ export function DeliveryZoneScreen({ navigation }: Props) {
               </View>
             </View>
           ) : hasAttemptedVerification && !isZoneVerified ? (
-            <View style={[styles.zoneStatusBanner, styles.zoneStatusWarning]}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-                <Feather name="alert-triangle" size={22} color="#DC2626" style={{ marginTop: 2 }} />
-                <View style={{ flex: 1 }}>
-                  <Text
-                    variant="heading3"
-                    style={{
-                      color: '#DC2626',
-                      fontSize: 15,
-                      marginBottom: 3,
-                    }}
-                  >
-                    {zoneStatusMessage || 'You are outside the selected delivery zone. Please move into the zone and try again.'}
-                  </Text>
-                  <Text variant="caption" style={{ color: '#991B1B' }}>
-                    Your GPS coordinates do not fall inside the configured boundary of {selectedZone?.zoneName || 'the selected zone'}.
-                  </Text>
+            profileQuery.data?.locationApprovalStatus === 'REJECTED' ? (
+              <View style={[styles.zoneStatusBanner, styles.zoneStatusWarning, { backgroundColor: '#FEE2E2', borderColor: '#FCA5A5' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                  <Feather name="x-circle" size={22} color="#DC2626" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      variant="heading3"
+                      style={{
+                        color: '#DC2626',
+                        fontSize: 15,
+                        marginBottom: 3,
+                      }}
+                    >
+                      Location Request Rejected by Super Admin
+                    </Text>
+                    <Text variant="caption" style={{ color: '#991B1B' }}>
+                      Your location expansion request for {selectedZone?.zoneName || 'this zone'} was rejected by the Super Admin. You can still upload documents, but deliveries cannot be received in an unapproved zone.
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            ) : (
+              <View style={[styles.zoneStatusBanner, styles.zoneStatusWarning, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                  <Feather name="clock" size={22} color="#D97706" style={{ marginTop: 2 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      variant="heading3"
+                      style={{
+                        color: '#B45309',
+                        fontSize: 15,
+                        marginBottom: 3,
+                      }}
+                    >
+                      Location Approval Request Sent (Status: Pending)
+                    </Text>
+                    <Text variant="caption" style={{ color: '#92400E' }}>
+                      You are outside the configured boundary of {selectedZone?.zoneName || 'the selected zone'}. A location approval request has been automatically sent to the Super Admin. You can continue submitting your documents.
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            )
           ) : null}
 
           {/* Continue to Documents Action Button */}
           <View style={{ marginTop: 20 }}>
             <Button
-              label={isZoneVerified ? 'Continue to Documents →' : 'Continue to Documents (Locked)'}
+              label="Continue to Documents →"
               variant="primary"
-              disabled={!isZoneVerified || isVerifyingZone || isGpsLoading}
+              disabled={!selectedZoneId || isVerifyingZone || isGpsLoading}
               onPress={handleContinueToDocuments}
               accessibilityLabel="Continue to Documents"
             />

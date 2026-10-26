@@ -181,6 +181,55 @@ export function PendingVerificationScreen({ navigation }: Props) {
           )}
         </View>
 
+        {/* Delivery Zone & Location Request Status Card */}
+        <View style={{ backgroundColor: 'white', padding: 20, borderRadius: 16, marginTop: 4, elevation: 2, shadowColor: '#000', shadowOffset: { height: 2, width: 0 }, shadowRadius: 4, shadowOpacity: 0.05 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <Text variant="heading3" style={{ color: '#1E293B', fontSize: 16 }}>
+              📍 Delivery Zone Status
+            </Text>
+            <View
+              style={{
+                backgroundColor: profile?.zoneVerified ? '#D1FAE5' : profile?.locationApprovalStatus === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 12,
+              }}
+            >
+              <Text
+                variant="caption"
+                style={{
+                  fontWeight: '800',
+                  fontSize: 11,
+                  color: profile?.zoneVerified ? '#047857' : profile?.locationApprovalStatus === 'REJECTED' ? '#DC2626' : '#B45309',
+                }}
+              >
+                {profile?.zoneVerified ? 'ZONE APPROVED' : profile?.locationApprovalStatus === 'REJECTED' ? 'ZONE REJECTED' : 'LOCATION PENDING APPROVAL'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={{ backgroundColor: '#F8FAFC', padding: 12, borderRadius: 10, gap: 6 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text variant="caption" style={{ color: '#64748B' }}>Selected Zone:</Text>
+              <Text variant="caption" style={{ fontWeight: '700', color: '#1E293B' }}>{profile?.zoneName || profile?.zoneId || 'Bengaluru Zone'}</Text>
+            </View>
+            {profile?.latitude && profile?.longitude ? (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text variant="caption" style={{ color: '#64748B' }}>GPS Location:</Text>
+                <Text variant="caption" style={{ fontFamily: 'monospace', color: '#2563EB' }}>{profile.latitude.toFixed(4)}, {profile.longitude.toFixed(4)}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text variant="caption" style={{ color: '#64748B', marginTop: 10, lineHeight: 18 }}>
+            {profile?.zoneVerified
+              ? 'Your location request has been APPROVED by the Super Admin. You are cleared to deliver in this zone once KYC is verified.'
+              : profile?.locationApprovalStatus === 'REJECTED'
+              ? 'Your location request for this zone was REJECTED by Super Admin. You cannot receive deliveries in this zone.'
+              : 'Your location request is currently PENDING Super Admin review. You can complete document submission while awaiting approval.'}
+          </Text>
+        </View>
+
         {isRejected && (
           <Button
             label="Re-Upload Documents"

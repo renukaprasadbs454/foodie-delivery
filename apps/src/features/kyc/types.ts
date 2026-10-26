@@ -84,4 +84,5 @@ export type DeliveryProfile = {
   zoneId?: string;
   zoneName?: string;
   zoneVerified?: boolean;
+  locationApprovalStatus?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'NONE' | string;
 };

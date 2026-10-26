@@ -67,7 +67,12 @@ export function RootNavigator() {
       flow = 'kyc';
       if (hasUploadedDocs && hasProfileImage && hasName) {
         initialRouteName = 'PendingVerification';
-      } else if (profileQuery.data.zoneVerified) {
+      } else if (
+        profileQuery.data.zoneVerified ||
+        profileQuery.data.zoneId ||
+        profileQuery.data.locationApprovalStatus === 'PENDING' ||
+        profileQuery.data.locationApprovalStatus === 'REJECTED'
+      ) {
         initialRouteName = 'KycForm';
       } else {
         initialRouteName = 'DeliveryZone';

@@ -314,19 +314,19 @@ describe('Delivery Zone Verification (KYC Gate)', () => {
       expect(isVerified).toBe(false);
     });
 
-    it('enables Continue to Documents only when location is verified inside the selected zone', () => {
+    it('enables Continue to Documents when zone is selected and GPS is ready (even outside zone)', () => {
       const isContinueEnabled = (
-        isZoneVerified: boolean,
+        selectedZoneId: string | null,
         isGpsLoading: boolean,
         isVerifying: boolean
       ): boolean => {
-        return isZoneVerified && !isGpsLoading && !isVerifying;
+        return Boolean(selectedZoneId) && !isGpsLoading && !isVerifying;
       };
 
-      expect(isContinueEnabled(true, false, false)).toBe(true);
-      expect(isContinueEnabled(false, false, false)).toBe(false);
-      expect(isContinueEnabled(true, true, false)).toBe(false);
-      expect(isContinueEnabled(true, false, true)).toBe(false);
+      expect(isContinueEnabled('dz-blr', false, false)).toBe(true);
+      expect(isContinueEnabled(null, false, false)).toBe(false);
+      expect(isContinueEnabled('dz-blr', true, false)).toBe(false);
+      expect(isContinueEnabled('dz-blr', false, true)).toBe(false);
     });
   });
 });
