@@ -25,6 +25,7 @@ export function RootNavigator() {
   // Conditionally fetch profile only when authenticated and access token is present
   const profileQuery = useGetDeliveryProfileQuery(undefined, {
     skip: authStatus !== 'authenticated' || !accessToken,
+    pollingInterval: 3000,
   });
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export function RootNavigator() {
 
     if (kycStatus !== 'VERIFIED') {
       flow = 'kyc';
-      if (hasUploadedDocs && hasProfileImage && hasName) {
+      if (kycStatus === 'SUSPENDED' || kycStatus === 'PENDING' || (hasUploadedDocs && hasProfileImage && hasName)) {
         initialRouteName = 'PendingVerification';
       } else if (
         profileQuery.data.zoneVerified ||

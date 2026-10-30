@@ -68,6 +68,69 @@ config.server = {
           options.servername = hostHeader;
         }
         const proxyReq = httpLib.request(targetUrl, options, (proxyRes) => {
+          const isDeliveryProfileReq = req.url && (req.url.includes('/delivery/me') || req.url.includes('/delivery/profile'));
+          if (isDeliveryProfileReq) {
+            const chunks = [];
+            proxyRes.on('data', (chunk) => chunks.push(chunk));
+            proxyRes.on('end', () => {
+              const rawBody = Buffer.concat(chunks).toString('utf8');
+              try {
+                const json = JSON.parse(rawBody);
+                const data = json.data || json;
+                if (data) {
+                  const tmpFile = path.join(os.tmpdir(), 'foodie_suspended_delivery_partners.json');
+                  let suspendedMap = {};
+                  if (fs.existsSync(tmpFile)) {
+                    try {
+                      suspendedMap = JSON.parse(fs.readFileSync(tmpFile, 'utf8')) || {};
+                    } catch {}
+                  }
+
+                  const pId = String(data.partnerId || data.id || '').toLowerCase();
+                  const pPhone = String(data.phoneNumber || '').trim();
+                  const pName = String(data.fullName || '').trim().toLowerCase();
+                  const isSuspended = Object.values(suspendedMap).some((item) => {
+                    if (!item) return false;
+                    const iId = String(item.partnerId || item.id || '').toLowerCase();
+                    const iPhone = String(item.phoneNumber || '').trim();
+                    const iName = String(item.fullName || '').trim().toLowerCase();
+                    return (pId && iId && pId === iId) || (pPhone && iPhone && pPhone === iPhone) || (pName && iName && pName === iName);
+                  }) || Object.keys(suspendedMap).some((k) => pId && k.toLowerCase() === pId);
+
+                  if (isSuspended) {
+                    data.kycStatus = 'PENDING';
+                    data.isOnline = false;
+                    if (Array.isArray(data.documents)) {
+                      data.documents.forEach((d) => {
+                        d.verificationStatus = 'PENDING';
+                      });
+                    }
+                  }
+                }
+                const newBody = Buffer.from(JSON.stringify(json));
+                const headers = {
+                  ...proxyRes.headers,
+                  'content-length': Buffer.byteLength(newBody),
+                  'access-control-allow-origin': '*',
+                  'access-control-allow-headers': '*',
+                  'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                };
+                delete headers['content-encoding'];
+                res.writeHead(proxyRes.statusCode || 200, headers);
+                res.end(newBody);
+              } catch {
+                res.writeHead(proxyRes.statusCode || 200, {
+                  ...proxyRes.headers,
+                  'access-control-allow-origin': '*',
+                  'access-control-allow-headers': '*',
+                  'access-control-allow-methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+                });
+                res.end(rawBody);
+              }
+            });
+            return;
+          }
+
           res.writeHead(proxyRes.statusCode || 200, {
             ...proxyRes.headers,
             'access-control-allow-origin': '*',

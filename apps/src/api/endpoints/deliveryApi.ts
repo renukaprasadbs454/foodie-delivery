@@ -139,9 +139,17 @@ export async function createUploadFormData(
   });
 
   if (Platform.OS === 'web') {
-    if (fileField.webFile instanceof Blob || (typeof File !== 'undefined' && fileField.webFile instanceof File)) {
-      if (fileField.webFile.size > 0) {
-        formData.append(fileField.name, fileField.webFile, fileField.fileName || 'file.jpg');
+    let fileObj = fileField.webFile;
+    if (fileObj instanceof Blob || (typeof File !== 'undefined' && fileObj instanceof File)) {
+      if (fileObj.size > 0) {
+        if ((!fileObj.type || fileObj.type === 'application/octet-stream') && fileField.mimeType) {
+          try {
+            fileObj = new File([fileObj], fileField.fileName || 'file', { type: fileField.mimeType });
+          } catch {
+            // fallback if File constructor fails
+          }
+        }
+        formData.append(fileField.name, fileObj, fileField.fileName || 'file.jpg');
         return formData;
       }
     }
@@ -150,7 +158,11 @@ export async function createUploadFormData(
         try {
           const blob = dataUriToBlob(fileField.uri);
           if (blob.size > 0) {
-            formData.append(fileField.name, blob, fileField.fileName || 'file.jpg');
+            let typedBlob = blob;
+            if ((!blob.type || blob.type === 'application/octet-stream') && fileField.mimeType) {
+              typedBlob = blob.slice(0, blob.size, fileField.mimeType);
+            }
+            formData.append(fileField.name, typedBlob, fileField.fileName || 'file.jpg');
             return formData;
           }
         } catch (err) {
@@ -161,7 +173,11 @@ export async function createUploadFormData(
         const res = await fetch(fileField.uri);
         const blob = await res.blob();
         if (blob.size > 0) {
-          formData.append(fileField.name, blob, fileField.fileName || 'file.jpg');
+          let typedBlob = blob;
+          if ((!blob.type || blob.type === 'application/octet-stream') && fileField.mimeType) {
+            typedBlob = blob.slice(0, blob.size, fileField.mimeType);
+          }
+          formData.append(fileField.name, typedBlob, fileField.fileName || 'file.jpg');
           return formData;
         }
       } catch (err) {
@@ -194,13 +210,70 @@ export const deliveryApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getDeliveryProfile: builder.query<DeliveryProfile, void>({
       query: () => '/api/v1/delivery/me',
+      transformResponse: async (response: any) => {
+        const raw = response?.data ? { ...response.data } : { ...response };
+        if (!raw) return raw;
+
+        try {
+          const bffOrigin =
+            typeof window !== 'undefined' && window.location?.hostname
+              ? `${window.location.protocol}//${window.location.hostname}:3100`
+              : 'http://localhost:3100';
+          const bffUrl = `${bffOrigin}/api/bff/admin/delivery-partners?status=SUSPENDED`;
+          const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+          const timeoutId = controller ? setTimeout(() => controller.abort(), 1200) : null;
+          const res = await fetch(bffUrl, { signal: controller?.signal });
+          if (timeoutId) clearTimeout(timeoutId);
+
+          if (res && res.ok) {
+            const bffJson = await res.json();
+            const suspendedList = bffJson?.data?.items || bffJson?.data || [];
+            const myPartnerId = String(raw.partnerId || raw.id || '').toLowerCase();
+            const myUserId = String(raw.userId || raw.userCredentialId || '').toLowerCase();
+            const myPhone = String(raw.phoneNumber || '').trim();
+            const myName = String(raw.fullName || '').trim().toLowerCase();
+
+            const isSuspended = Array.isArray(suspendedList) && suspendedList.some((item: any) => {
+              const iId = String(item.id || item.partnerId || '').toLowerCase();
+              const iCred = String(item.userCredentialId || item.userId || '').toLowerCase();
+              const iPhone = String(item.phoneNumber || '').trim();
+              const iName = String(item.fullName || '').trim().toLowerCase();
+              return (
+                (myPartnerId && iId && myPartnerId === iId) ||
+                (myUserId && iCred && myUserId === iCred) ||
+                (myPhone && iPhone && myPhone === iPhone) ||
+                (myName && iName && myName === iName)
+              );
+            });
+
+            if (isSuspended) {
+              raw.kycStatus = 'PENDING';
+              raw.isOnline = false;
+              if (Array.isArray(raw.documents)) {
+                raw.documents = raw.documents.map((d: any) => ({
+                  ...d,
+                  verificationStatus: 'PENDING',
+                }));
+              }
+            }
+          }
+        } catch {
+          // If BFF check fails, continue with raw profile
+        }
+
+        return raw;
+      },
       providesTags: [{ type: 'Delivery', id: 'PROFILE' }],
       async onQueryStarted(_arg, { dispatch, queryFulfilled, getState }) {
         try {
           const { data } = await queryFulfilled;
           const currentIsOnline = (getState() as any)?.availability?.isOnline;
-          if (data && typeof data.isOnline === 'boolean' && !currentIsOnline) {
-            dispatch(setIsOnline(data.isOnline));
+          if (data && typeof data.isOnline === 'boolean') {
+            if (!data.isOnline && currentIsOnline) {
+              dispatch(setIsOnline(false));
+            } else if (data.isOnline && !currentIsOnline) {
+              dispatch(setIsOnline(true));
+            }
           }
         } catch {
           // Ignored if query fails

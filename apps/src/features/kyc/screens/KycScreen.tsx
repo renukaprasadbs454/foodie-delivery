@@ -7,6 +7,7 @@ import {
   TextInput,
   Image as RNImage,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as DocumentPicker from 'expo-document-picker';
@@ -37,23 +38,26 @@ type Props = NativeStackScreenProps<KycStackParamList, 'KycForm'>;
 
 const THEME_EMERALD = '#14532D';
 
+const MAX_DOC_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
+
 const REQUIRED_DOCS = [
   {
     type: 'IDENTITY' as DeliveryDocType,
     label: 'Identity Proof',
-    desc: 'Aadhaar, PAN, or Passport',
+    desc: 'Aadhaar, PAN, or Passport (Max 5MB)',
     icon: 'person-outline',
   },
   {
     type: 'LICENSE' as DeliveryDocType,
     label: 'Driving License',
-    desc: 'Valid Driving License front & back',
+    desc: 'Valid Driving License front & back (Max 5MB)',
     icon: 'card-outline',
   },
   {
     type: 'VEHICLE_RC' as DeliveryDocType,
     label: 'Vehicle RC',
-    desc: 'Registration Certificate',
+    desc: 'Registration Certificate (Max 5MB)',
     icon: 'document-text-outline',
   },
 ];
@@ -105,46 +109,128 @@ export function KycScreen({ navigation }: Props) {
       return;
     }
 
+    const docConfig = REQUIRED_DOCS.find((d) => d.type === docType);
+    const docLabel = docConfig?.label ?? docType;
+
+    const processUpload = async (fileObj: {
+      name: string;
+      size?: number;
+      type?: string;
+      uri: string;
+      rawFile?: any;
+    }) => {
+      // Validate file size up to 5MB
+      if (fileObj.size && fileObj.size > MAX_DOC_SIZE_BYTES) {
+        setToast({
+          message: `File size exceeds 5MB limit (${(fileObj.size / (1024 * 1024)).toFixed(1)}MB). Please choose a file up to 5MB.`,
+          variant: 'error',
+        });
+        return;
+      }
+
+      const ext = fileObj.name.split('.').pop()?.toLowerCase() ?? '';
+      if (ext && !ALLOWED_EXTENSIONS.includes(ext)) {
+        setToast({
+          message: 'Only PDF, JPG, and PNG files up to 5MB are allowed.',
+          variant: 'error',
+        });
+        return;
+      }
+
+      let mimeType = fileObj.type;
+      if (!mimeType || mimeType === 'application/octet-stream') {
+        if (ext === 'pdf') mimeType = 'application/pdf';
+        else if (ext === 'png') mimeType = 'image/png';
+        else mimeType = 'image/jpeg';
+      }
+
+      try {
+        setUploadingType(docType);
+
+        const uploaded = await uploadDocument({
+          docType,
+          uri: fileObj.uri,
+          mimeType,
+          fileName: fileObj.name || `${docType.toLowerCase()}.${ext || 'pdf'}`,
+          webFile: fileObj.rawFile,
+        }).unwrap();
+
+        const resolvedType = isDeliveryDocType(uploaded.docType) ? uploaded.docType : docType;
+
+        dispatch(
+          documentUploaded({
+            documentId: uploaded.documentId,
+            docType: resolvedType,
+            verificationStatus: uploaded.verificationStatus ?? 'PENDING',
+            fileKey: uploaded.fileKey,
+            uploadedAt: uploaded.uploadedAt,
+          }),
+        );
+        trackAnalyticsEvent('document_uploaded', { docType });
+        setToast({ message: `${docLabel} uploaded successfully.`, variant: 'success' });
+        profileQuery.refetch();
+      } catch (error: any) {
+        const errMsg = error?.data?.message || error?.message || `Failed to upload ${docLabel}.`;
+        setToast({ message: errMsg, variant: 'error' });
+      } finally {
+        setUploadingType(null);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
+      input.style.display = 'none';
+
+      input.onchange = async (event: any) => {
+        const file: File | undefined = event.target?.files?.[0];
+        try {
+          document.body.removeChild(input);
+        } catch {}
+
+        if (!file) return;
+
+        await processUpload({
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          uri: URL.createObjectURL(file),
+          rawFile: file,
+        });
+      };
+
+      input.oncancel = () => {
+        try {
+          document.body.removeChild(input);
+        } catch {}
+      };
+
+      document.body.appendChild(input);
+      input.click();
+      return;
+    }
+
+    // Native platforms (Android / iOS)
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'],
+        type: ['application/pdf', 'image/jpeg', 'image/png'],
         copyToCacheDirectory: true,
       });
 
       if (result.canceled || !result.assets?.[0]) return;
 
       const asset = result.assets[0];
-      const mimeType = asset.mimeType ?? 'application/pdf';
-
-      setUploadingType(docType);
-
-      const uploaded = await uploadDocument({
-        docType,
+      await processUpload({
+        name: asset.name,
+        size: asset.size ?? (asset as any).file?.size,
+        type: asset.mimeType,
         uri: asset.uri,
-        mimeType,
-        fileName: asset.name || `${docType.toLowerCase()}.pdf`,
-        webFile: (asset as any).file,
-      }).unwrap();
-
-      const resolvedType = isDeliveryDocType(uploaded.docType) ? uploaded.docType : docType;
-
-      dispatch(
-        documentUploaded({
-          documentId: uploaded.documentId,
-          docType: resolvedType,
-          verificationStatus: uploaded.verificationStatus ?? 'PENDING',
-          fileKey: uploaded.fileKey,
-          uploadedAt: uploaded.uploadedAt,
-        }),
-      );
-      trackAnalyticsEvent('document_uploaded', { docType });
-      setToast({ message: `${docType} uploaded successfully.`, variant: 'success' });
-      profileQuery.refetch();
+        rawFile: (asset as any).file,
+      });
     } catch (error: any) {
-      const errStr = typeof error === 'object' ? JSON.stringify(error) : String(error);
-      setToast({ message: `ERR: ${errStr}`.substring(0, 100), variant: 'error' });
-    } finally {
-      setUploadingType(null);
+      const errMsg = error?.message || 'Failed to select document.';
+      setToast({ message: errMsg, variant: 'error' });
     }
   };
 
@@ -334,7 +420,7 @@ export function KycScreen({ navigation }: Props) {
             color={tokens.color.textSecondary}
             style={{ marginBottom: 16 }}
           >
-            Upload your KYC documents to complete onboarding.
+            Upload your KYC documents (PDF, JPG, PNG up to 5MB) to complete onboarding.
           </Text>
 
           <View style={styles.docList}>
@@ -426,6 +512,8 @@ export function KycScreen({ navigation }: Props) {
                   ]}
                   onPress={() => handleDocumentPickAndUpload(doc.type)}
                   disabled={isUploading}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Upload ${doc.label}`}
                 >
                   <View
                     style={[
@@ -451,11 +539,17 @@ export function KycScreen({ navigation }: Props) {
                       {doc.label}
                     </Text>
                     <Text variant="caption" color={tokens.color.textSecondary}>
-                      {isUploading ? 'Uploading...' : status.isUploaded ? 'Uploaded' : doc.desc}
+                      {isUploading
+                        ? 'Uploading document...'
+                        : status.isUploaded
+                        ? 'Uploaded • Tap to change'
+                        : doc.desc}
                     </Text>
                   </View>
 
-                  {status.isUploaded ? (
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color={THEME_EMERALD} />
+                  ) : status.isUploaded ? (
                     <Feather name="check-circle" size={24} color={THEME_EMERALD} />
                   ) : (
                     <Feather name="upload-cloud" size={24} color="#64748b" />
