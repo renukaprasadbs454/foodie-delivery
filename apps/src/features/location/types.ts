@@ -28,6 +28,6 @@ export interface LocationServicesStatus {
 export const LOCATION_INTERVALS = {
   /** Live active delivery navigation tracking interval (elevated tier) */
   ACTIVE_DELIVERY_MS: 3_000,
-  /** Online idle availability tracking interval */
-  ONLINE_IDLE_MS: 30_000,
+  /** Online idle availability tracking interval - frequent pings for live map tracking */
+  ONLINE_IDLE_MS: 10_000,
 } as const;

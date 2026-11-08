@@ -69,9 +69,9 @@ export async function startBackgroundLocationTracking(): Promise<void> {
         }
 
         await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-            accuracy: Location.Accuracy.Balanced,
-            distanceInterval: 10,
-            timeInterval: 15000,
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5,
+            timeInterval: 10000,
             showsBackgroundLocationIndicator: true,
             foregroundService: {
                 notificationTitle: 'Delimo Delivery Partner is Active',

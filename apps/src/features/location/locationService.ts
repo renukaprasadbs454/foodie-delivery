@@ -169,37 +169,66 @@ export async function requestAllLocationPermissions(): Promise<{
   };
 }
 
+let cachedLastKnownLocation: LocationCoordinates | null = null;
+
 /**
- * Fetches the current device location with accurate coordinates and fallback handling.
+ * Fetches the current device location with high accuracy coordinates and resilient fallback handling.
  */
 export async function getCurrentDeviceLocation(): Promise<LocationCoordinates | null> {
+  // 1. Try high-accuracy live GPS fix
   try {
     const pos = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
+      accuracy: Location.Accuracy.High,
     });
 
     const validated = validatePingCoords(pos.coords.latitude, pos.coords.longitude);
-    if (!validated.ok) return null;
+    if (validated.ok) {
+      const coords: LocationCoordinates = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        heading: pos.coords.heading,
+        speed: pos.coords.speed,
+        timestamp: pos.timestamp || Date.now(),
+      };
+      cachedLastKnownLocation = coords;
+      return coords;
+    }
+  } catch (liveErr) {
+    console.warn('[LocationService] Live GPS fix failed, checking last known position:', liveErr);
+  }
 
+  // 2. Fallback to device OS last known location (cached GPS by Android/iOS)
+  try {
+    const lastKnown = await Location.getLastKnownPositionAsync({});
+    if (lastKnown) {
+      const validated = validatePingCoords(lastKnown.coords.latitude, lastKnown.coords.longitude);
+      if (validated.ok) {
+        const coords: LocationCoordinates = {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+          accuracy: lastKnown.coords.accuracy,
+          heading: lastKnown.coords.heading,
+          speed: lastKnown.coords.speed,
+          timestamp: lastKnown.timestamp || Date.now(),
+        };
+        cachedLastKnownLocation = coords;
+        return coords;
+      }
+    }
+  } catch (lastKnownErr) {
+    console.warn('[LocationService] Last known position retrieval failed:', lastKnownErr);
+  }
+
+  // 3. Fallback to in-memory cached location from earlier pings
+  if (cachedLastKnownLocation) {
     return {
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude,
-      accuracy: pos.coords.accuracy,
-      heading: pos.coords.heading,
-      speed: pos.coords.speed,
-      timestamp: pos.timestamp || Date.now(),
-    };
-  } catch (err) {
-    // Fallback coordinates (e.g. Bangalore center for development/testing simulation)
-    return {
-      latitude: 12.9800,
-      longitude: 77.5900,
-      accuracy: 10,
-      heading: null,
-      speed: null,
+      ...cachedLastKnownLocation,
       timestamp: Date.now(),
     };
   }
+
+  return null;
 }
 
 /**
