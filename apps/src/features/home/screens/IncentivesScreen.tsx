@@ -344,43 +344,20 @@ export function IncentivesScreen({ navigation }: Props) {
   const conditionsList: IncentiveConditionProgress[] = useMemo(() => {
     if (dailyTargetOffer?.conditions && dailyTargetOffer.conditions.length > 0) {
       return dailyTargetOffer.conditions.map((cond) => {
-        const normalizedValue = cond.value || '';
-        const normalizedSubtext = cond.subtext || '';
-        if (cond.type === 'LOGIN_SLOT' && activeShift && (!normalizedValue || normalizedValue === '7pm - 12am' || normalizedValue === '5pm - 11pm')) {
-          const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
-          return {
-            ...cond,
-            value: normalizedValue && normalizedValue !== '7pm - 12am' && normalizedValue !== '5pm - 11pm' ? normalizedValue : formattedShift,
-            subtext: activeShift.durationHours
-              ? (activeShift.durationHours.includes('h') ? activeShift.durationHours : `${activeShift.durationHours}h`)
-              : (normalizedSubtext || '6h'),
-          };
-        }
-        return cond;
+        const isLogin = cond.type === 'LOGIN_SLOT' || cond.id === 'loginSlot' || cond.id === 'login-slot-1';
+        const isRej = cond.type === 'ORDER_REJECTION' || cond.id === 'orderRejection' || cond.id === 'order-rej-1';
+        return {
+          ...cond,
+          type: isLogin ? 'LOGIN_SLOT' : isRej ? 'ORDER_REJECTION' : cond.type,
+          title: cond.title || (isLogin ? 'Mandatory Login: Complete below slot' : isRej ? 'Other condition' : ''),
+          value: cond.value || (isLogin ? '8 PM – 12 AM' : isRej ? 'Do not reject' : ''),
+          subtext: cond.subtext || (isLogin ? '4h 30m' : isRej ? 'more than 1 order' : ''),
+        };
       });
     }
 
-    if (activeShift) {
-      const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
-      const durationStr = activeShift.durationHours
-        ? (activeShift.durationHours.includes('h') ? activeShift.durationHours : `${activeShift.durationHours}h`)
-        : '6h';
-      return [
-        {
-          id: 'login-slot-1',
-          type: 'LOGIN_SLOT',
-          title: 'Mandatory Login: Complete below slot',
-          value: formattedShift,
-          subtext: durationStr,
-          status: 'PENDING',
-          progressPercentage: 0,
-        },
-        DEFAULT_CONDITIONS[1],
-      ];
-    }
-
     return DEFAULT_CONDITIONS;
-  }, [dailyTargetOffer, activeShift]);
+  }, [dailyTargetOffer]);
 
   // Animated Airplane & Progress Track
   const initialAirplanePct = useMemo(
