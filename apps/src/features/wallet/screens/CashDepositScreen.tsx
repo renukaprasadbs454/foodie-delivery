@@ -324,17 +324,6 @@ export function CashDepositScreen({ navigation }: Props) {
                     >
                         <Feather name="x" size={20} color="#E23744" />
                     </Pressable>
-
-                    {/* Bottom verification action for external UPI app payments */}
-                    <View style={{ padding: 16, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingBottom: insets.bottom + 12 }}>
-                        <Pressable
-                            onPress={() => void handleDepositSuccess('manual_verified')}
-                            style={{ backgroundColor: '#0F3E22', paddingVertical: 14, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
-                        >
-                            <Feather name="check-circle" size={18} color="#FCD34D" />
-                            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>I Have Paid / Verify Deposit</Text>
-                        </Pressable>
-                    </View>
                 </View>
             </Modal>
 

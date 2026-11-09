@@ -73,6 +73,8 @@ export type OrderDetail = {
   preparationTime?: number;
   foodReadyAt?: string;
   assignmentScheduledAt?: string;
+  deliveryPartnerId?: string;
+  deliveryPartnerName?: string;
   items?: OrderLineItem[];
   orderStatusEvents?: OrderStatusEvent[];
   paymentMethod?: string;

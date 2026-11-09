@@ -33,16 +33,26 @@ export function useAssignmentOrderSubscription(
         destination,
         (message: WebSocketMessage) => {
           if (
-            message.type === 'ORDER_STATUS_CHANGED' &&
-            typeof message.status === 'string' &&
-            message.status.length > 0
+            message.type === 'ORDER_STATUS_CHANGED' ||
+            message.type === 'ORDER_ASSIGNMENT_CANCELLED'
           ) {
-            const nextStatus = message.status;
-            dispatch(
-              ordersApi.util.updateQueryData('getOrder', orderId, (draft) => {
-                draft.status = nextStatus;
-              }),
-            );
+            const nextStatus =
+              message.type === 'ORDER_ASSIGNMENT_CANCELLED'
+                ? 'CANCELLED'
+                : (typeof message.status === 'string' && message.status.length > 0
+                    ? message.status
+                    : (message.payload as any)?.status);
+
+            if (nextStatus) {
+              dispatch(
+                ordersApi.util.updateQueryData('getOrder', orderId, (draft) => {
+                  draft.status = nextStatus;
+                  if ((message.payload as any)?.deliveryPartnerId !== undefined) {
+                    draft.deliveryPartnerId = (message.payload as any)?.deliveryPartnerId;
+                  }
+                }),
+              );
+            }
           }
         },
       );

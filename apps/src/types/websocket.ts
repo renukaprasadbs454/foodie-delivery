@@ -3,6 +3,7 @@
  */
 export type WebSocketMessageType =
   | 'ORDER_STATUS_CHANGED'
+  | 'ORDER_ASSIGNMENT_CANCELLED'
   | 'LOCATION_UPDATE'
   | 'NEW_ORDER_ALERT'
   | 'NOTIFICATION';

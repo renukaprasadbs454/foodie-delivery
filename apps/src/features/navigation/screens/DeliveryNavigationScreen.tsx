@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, View, StyleSheet, Pressable, BackHandler } from 'react-native';
+import { ScrollView, View, StyleSheet, Pressable, BackHandler, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { BottomNav } from '@/navigation/BottomNav';
@@ -19,8 +19,9 @@ import { openOsMapsHandoff } from '../osMaps';
 import { isNavigationLeg } from '../types';
 import type { MainStackParamList } from '@/navigation/types';
 import { jwtDecode } from 'jwt-decode';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { selectAccessToken, selectPhoneNumber } from '../../auth/authSlice';
+import { setActiveAssignment } from '../../home/availabilitySlice';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'DeliveryNavigation'>;
 
@@ -31,9 +32,10 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   const leg = isNavigationLeg(rawLeg) ? rawLeg : 'pickup';
   const validOrder = Boolean(orderId && isUuid(orderId));
 
+  const dispatch = useAppDispatch();
   const orderQuery = useGetOrderQuery(orderId, {
     skip: !validOrder,
-    pollingInterval: 5000,
+    pollingInterval: 3000,
     refetchOnFocus: true,
   });
 
@@ -48,6 +50,19 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   );
 
   const status = orderQuery.data?.status;
+
+  useEffect(() => {
+    if (status === 'CANCELLED' || status === 'WAITING_FOR_DELIVERY_PARTNER') {
+      dispatch(setActiveAssignment(null));
+      Alert.alert('Order Cancelled', 'This order has been cancelled or reassigned by admin.', [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate('DeliveryHome'),
+        },
+      ]);
+    }
+  }, [status, dispatch, navigation]);
+
   const pingEnabled =
     status === 'OUT_FOR_DELIVERY' ||
     status === 'PICKED_UP' ||
@@ -65,31 +80,12 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   const [reachedRestaurant, setReachedRestaurant] = useState(false);
   const [arrivedMutation, arrivedState] = useArrivedAtRestaurantMutation();
 
-  const accessToken = useAppSelector(selectAccessToken);
-  const authPhone = useAppSelector(selectPhoneNumber);
-  const jwtPhone = React.useMemo(() => {
-    if (!accessToken) return null;
-    try {
-      const decoded = (jwtDecode(accessToken) as any)?.sub;
-      return typeof decoded === 'string' && !decoded.includes('-') ? decoded : null;
-    } catch {
-      return null;
-    }
-  }, [accessToken]);
-  const phoneNumber = authPhone || jwtPhone;
-  const isTestAccount = phoneNumber === '+919686753394';
-
   const isFoodReady =
     status === 'READY_FOR_PICKUP' ||
     Boolean(orderQuery.data?.foodReadyAt) ||
     Boolean(orderQuery.data?.orderStatusEvents?.some((e: any) => e.toStatus === 'READY_FOR_PICKUP'));
 
-  let foodStatusMessage = '';
-  if (isTestAccount || isFoodReady) {
-    foodStatusMessage = 'Food is ready for the pickup';
-  } else {
-    foodStatusMessage = 'Food is preparing';
-  }
+  const foodStatusMessage = isFoodReady ? 'Food is ready for the pickup' : 'Food is preparing';
 
   useEffect(() => {
     trackAnalyticsEvent('delivery_navigation_viewed', { leg });

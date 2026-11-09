@@ -13,7 +13,7 @@ import { trackAnalyticsEvent } from '@/utils/analytics';
 import { useConnectivity } from '@/hooks/useConnectivity';
 import { useTheme } from '@/hooks/useTheme';
 import { useGetOrderQuery } from '@/api/endpoints/ordersApi';
-import { useGetNavigationDetailsQuery } from '@/api/endpoints/deliveryApi';
+import { useGetNavigationDetailsQuery, useGetDeliveryProfileQuery } from '@/api/endpoints/deliveryApi';
 import { AssignmentDetailSkeleton } from '@/features/home/components/AssignmentDetailSkeleton';
 import { useAssignmentOrderSubscription } from '@/features/home/hooks/useAssignmentOrderSubscription';
 import { formatMoney, formatDistanceKm, isUuid } from '../types';
@@ -63,9 +63,12 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
     }, [assignmentId])
   );
 
+  const profileQuery = useGetDeliveryProfileQuery(undefined, { pollingInterval: 3000, refetchOnFocus: true });
+  const currentPartnerId = profileQuery.data?.deliveryPartnerId || profileQuery.data?.partnerId;
+
   const orderQuery = useGetOrderQuery(orderId, {
     skip: !validOrderId,
-    pollingInterval: 30_000,
+    pollingInterval: 3000,
     refetchOnFocus: true,
   });
 
@@ -91,11 +94,24 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
     });
   }, [assignmentId, orderId]);
 
+  const order = orderQuery.data;
+
+  const isReassigned = Boolean(
+    order &&
+    ((order.deliveryPartnerId && currentPartnerId && order.deliveryPartnerId !== currentPartnerId) ||
+     order.status === 'WAITING_FOR_DELIVERY_PARTNER')
+  );
+
+  const isCancelledOrReassigned =
+    orderQuery.isError ||
+    order?.status === 'CANCELLED' ||
+    isReassigned;
+
   useEffect(() => {
-    if (orderQuery.isError || orderQuery.data?.status === 'CANCELLED') {
+    if (isCancelledOrReassigned) {
       dispatch(setActiveAssignment(null));
     }
-  }, [orderQuery.isError, orderQuery.data?.status, dispatch]);
+  }, [isCancelledOrReassigned, dispatch]);
 
   if (!validOrderId) {
     return (
@@ -116,7 +132,6 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
     );
   }
 
-  const order = orderQuery.data;
   const loading = orderQuery.isLoading && !order;
   const status = order?.status;
   const leg = legForOrderStatus(status);
@@ -200,7 +215,7 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
 
         {loading ? <AssignmentDetailSkeleton /> : null}
 
-        {(orderQuery.isError && !order) || order?.status === 'CANCELLED' ? (
+        {isCancelledOrReassigned ? (
           <View style={styles.emptyContainer}>
             <View style={[styles.emptyIconCircle, { backgroundColor: '#FEE2E2' }]}>
               <Feather name="x-circle" size={36} color="#DC2626" />
@@ -220,7 +235,7 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
           </View>
         ) : null}
 
-        {order ? (
+        {order && !isCancelledOrReassigned ? (
           <>
             <View style={styles.statusPill}>
               <Text style={styles.statusText}>{order.status}</Text>

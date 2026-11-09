@@ -304,16 +304,24 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
   }, [activeOffers]);
 
   const offersQuery = useGetDeliveryOffersQuery(undefined, { pollingInterval: 5000, refetchOnFocus: true });
-  const orderQuery = useGetOrderQuery(active?.orderId ?? '', { skip: !active?.orderId, pollingInterval: active?.orderId ? 5000 : 0 });
+  const orderQuery = useGetOrderQuery(active?.orderId ?? '', { skip: !active?.orderId, pollingInterval: active?.orderId ? 3000 : 0 });
 
-  const isOrderTerminal = isTerminalOrderStatus(orderQuery.data?.status);
+  const currentPartnerId = profileQuery.data?.deliveryPartnerId || profileQuery.data?.partnerId;
+  const isReassigned = Boolean(
+    orderQuery.data &&
+    ((orderQuery.data.deliveryPartnerId && currentPartnerId && orderQuery.data.deliveryPartnerId !== currentPartnerId) ||
+     orderQuery.data.status === 'WAITING_FOR_DELIVERY_PARTNER' ||
+     orderQuery.data.status === 'CANCELLED')
+  );
+
+  const isOrderTerminal = isTerminalOrderStatus(orderQuery.data?.status) || isReassigned;
   const hasActiveDelivery = Boolean(active?.orderId && !isOrderTerminal);
 
   useEffect(() => {
-    if (active?.orderId && (isTerminalOrderStatus(orderQuery.data?.status) || orderQuery.isError)) {
+    if (active?.orderId && (isTerminalOrderStatus(orderQuery.data?.status) || orderQuery.isError || isReassigned)) {
       dispatch(setActiveAssignment(null));
     }
-  }, [active?.orderId, orderQuery.data?.status, orderQuery.isError, dispatch]);
+  }, [active?.orderId, orderQuery.data?.status, orderQuery.isError, isReassigned, dispatch]);
 
   // Delivery Partner Ratings & Reviews state and query
   const [isReviewsModalVisible, setIsReviewsModalVisible] = useState(false);
