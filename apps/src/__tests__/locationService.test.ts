@@ -19,6 +19,7 @@ jest.mock('expo-location', () => ({
   requestBackgroundPermissionsAsync: jest.fn(),
   hasServicesEnabledAsync: jest.fn(),
   getCurrentPositionAsync: jest.fn(),
+  getLastKnownPositionAsync: jest.fn().mockResolvedValue(null),
   Accuracy: {
     Balanced: 3,
     High: 4,
@@ -29,16 +30,18 @@ import { Platform, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import {
   checkLocationServicesStatus,
-  requestForegroundLocationPermission,
   requestBackgroundLocationPermission,
   requestAllLocationPermissions,
   getCurrentDeviceLocation,
   openDeviceSettings,
+  resetCachedLocationForTesting,
 } from '@/features/location/locationService';
 
 describe('LocationService Native & Web Permission handling (Req 1, 4, 10)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetCachedLocationForTesting();
+    (Location.getLastKnownPositionAsync as jest.Mock).mockResolvedValue(null);
     (Platform as any).OS = 'android';
   });
 

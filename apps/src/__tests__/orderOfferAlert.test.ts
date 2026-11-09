@@ -4,7 +4,6 @@ import {
   startOrderOfferAlert,
   stopOrderOfferAlert,
   isOfferAlertActive,
-  initializeDeliveryOfferNotificationChannel,
 } from '../utils/orderOfferAlert';
 
 jest.mock('react-native', () => ({
