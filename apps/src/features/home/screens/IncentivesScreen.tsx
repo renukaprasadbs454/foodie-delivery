@@ -169,23 +169,23 @@ export function calculateAirplaneProgressPct(trips: number, milestones: Incentiv
     return startPct;
   }
 
-  const firstTrips = milestones[0].trips;
+  const firstTrips = Number(milestones[0].trips ?? (milestones[0] as any).orders ?? 0);
   if (trips <= firstTrips) {
-    const fraction = trips / firstTrips;
+    const fraction = firstTrips > 0 ? trips / firstTrips : 1;
     return startPct + fraction * (firstCenterPct - startPct);
   }
 
-  const lastTrips = milestones[N - 1].trips;
+  const lastTrips = Number(milestones[N - 1].trips ?? (milestones[N - 1] as any).orders ?? 0);
   if (trips >= lastTrips) {
     const extraFraction = Math.min(1, (trips - lastTrips) / 2);
     return lastCenterPct + extraFraction * (endPct - lastCenterPct);
   }
 
   for (let i = 0; i < N - 1; i++) {
-    const tCurrent = milestones[i].trips;
-    const tNext = milestones[i + 1].trips;
+    const tCurrent = Number(milestones[i].trips ?? (milestones[i] as any).orders ?? 0);
+    const tNext = Number(milestones[i + 1].trips ?? (milestones[i + 1] as any).orders ?? 0);
     if (trips >= tCurrent && trips <= tNext) {
-      const segFraction = (trips - tCurrent) / (tNext - tCurrent);
+      const segFraction = tNext > tCurrent ? (trips - tCurrent) / (tNext - tCurrent) : 0;
       const cCurrent = ((i + 0.5) / N) * 100;
       const cNext = ((i + 1 + 0.5) / N) * 100;
       return cCurrent + segFraction * (cNext - cCurrent);
@@ -314,7 +314,16 @@ export function IncentivesScreen({ navigation }: Props) {
   // Milestone list: active backend config or default fallback matching screenshot
   const milestoneList: IncentiveMilestone[] = useMemo(() => {
     if (dailyTargetOffer?.milestones && dailyTargetOffer.milestones.length > 0) {
-      return [...dailyTargetOffer.milestones].sort((a, b) => a.trips - b.trips);
+      return [...dailyTargetOffer.milestones]
+        .map((m: any) => ({
+          ...m,
+          trips: Number(m.trips ?? m.orders ?? m.targetCount ?? 0),
+          orders: Number(m.orders ?? m.trips ?? m.targetCount ?? 0),
+          rewardAmount: Number(m.rewardAmount ?? m.reward ?? m.amount ?? 0),
+          reward: Number(m.reward ?? m.rewardAmount ?? m.amount ?? 0),
+        }))
+        .filter((m) => m.trips > 0)
+        .sort((a, b) => a.trips - b.trips);
     }
     return dailyTargetOffer ? DEFAULT_MILESTONES : [];
   }, [dailyTargetOffer]);
@@ -323,7 +332,7 @@ export function IncentivesScreen({ navigation }: Props) {
   const maxConfiguredReward = useMemo(() => {
     if (milestoneList.length > 0) {
       const maxM = milestoneList[milestoneList.length - 1];
-      return Math.round(Number(maxM.rewardAmount || 0));
+      return Math.round(Number(maxM.rewardAmount ?? (maxM as any).reward ?? 0));
     }
     if (dailyTargetOffer?.rewardAmount) {
       return Math.round(Number(dailyTargetOffer.rewardAmount));
@@ -335,14 +344,16 @@ export function IncentivesScreen({ navigation }: Props) {
   const conditionsList: IncentiveConditionProgress[] = useMemo(() => {
     if (dailyTargetOffer?.conditions && dailyTargetOffer.conditions.length > 0) {
       return dailyTargetOffer.conditions.map((cond) => {
-        if (cond.type === 'LOGIN_SLOT' && activeShift && (!cond.value || cond.value === '7pm - 12am' || cond.value === '5pm - 11pm')) {
+        const normalizedValue = cond.value || '';
+        const normalizedSubtext = cond.subtext || '';
+        if (cond.type === 'LOGIN_SLOT' && activeShift && (!normalizedValue || normalizedValue === '7pm - 12am' || normalizedValue === '5pm - 11pm')) {
           const formattedShift = formatSlotDisplay(activeShift.startTime, activeShift.endTime);
           return {
             ...cond,
-            value: cond.value && cond.value !== '7pm - 12am' && cond.value !== '5pm - 11pm' ? cond.value : formattedShift,
+            value: normalizedValue && normalizedValue !== '7pm - 12am' && normalizedValue !== '5pm - 11pm' ? normalizedValue : formattedShift,
             subtext: activeShift.durationHours
               ? (activeShift.durationHours.includes('h') ? activeShift.durationHours : `${activeShift.durationHours}h`)
-              : (cond.subtext || '6h'),
+              : (normalizedSubtext || '6h'),
           };
         }
         return cond;
@@ -640,13 +651,15 @@ export function IncentivesScreen({ navigation }: Props) {
                   </Animated.View>
 
                   {milestoneList.map((m, idx) => {
-                    const isCompleted = m.isEarned || (tripsCompleted >= m.trips && m.status === 'Completed');
+                    const mTrips = Number(m.trips ?? (m as any).orders ?? 0);
+                    const mReward = Math.round(Number(m.rewardAmount ?? (m as any).reward ?? 0));
+                    const isCompleted = m.isEarned || tripsCompleted >= mTrips;
 
                     return (
                       <View key={idx} style={styles.milestoneColumn}>
                         {/* Reward Amount on top */}
                         <Text style={[styles.milestoneRewardText, isWide && styles.milestoneRewardTextWide]}>
-                          ₹{Math.round(Number(m.rewardAmount || 0))}
+                          ₹{mReward}
                         </Text>
 
                         {/* Middle Node on the Track */}
@@ -664,7 +677,7 @@ export function IncentivesScreen({ navigation }: Props) {
 
                         {/* Trip count at the bottom */}
                         <Text style={[styles.milestoneTripsText, isWide && styles.milestoneTripsTextWide]}>
-                          {m.trips}
+                          {mTrips}
                         </Text>
                       </View>
                     );

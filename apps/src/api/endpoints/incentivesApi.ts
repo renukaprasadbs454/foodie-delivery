@@ -2,7 +2,11 @@ import { baseApi } from '../baseApi';
 
 export interface IncentiveMilestone {
   trips: number;
+  orders?: number;
   rewardAmount: number;
+  reward?: number;
+  amount?: number;
+  cost?: number;
   status: 'Completed' | 'In Progress' | 'Upcoming' | 'Locked';
   remaining: number;
   isEarned: boolean;

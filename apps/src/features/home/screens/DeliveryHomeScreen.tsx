@@ -279,16 +279,32 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
     if (!activeOffers.length) return 0;
     const unearned = activeOffers.filter((o: IncentiveOfferProgress) => !o.isEarned);
     const candidateOffers = unearned.length > 0 ? unearned : activeOffers;
-    return candidateOffers.reduce((sum: number, o: IncentiveOfferProgress) => sum + Number(o.rewardAmount || 0), 0);
+    return candidateOffers.reduce((sum: number, o: IncentiveOfferProgress) => {
+      if (o.milestones && o.milestones.length > 0) {
+        const maxMilestoneReward = Math.max(
+          ...o.milestones.map((m: any) => Number(m.rewardAmount ?? m.reward ?? m.amount ?? 0))
+        );
+        return sum + (maxMilestoneReward > 0 ? maxMilestoneReward : Number(o.rewardAmount || 0));
+      }
+      return sum + Number(o.rewardAmount || 0);
+    }, 0);
   }, [activeOffers]);
 
   const milestoneSummaryText = useMemo(() => {
     if (!activeOffers.length) return 'Active bonus offers available';
-    const milestoneOffers = activeOffers.filter((o: IncentiveOfferProgress) => o.target > 1);
+    const milestoneOffers = activeOffers.filter((o: IncentiveOfferProgress) => (o.target > 1 || (o.milestones && o.milestones.length > 0)));
     if (milestoneOffers.length > 0) {
+      const single = milestoneOffers[0];
+      if (single.milestones && single.milestones.length > 0) {
+        const nextM = single.milestones.find((m: any) => Number(m.trips ?? m.orders ?? 0) > single.currentProgress);
+        if (nextM) {
+          const nextTarget = Number(nextM.trips ?? nextM.orders ?? 0);
+          const remaining = Math.max(0, nextTarget - single.currentProgress);
+          return `${remaining} more trips to reach ${nextTarget} trips milestone`;
+        }
+      }
       const targets = milestoneOffers.map((o: IncentiveOfferProgress) => `${o.target} trips`);
       if (targets.length === 1) {
-        const single = milestoneOffers[0];
         if (single.remaining != null && single.remaining > 0 && single.currentProgress > 0) {
           return `${single.remaining} more trips to reach ${single.target} trips milestone`;
         }
