@@ -310,10 +310,10 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
   const hasActiveDelivery = Boolean(active?.orderId && !isOrderTerminal);
 
   useEffect(() => {
-    if (active?.orderId && isTerminalOrderStatus(orderQuery.data?.status)) {
+    if (active?.orderId && (isTerminalOrderStatus(orderQuery.data?.status) || orderQuery.isError)) {
       dispatch(setActiveAssignment(null));
     }
-  }, [active?.orderId, orderQuery.data?.status, dispatch]);
+  }, [active?.orderId, orderQuery.data?.status, orderQuery.isError, dispatch]);
 
   // Delivery Partner Ratings & Reviews state and query
   const [isReviewsModalVisible, setIsReviewsModalVisible] = useState(false);

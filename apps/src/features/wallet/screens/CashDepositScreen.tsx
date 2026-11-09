@@ -98,8 +98,8 @@ export function CashDepositScreen({ navigation }: Props) {
     const handlePaymentMessage = async (rawData: string) => {
         try {
             const msg = JSON.parse(rawData) as { type: string; data?: any };
-            if (msg.type === 'success') {
-                await handleDepositSuccess(msg.data?.razorpay_payment_id || 'rzp_' + Date.now());
+            if (msg.type === 'success' || msg.type === 'SUCCESS') {
+                await handleDepositSuccess(msg.data?.orderId || msg.data?.razorpay_payment_id || 'cf_' + Date.now());
             } else if (msg.type === 'cancel') {
                 setShowRazorpay(false);
                 setIsProcessing(false);
@@ -107,7 +107,7 @@ export function CashDepositScreen({ navigation }: Props) {
             } else {
                 setShowRazorpay(false);
                 setIsProcessing(false);
-                setToast({ message: msg.data || 'Payment failed. Try again.', variant: 'error' });
+                setToast({ message: typeof msg.data === 'string' ? msg.data : 'Payment failed. Try again.', variant: 'error' });
             }
         } catch {
             setShowRazorpay(false);
@@ -279,7 +279,7 @@ export function CashDepositScreen({ navigation }: Props) {
                 onDismiss={() => setToast(null)}
             />
 
-            {/* Razorpay WebView Modal */}
+            {/* Cashfree WebView Modal */}
             <Modal visible={showRazorpay} animationType="slide" transparent={false} onRequestClose={() => { setShowRazorpay(false); setIsProcessing(false); }}>
                 <View style={{ flex: 1, backgroundColor: '#fff' }}>
                     <WebView
@@ -291,8 +291,18 @@ export function CashDepositScreen({ navigation }: Props) {
                         mixedContentMode="always"
                         thirdPartyCookiesEnabled
                         allowsInlineMediaPlayback
+                        onNavigationStateChange={(navState) => {
+                            const url = navState.url || '';
+                            if (url.includes('/cashfree/return') || url.includes('/payments/cashfree/return') || url.includes('payment_status=SUCCESS')) {
+                                void handleDepositSuccess('cf_completed');
+                            }
+                        }}
                         onShouldStartLoadWithRequest={(request) => {
                             const url = request.url;
+                            if (url.includes('/cashfree/return') || url.includes('/payments/cashfree/return')) {
+                                void handleDepositSuccess('cf_completed');
+                                return false;
+                            }
                             if (
                                 url.startsWith('upi://') ||
                                 url.startsWith('phonepe://') ||
@@ -314,6 +324,17 @@ export function CashDepositScreen({ navigation }: Props) {
                     >
                         <Feather name="x" size={20} color="#E23744" />
                     </Pressable>
+
+                    {/* Bottom verification action for external UPI app payments */}
+                    <View style={{ padding: 16, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingBottom: insets.bottom + 12 }}>
+                        <Pressable
+                            onPress={() => void handleDepositSuccess('manual_verified')}
+                            style={{ backgroundColor: '#0F3E22', paddingVertical: 14, borderRadius: 16, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
+                        >
+                            <Feather name="check-circle" size={18} color="#FCD34D" />
+                            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>I Have Paid / Verify Deposit</Text>
+                        </Pressable>
+                    </View>
                 </View>
             </Modal>
 

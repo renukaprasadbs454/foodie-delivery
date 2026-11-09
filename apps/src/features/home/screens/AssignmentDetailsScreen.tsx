@@ -21,8 +21,9 @@ import { legForOrderStatus, calculateDistanceKm } from '@/features/navigation/ty
 import { useLocationPingLoop } from '@/features/navigation/hooks/useLocationPingLoop';
 import { BottomNav } from '@/navigation/BottomNav';
 import type { MainStackParamList } from '@/navigation/types';
-import { useAppSelector } from '@/store/hooks';
+import { useAppSelector, useAppDispatch } from '@/store/hooks';
 import { selectUserId } from '../../auth/authSlice';
+import { setActiveAssignment } from '../availabilitySlice';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'AssignmentDetails'>;
 
@@ -43,6 +44,7 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
   const [reachedRestaurant, setReachedRestaurant] = useState(false);
   const [hasReachedCustomer, setHasReachedCustomer] = useState(false);
   const userId = useAppSelector(selectUserId);
+  const dispatch = useAppDispatch();
 
   useFocusEffect(
     useCallback(() => {
@@ -88,6 +90,12 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
       ...(assignmentId ? { assignmentId } : {}),
     });
   }, [assignmentId, orderId]);
+
+  useEffect(() => {
+    if (orderQuery.isError || orderQuery.data?.status === 'CANCELLED') {
+      dispatch(setActiveAssignment(null));
+    }
+  }, [orderQuery.isError, orderQuery.data?.status, dispatch]);
 
   if (!validOrderId) {
     return (
@@ -144,6 +152,11 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
 
   const isCod = (order as any)?.paymentMethod === 'COD' || (order as any)?.paymentMethod === 'CASH';
 
+  const isFoodReady =
+    order?.status === 'READY_FOR_PICKUP' ||
+    Boolean((order as any)?.foodReadyAt) ||
+    Boolean((order as any)?.orderStatusEvents?.some((e: any) => e.toStatus === 'READY_FOR_PICKUP'));
+
   const handleCall = (phone: string) => {
     LinkingExpo.openURL(`tel:${phone}`).catch(() =>
       setToast({ message: 'Unable to place a call.', variant: 'error' })
@@ -187,13 +200,23 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
 
         {loading ? <AssignmentDetailSkeleton /> : null}
 
-        {orderQuery.isError && !order ? (
+        {(orderQuery.isError && !order) || order?.status === 'CANCELLED' ? (
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconCircle}>
-              <Feather name="search" size={32} color="#A0AEC0" />
+            <View style={[styles.emptyIconCircle, { backgroundColor: '#FEE2E2' }]}>
+              <Feather name="x-circle" size={36} color="#DC2626" />
             </View>
-            <Text style={styles.emptyTitle}>Order Not Found</Text>
-            <Text style={styles.emptySubtitle}>Could not load this order. It may be unassigned or unavailable.</Text>
+            <Text style={[styles.emptyTitle, { color: '#DC2626' }]}>Order Cancelled</Text>
+            <Text style={styles.emptySubtitle}>This order has been cancelled by admin or reassigned.</Text>
+            <Pressable
+              style={[styles.primaryNavButton, { marginTop: 20, backgroundColor: '#0F172A', width: '100%' }]}
+              onPress={() => {
+                dispatch(setActiveAssignment(null));
+                navigation.navigate('DeliveryHome');
+              }}
+            >
+              <Feather name="arrow-left" size={18} color="#FFF" style={{ marginRight: 8 }} />
+              <Text style={styles.actionButtonText}>Back to Home</Text>
+            </Pressable>
           </View>
         ) : null}
 
@@ -202,6 +225,35 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
             <View style={styles.statusPill}>
               <Text style={styles.statusText}>{order.status}</Text>
             </View>
+
+            {/* Reached Restaurant Food Status Banner */}
+            {(order.status === 'REACHED_RESTAURANT' || order.status === 'READY_FOR_PICKUP') && (
+              <View
+                style={[
+                  styles.foodStatusBanner,
+                  {
+                    backgroundColor: isFoodReady ? '#ECFDF5' : '#FEF3C7',
+                    borderColor: isFoodReady ? '#A7F3D0' : '#FDE68A',
+                  },
+                ]}
+              >
+                <Feather
+                  name={isFoodReady ? 'check-circle' : 'clock'}
+                  size={18}
+                  color={isFoodReady ? '#059669' : '#D97706'}
+                />
+                <Text
+                  style={{
+                    fontSize: 14,
+                    fontWeight: '700',
+                    color: isFoodReady ? '#059669' : '#D97706',
+                    marginLeft: 8,
+                  }}
+                >
+                  {isFoodReady ? 'Food is ready for the pickup' : 'Food is preparing'}
+                </Text>
+              </View>
+            )}
 
             {/* Contextual Card: Restaurant in Pickup Phase, Customer in Drop Phase */}
             {!isDropOffPhase ? (
@@ -377,6 +429,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
     borderRadius: 20,
+    marginBottom: 16,
+  },
+  foodStatusBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
     marginBottom: 16,
   },
   statusText: {

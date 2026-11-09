@@ -79,15 +79,16 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
   const phoneNumber = authPhone || jwtPhone;
   const isTestAccount = phoneNumber === '+919686753394';
 
+  const isFoodReady =
+    status === 'READY_FOR_PICKUP' ||
+    Boolean(orderQuery.data?.foodReadyAt) ||
+    Boolean(orderQuery.data?.orderStatusEvents?.some((e: any) => e.toStatus === 'READY_FOR_PICKUP'));
+
   let foodStatusMessage = '';
-  if (isTestAccount) {
+  if (isTestAccount || isFoodReady) {
     foodStatusMessage = 'Food is ready for the pickup';
   } else {
-    if (status === 'READY_FOR_PICKUP') {
-      foodStatusMessage = 'Food is ready for the pickup';
-    } else {
-      foodStatusMessage = 'Food is preparing';
-    }
+    foodStatusMessage = 'Food is preparing';
   }
 
   useEffect(() => {
