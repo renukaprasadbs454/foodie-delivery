@@ -82,7 +82,7 @@ export function DeliveryNavigationScreen({ navigation, route }: Props) {
 
   const isFoodReady =
     status === 'READY_FOR_PICKUP' ||
-    Boolean(orderQuery.data?.orderStatusEvents?.some((e: any) => e.toStatus === 'READY_FOR_PICKUP'));
+    orderQuery.data?.status === 'READY_FOR_PICKUP';
 
   const foodStatusMessage = isFoodReady ? 'Food is ready for the pickup' : 'Food is preparing';
 

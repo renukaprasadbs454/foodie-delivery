@@ -168,8 +168,7 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
   const isCod = (order as any)?.paymentMethod === 'COD' || (order as any)?.paymentMethod === 'CASH';
 
   const isFoodReady =
-    order?.status === 'READY_FOR_PICKUP' ||
-    Boolean((order as any)?.orderStatusEvents?.some((e: any) => e.toStatus === 'READY_FOR_PICKUP'));
+    order?.status === 'READY_FOR_PICKUP';
 
   const handleCall = (phone: string) => {
     LinkingExpo.openURL(`tel:${phone}`).catch(() =>
