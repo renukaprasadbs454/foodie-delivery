@@ -51,6 +51,9 @@ export function PendingVerificationScreen({ navigation }: Props) {
 
   useEffect(() => {
     if (!profile) return;
+    const isMaintenance = profile.deliveryServiceEnabled === false;
+    if (isMaintenance) return;
+
     if (profile?.kycStatus === 'VERIFIED') {
       setToast({ message: 'KYC Verified! Taking you online...', variant: 'success' });
       setTimeout(() => {
@@ -96,6 +99,7 @@ export function PendingVerificationScreen({ navigation }: Props) {
   const isVerified = profile?.kycStatus === 'VERIFIED';
   const isRejected = profile?.kycStatus === 'REJECTED';
   const isSuspended = profile?.kycStatus === 'SUSPENDED';
+  const isMaintenance = profile?.deliveryServiceEnabled === false;
 
   let finalImgUri = profile?.profileImageUrl ?? null;
   if (finalImgUri) {
@@ -159,16 +163,16 @@ export function PendingVerificationScreen({ navigation }: Props) {
 
         <View style={{ backgroundColor: 'white', padding: 24, borderRadius: 16, alignItems: 'center', marginTop: 12, elevation: 2, shadowColor: '#000', shadowOffset: { height: 2, width: 0 }, shadowRadius: 4, shadowOpacity: 0.05 }}>
           {finalImgUri && (
-            <View style={{ marginBottom: 16, borderWidth: 3, borderColor: isSuspended ? '#EF4444' : isVerified ? '#10B981' : isRejected ? '#EF4444' : THEME_EMERALD, borderRadius: 60, padding: 2 }}>
+            <View style={{ marginBottom: 16, borderWidth: 3, borderColor: isMaintenance ? '#D97706' : isSuspended ? '#EF4444' : isVerified ? '#10B981' : isRejected ? '#EF4444' : THEME_EMERALD, borderRadius: 60, padding: 2 }}>
               <RNImage source={{ uri: finalImgUri }} style={{ width: 100, height: 100, borderRadius: 50 }} resizeMode="cover" />
             </View>
           )}
-          <Text variant="heading1" style={{ color: isSuspended ? '#DC2626' : isVerified ? '#059669' : isRejected ? '#ef4444' : '#D97706', marginBottom: 8, fontSize: 36 }}>
-            {isSuspended ? '🚫' : isVerified ? '✅' : isRejected ? '❌' : '⏳'}
+          <Text variant="heading1" style={{ color: isMaintenance ? '#D97706' : isSuspended ? '#DC2626' : isVerified ? '#059669' : isRejected ? '#ef4444' : '#D97706', marginBottom: 8, fontSize: 36 }}>
+            {isMaintenance ? '🛠️' : isSuspended ? '🚫' : isVerified ? '✅' : isRejected ? '❌' : '⏳'}
           </Text>
           <View
             style={{
-              backgroundColor: isSuspended ? '#FEE2E2' : isVerified ? '#D1FAE5' : isRejected ? '#FEE2E2' : '#FEF3C7',
+              backgroundColor: isMaintenance ? '#FEF3C7' : isSuspended ? '#FEE2E2' : isVerified ? '#D1FAE5' : isRejected ? '#FEE2E2' : '#FEF3C7',
               paddingHorizontal: 14,
               paddingVertical: 5,
               borderRadius: 14,
@@ -180,14 +184,16 @@ export function PendingVerificationScreen({ navigation }: Props) {
               style={{
                 fontWeight: '800',
                 letterSpacing: 0.5,
-                color: isSuspended ? '#DC2626' : isVerified ? '#047857' : isRejected ? '#DC2626' : '#B45309',
+                color: isMaintenance ? '#B45309' : isSuspended ? '#DC2626' : isVerified ? '#047857' : isRejected ? '#DC2626' : '#B45309',
               }}
             >
-              STATUS: {isSuspended ? 'ACCOUNT SUSPENDED' : (profile?.kycStatus ?? 'PENDING')}
+              STATUS: {isMaintenance ? 'SERVICE UNDER MAINTENANCE' : isSuspended ? 'ACCOUNT SUSPENDED' : (profile?.kycStatus ?? 'PENDING')}
             </Text>
           </View>
-          <Text variant="heading2" style={{ textAlign: 'center', color: isSuspended ? '#DC2626' : '#1e293b', marginBottom: 12 }}>
-            {isSuspended
+          <Text variant="heading2" style={{ textAlign: 'center', color: isMaintenance ? '#D97706' : isSuspended ? '#DC2626' : '#1e293b', marginBottom: 12 }}>
+            {isMaintenance
+              ? "Delivery Service Under Maintenance"
+              : isSuspended
               ? "Account Suspended"
               : isVerified
               ? "KYC Approved & Verified!"
@@ -196,7 +202,9 @@ export function PendingVerificationScreen({ navigation }: Props) {
               : "Review in Progress (Pending Admin Approval)"}
           </Text>
           <Text variant="body" style={{ textAlign: 'center', color: '#64748b', lineHeight: 22 }}>
-            {isSuspended
+            {isMaintenance
+              ? (profile?.maintenanceMessage || "Delivery service is temporarily under maintenance for your zone. Operations will resume shortly. Please check back later.")
+              : isSuspended
               ? (profile?.kycRejectionReason
                   ? `Your delivery partner account has been suspended by the platform administrator.\n\nReason: "${profile.kycRejectionReason}"\n\nYou cannot accept delivery offers or go online while your account is suspended.`
                   : "Your delivery partner account has been suspended by the platform administrator. You are currently restricted from receiving or delivering orders. Please contact support for assistance.")
@@ -206,7 +214,7 @@ export function PendingVerificationScreen({ navigation }: Props) {
               ? "Unfortunately, your KYC documents were rejected. Please review them and re-submit."
               : "Your registration is currently in PENDING status. Once an Admin reviews and accepts your KYC in the Admin Panel, your account will automatically become VERIFIED!"}
           </Text>
-          {!isVerified && !isRejected && (
+          {(!isVerified || isMaintenance) && !isRejected && (
             <View style={{ marginTop: 16, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 }}>
               <Text variant="caption" style={{ color: '#64748B', fontSize: 12 }}>
                 🔄 Live sync active (polling every 3s)
@@ -223,7 +231,7 @@ export function PendingVerificationScreen({ navigation }: Props) {
             </Text>
             <View
               style={{
-                backgroundColor: isSuspended ? '#FEE2E2' : profile?.zoneVerified ? '#D1FAE5' : profile?.locationApprovalStatus === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
+                backgroundColor: isMaintenance ? '#FEF3C7' : isSuspended ? '#FEE2E2' : profile?.zoneVerified ? '#D1FAE5' : profile?.locationApprovalStatus === 'REJECTED' ? '#FEE2E2' : '#FEF3C7',
                 paddingHorizontal: 10,
                 paddingVertical: 4,
                 borderRadius: 12,
@@ -234,10 +242,10 @@ export function PendingVerificationScreen({ navigation }: Props) {
                 style={{
                   fontWeight: '800',
                   fontSize: 11,
-                  color: isSuspended ? '#DC2626' : profile?.zoneVerified ? '#047857' : profile?.locationApprovalStatus === 'REJECTED' ? '#DC2626' : '#B45309',
+                  color: isMaintenance ? '#B45309' : isSuspended ? '#DC2626' : profile?.zoneVerified ? '#047857' : profile?.locationApprovalStatus === 'REJECTED' ? '#DC2626' : '#B45309',
                 }}
               >
-                {isSuspended ? 'OPERATIONS SUSPENDED' : profile?.zoneVerified ? 'ZONE APPROVED' : profile?.locationApprovalStatus === 'REJECTED' ? 'ZONE REJECTED' : 'LOCATION PENDING APPROVAL'}
+                {isMaintenance ? 'SERVICE UNDER MAINTENANCE' : isSuspended ? 'OPERATIONS SUSPENDED' : profile?.zoneVerified ? 'ZONE APPROVED' : profile?.locationApprovalStatus === 'REJECTED' ? 'ZONE REJECTED' : 'LOCATION PENDING APPROVAL'}
               </Text>
             </View>
           </View>

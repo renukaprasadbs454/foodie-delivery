@@ -44,18 +44,22 @@ export function MainNavigator({ initialRouteName }: { initialRouteName?: keyof M
   const navigation = useNavigation<any>();
 
   React.useEffect(() => {
-    if (profileQuery.data?.kycStatus === 'SUSPENDED') {
+    const isMaintenance = profileQuery.data?.deliveryServiceEnabled === false;
+    if (profileQuery.data?.kycStatus === 'SUSPENDED' || isMaintenance) {
       navigation.reset({
         index: 0,
         routes: [{ name: 'PendingVerification' }],
       });
     }
-  }, [profileQuery.data?.kycStatus, navigation]);
+  }, [profileQuery.data?.kycStatus, profileQuery.data?.deliveryServiceEnabled, navigation]);
+
+  const isSuspendedOrMaintenance =
+    profileQuery.data?.kycStatus === 'SUSPENDED' || profileQuery.data?.deliveryServiceEnabled === false;
 
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false }}
-      initialRouteName={profileQuery.data?.kycStatus === 'SUSPENDED' ? 'PendingVerification' : initialRouteName}
+      initialRouteName={isSuspendedOrMaintenance ? 'PendingVerification' : initialRouteName}
     >
       <Stack.Screen name="DeliveryHome" component={DeliveryHomeScreen} />
       <Stack.Screen

@@ -169,7 +169,6 @@ export function AssignmentDetailsScreen({ navigation, route }: Props) {
 
   const isFoodReady =
     order?.status === 'READY_FOR_PICKUP' ||
-    Boolean((order as any)?.foodReadyAt) ||
     Boolean((order as any)?.orderStatusEvents?.some((e: any) => e.toStatus === 'READY_FOR_PICKUP'));
 
   const handleCall = (phone: string) => {

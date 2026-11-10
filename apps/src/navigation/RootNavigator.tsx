@@ -60,6 +60,7 @@ export function RootNavigator() {
 
   if (authStatus === 'authenticated' && accessToken && profileQuery.data) {
     const kycStatus = profileQuery.data.kycStatus;
+    const isMaintenance = profileQuery.data.deliveryServiceEnabled === false;
     const hasUploadedDocs = profileQuery.data.documents && profileQuery.data.documents.length >= 3;
     const hasProfileImage = !!profileQuery.data.profileImageUrl;
     const hasName = Boolean(
@@ -77,9 +78,9 @@ export function RootNavigator() {
     );
     const hasSubmittedKyc = Boolean(hasUploadedDocs && hasProfileImage && hasName);
 
-    if (kycStatus !== 'VERIFIED') {
+    if (kycStatus !== 'VERIFIED' || isMaintenance) {
       flow = 'kyc';
-      if (kycStatus === 'SUSPENDED') {
+      if (kycStatus === 'SUSPENDED' || isMaintenance) {
         initialRouteName = 'PendingVerification';
       } else if (isNewUser || !hasZone) {
         initialRouteName = 'DeliveryZone';

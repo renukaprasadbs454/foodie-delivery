@@ -106,13 +106,22 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
         if (profileQuery.data?.isOnline !== undefined) {
           const backendOnline = Boolean(profileQuery.data.isOnline);
 
-          if (shouldBeOnline && !backendOnline && isKycApproved && !isCashLimitReached) {
+          const isDeliveryMaintenance = profileQuery.data?.deliveryServiceEnabled === false;
+
+          if (shouldBeOnline && !backendOnline && isKycApproved && !isCashLimitReached && !isDeliveryMaintenance) {
             console.info('[DeliveryHome] Auto-restoring partner online status in backend database...');
             await setAvailability({ isOnline: true }).unwrap();
             if (isMounted) {
               dispatch(setIsOnline(true));
               void profileQuery.refetch();
               void locationTracker.sampleAndPing();
+            }
+          } else if (backendOnline && isDeliveryMaintenance) {
+            console.info('[DeliveryHome] Delivery service is under maintenance, switching offline...');
+            await setAvailability({ isOnline: false }).unwrap();
+            if (isMounted) {
+              dispatch(setIsOnline(false));
+              void profileQuery.refetch();
             }
           } else if (!shouldBeOnline && backendOnline) {
             // User explicitly chose offline locally, sync backend to offline
@@ -141,7 +150,7 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
     return () => {
       isMounted = false;
     };
-  }, [profileQuery.data?.isOnline, reduxIsOnline, isKycApproved, isCashLimitReached, dispatch]);
+  }, [profileQuery.data?.isOnline, profileQuery.data?.deliveryServiceEnabled, reduxIsOnline, isKycApproved, isCashLimitReached, dispatch]);
 
   // Camera / selfie state
   const [isCameraVisible, setIsCameraVisible] = useState(false);
@@ -184,15 +193,15 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
     }
   }, [route?.params?.autoGoOnline, isOnline, activeShift, navigation]);
 
-  // Requirement: If account is suspended by admin, return to verification page immediately
+  // Requirement: If account is suspended or delivery service is under maintenance, return to verification page immediately
   useEffect(() => {
-    if (profileQuery.data?.kycStatus === 'SUSPENDED') {
+    if (profileQuery.data?.kycStatus === 'SUSPENDED' || profileQuery.data?.deliveryServiceEnabled === false) {
       navigation.reset({
         index: 0,
         routes: [{ name: 'PendingVerification' as any }],
       });
     }
-  }, [profileQuery.data?.kycStatus, navigation]);
+  }, [profileQuery.data?.kycStatus, profileQuery.data?.deliveryServiceEnabled, navigation]);
 
 
   const onAccept = async (assignmentId: string, orderId: string) => {
@@ -518,6 +527,12 @@ export function DeliveryHomeScreen({ navigation, route }: Props) {
     }
     if (pendingOrRejected) {
       setToast({ message: 'Your KYC verification is not complete. You cannot go online yet.', variant: 'warning' });
+      return;
+    }
+    if (profileQuery.data?.deliveryServiceEnabled === false) {
+      const maintMsg = profileQuery.data?.maintenanceMessage || 'Delivery service is under maintenance for your zone.';
+      setToast({ message: maintMsg, variant: 'warning' });
+      Alert.alert('Service Under Maintenance', maintMsg);
       return;
     }
 
