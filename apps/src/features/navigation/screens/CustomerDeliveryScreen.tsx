@@ -77,7 +77,7 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
 
     const orderQuery = useGetOrderQuery(orderId, {
         skip: !validOrder,
-        pollingInterval: 30_000,
+        pollingInterval: 5_000,
         refetchOnFocus: true,
     });
 
