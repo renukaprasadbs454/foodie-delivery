@@ -79,17 +79,30 @@ export function resetSecureStorageAdapter(): void {
 }
 
 export async function saveRefreshToken(token: RefreshToken | string): Promise<void> {
-  await adapter.setItemAsync(REFRESH_TOKEN_STORAGE_KEY, String(token));
+  try {
+    await adapter.setItemAsync(REFRESH_TOKEN_STORAGE_KEY, String(token));
+  } catch (err) {
+    console.warn('[SecureStore] saveRefreshToken error:', err);
+  }
 }
 
 export async function loadRefreshToken(): Promise<RefreshToken | null> {
-  const value = await adapter.getItemAsync(REFRESH_TOKEN_STORAGE_KEY);
-  if (!value) return null;
-  return asRefreshToken(value);
+  try {
+    const value = await adapter.getItemAsync(REFRESH_TOKEN_STORAGE_KEY);
+    if (!value) return null;
+    return asRefreshToken(value);
+  } catch (err) {
+    console.warn('[SecureStore] loadRefreshToken error:', err);
+    return null;
+  }
 }
 
 export async function clearRefreshToken(): Promise<void> {
-  await adapter.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY);
+  try {
+    await adapter.deleteItemAsync(REFRESH_TOKEN_STORAGE_KEY);
+  } catch (err) {
+    console.warn('[SecureStore] clearRefreshToken error:', err);
+  }
 }
 
 export async function clearAllSecureAuthStorage(): Promise<void> {

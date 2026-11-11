@@ -122,7 +122,8 @@ try {
 } catch (e) { }
 
 // Polyfill LocationEventEmitter.removeSubscription for Web expo-location compatibility
-try {
+if (typeof document !== 'undefined') {
+  try {
     const locEmitterMod = require('expo-location/build/LocationEventEmitter');
     const emitter = locEmitterMod?.LocationEventEmitter || locEmitterMod?.default || locEmitterMod;
     if (emitter && typeof emitter.removeSubscription !== 'function') {
@@ -136,4 +137,5 @@ try {
             } catch {}
         };
     }
-} catch (e) { }
+  } catch (e) { }
+}

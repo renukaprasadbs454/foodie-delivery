@@ -27,12 +27,12 @@ export async function runBootstrap(dispatch: AppDispatch): Promise<void> {
   await initCrashReporting(noOpCrashReporter, {
     appName: ENV.appName,
     appVersion: ENV.appVersion,
-  });
+  }).catch(() => null);
 
   await initAnalytics(noOpAnalyticsClient, {
     appName: ENV.appName,
     appVersion: ENV.appVersion,
-  });
+  }).catch(() => null);
 
   logger.info('Bootstrap started', { app: ENV.appName });
 
