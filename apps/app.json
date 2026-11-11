@@ -2,6 +2,7 @@
   "expo": {
     "name": "Delimo-delivery partner",
     "slug": "foodie-delivery",
+    "owner": "chandupavanz12",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./src/assets/icon.png",
@@ -90,7 +91,7 @@
       "wsUrl": "wss://api.foodie.kwiko.org/ws",
       "appEnv": "production",
       "eas": {
-        "projectId": "21f79f45-004b-4424-a929-7b2d907a6394"
+        "projectId": "ee1132da-298b-481d-b9b3-e20845036a4a"
       }
     }
   }
