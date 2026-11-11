@@ -10,6 +10,21 @@ import { LocationPermissionPrompt } from '@/features/location/components/Locatio
 import { NavigationProvider } from './providers/NavigationProvider';
 import { ReduxProvider } from './providers/ReduxProvider';
 import { ThemeProvider } from './providers/ThemeProvider';
+import { useAppStateChange } from '@/hooks/useAppStateChange';
+import { useAppDispatch } from '@/store/hooks';
+import { baseApi } from '@/api/baseApi';
+
+function ForegroundSyncBridge() {
+  const dispatch = useAppDispatch();
+  useAppStateChange((next, previous) => {
+    if (previous?.match(/inactive|background/) && next === 'active') {
+      try {
+        dispatch(baseApi.util.invalidateTags(['Delivery', 'Order']));
+      } catch {}
+    }
+  });
+  return null;
+}
 
 type BoundaryState = { hasError: boolean };
 
@@ -55,6 +70,7 @@ export default function App() {
               <View style={styles.shell}>
                 <ConnectivityBanner />
                 <PushRegistrationBridge />
+                <ForegroundSyncBridge />
                 <LocationPermissionPrompt />
                 <View style={styles.content}>
                   <RootNavigator />

@@ -697,6 +697,13 @@ export const deliveryApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Delivery', 'Order'],
     }),
+    arrivedAtCustomer: builder.mutation<void, string>({
+      query: (assignmentId) => ({
+        url: `/api/v1/delivery/assignments/${assignmentId}/arrived-customer`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Delivery', 'Order'],
+    }),
     submitCashDeposit: builder.mutation<
       { paymentSessionId?: string, referenceNumber: string },
       { amount: number; referenceNumber?: string }
@@ -815,6 +822,7 @@ export const {
   useGetDeliveryReviewsQuery,
   useGetNavigationDetailsQuery,
   useArrivedAtRestaurantMutation,
+  useArrivedAtCustomerMutation,
   useSubmitCashDepositMutation,
   useVerifyCashDepositMutation,
   useGetDeliveryZonesQuery,

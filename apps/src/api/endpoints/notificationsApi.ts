@@ -95,10 +95,18 @@ export const notificationsApi = baseApi.injectEndpoints({
     }),
     setDeviceToken: builder.mutation<null, { token: string; os: string }>({
       query: (body) => ({
-        url: '/api/v1/notification/device-token',
+        url: '/api/v1/notifications/device-token',
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body,
+        body: { deviceToken: body.token },
+      }),
+    }),
+    registerDeviceToken: builder.mutation<void, string>({
+      query: (deviceToken) => ({
+        url: '/api/v1/notifications/device-token',
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: { deviceToken },
       }),
     }),
   }),
@@ -108,4 +116,5 @@ export const {
   useGetNotificationsQuery,
   useMarkNotificationReadMutation,
   useSetDeviceTokenMutation,
+  useRegisterDeviceTokenMutation,
 } = notificationsApi;

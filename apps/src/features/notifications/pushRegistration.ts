@@ -97,13 +97,22 @@ async function finalizeRegistration(
     lastUserId: userId,
   };
 
-  if (permissionStatus === 'granted') {
+  if (permissionStatus === 'granted' && !isWebRuntime()) {
     try {
-      next.deviceToken = extractDeviceToken(
-        await Notifications.getDevicePushTokenAsync(),
-      );
+      const projectId =
+        Constants?.expoConfig?.extra?.eas?.projectId ??
+        Constants?.easConfig?.projectId ??
+        'ee1132da-298b-481d-b9b3-e20845036a4a';
+      const tokenObj = await Notifications.getExpoPushTokenAsync({ projectId });
+      next.deviceToken = tokenObj.data;
     } catch {
-      next.deviceToken = current.deviceToken;
+      try {
+        next.deviceToken = extractDeviceToken(
+          await Notifications.getDevicePushTokenAsync(),
+        );
+      } catch {
+        next.deviceToken = current.deviceToken;
+      }
     }
   }
 
@@ -115,7 +124,7 @@ export async function requestLocalPushRegistration(
   userId: string,
 ): Promise<LocalPushRegistration> {
   // Push device APIs are native-oriented; skip on web (GAP-API-01 / Expo Web limitation).
-  if (isWebRuntime() || isExpoGo()) {
+  if (isWebRuntime()) {
     const current = await loadLocalPushRegistration();
     const next: LocalPushRegistration = {
       ...current,
@@ -129,33 +138,41 @@ export async function requestLocalPushRegistration(
   }
 
   const current = await loadLocalPushRegistration();
-  const before = await Notifications.getPermissionsAsync();
-  let status = normalizePermissionStatus(before.status);
-  let lastPromptedAt = current.lastPromptedAt;
+  try {
+    const before = await Notifications.getPermissionsAsync();
+    let status = normalizePermissionStatus(before.status);
+    let lastPromptedAt = current.lastPromptedAt;
 
-  if (status !== 'granted') {
-    const requested = await Notifications.requestPermissionsAsync();
-    status = normalizePermissionStatus(requested.status);
-    lastPromptedAt = new Date().toISOString();
+    if (status !== 'granted') {
+      const requested = await Notifications.requestPermissionsAsync();
+      status = normalizePermissionStatus(requested.status);
+      lastPromptedAt = new Date().toISOString();
+    }
+
+    return finalizeRegistration(userId, status, current, lastPromptedAt);
+  } catch {
+    return finalizeRegistration(userId, 'denied', current, current.lastPromptedAt);
   }
-
-  return finalizeRegistration(userId, status, current, lastPromptedAt);
 }
 
 export async function ensureLocalPushRegistration(
   userId: string,
 ): Promise<LocalPushRegistration> {
-  if (isWebRuntime() || isExpoGo()) {
+  if (isWebRuntime()) {
     return requestLocalPushRegistration(userId);
   }
 
-  const current = await loadLocalPushRegistration();
-  const permissions = await Notifications.getPermissionsAsync();
-  const status = normalizePermissionStatus(permissions.status);
+  try {
+    const current = await loadLocalPushRegistration();
+    const permissions = await Notifications.getPermissionsAsync();
+    const status = normalizePermissionStatus(permissions.status);
 
-  if (status === 'undetermined' && !current.lastPromptedAt) {
+    if (status === 'undetermined' && !current.lastPromptedAt) {
+      return requestLocalPushRegistration(userId);
+    }
+
+    return finalizeRegistration(userId, status, current, current.lastPromptedAt);
+  } catch {
     return requestLocalPushRegistration(userId);
   }
-
-  return finalizeRegistration(userId, status, current, current.lastPromptedAt);
 }

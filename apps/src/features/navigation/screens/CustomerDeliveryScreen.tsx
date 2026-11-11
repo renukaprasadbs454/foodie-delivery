@@ -18,6 +18,7 @@ import {
     useGetNavigationDetailsQuery,
     useInitiateCodOnlinePaymentMutation,
     useVerifyCodOnlinePaymentMutation,
+    useArrivedAtCustomerMutation,
 } from '@/api/endpoints/deliveryApi';
 import { useAssignmentOrderSubscription } from '../../home/hooks/useAssignmentOrderSubscription';
 import { isUuid, formatMoney, formatDistanceKm } from '../../home/types';
@@ -93,6 +94,7 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
 
     const [initiateCodPayment, { isLoading: isInitiating }] = useInitiateCodOnlinePaymentMutation();
     const [verifyCodPayment, { isLoading: isMutationVerifying }] = useVerifyCodOnlinePaymentMutation();
+    const [arrivedAtCustomerMutation, { isLoading: isArrivingCustomer }] = useArrivedAtCustomerMutation();
     const [isVerifyingState, setIsVerifyingState] = useState(false);
     const isVerifying = isMutationVerifying || isVerifyingState;
 
@@ -139,7 +141,7 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
             const loadPersistedAssignmentState = async () => {
                 try {
                     const reached = await AsyncStorage.getItem(`reached_customer_${assignmentId}`);
-                    if (active && (reached === 'true' || (route.params as any)?.reachedCustomer)) {
+                    if (active && (reached === 'true' || (route.params as any)?.reachedCustomer || order?.status === 'REACHED_CUSTOMER')) {
                         setReachedCustomer(true);
                     }
                     const collected = await AsyncStorage.getItem(`payment_collected_${assignmentId}`);
@@ -250,6 +252,12 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
             try {
                 await AsyncStorage.setItem(`reached_customer_${assignmentId}`, 'true');
             } catch {}
+            try {
+                await arrivedAtCustomerMutation(assignmentId).unwrap();
+                setToast({ message: '📍 Customer notified of your arrival!', variant: 'success' });
+            } catch (err: any) {
+                console.warn('Failed to notify arrived at customer:', err);
+            }
         }
     };
 
@@ -456,11 +464,14 @@ export function CustomerDeliveryScreen({ navigation, route }: Props) {
                 <View style={styles.actionCard}>
                     {!reachedCustomer ? (
                         <Pressable
-                            style={[styles.actionButton, styles.secondaryButton]}
+                            style={[styles.actionButton, styles.secondaryButton, isArrivingCustomer && { opacity: 0.7 }]}
                             onPress={() => void handleReachedCustomerLocation()}
+                            disabled={isArrivingCustomer}
                         >
                             <Feather name="map-pin" size={20} color="#14532D" style={styles.actionIconLeft} />
-                            <Text style={styles.secondaryButtonText}>Reached Customer Location</Text>
+                            <Text style={styles.secondaryButtonText}>
+                                {isArrivingCustomer ? 'Notifying Customer...' : 'Reached Customer Location'}
+                            </Text>
                         </Pressable>
                     ) : (
                         <View style={{ gap: 12 }}>
