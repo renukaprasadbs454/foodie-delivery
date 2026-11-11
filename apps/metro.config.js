@@ -49,6 +49,10 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+if (config.server && 'tls' in config.server) {
+  delete config.server.tls;
+}
+
 config.server = {
   ...config.server,
   enhanceMiddleware: (middleware) => {
