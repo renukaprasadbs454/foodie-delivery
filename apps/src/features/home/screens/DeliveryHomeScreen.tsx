@@ -1998,7 +1998,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   cameraModal: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#1A202C',
     zIndex: 200,
     justifyContent: 'center',
